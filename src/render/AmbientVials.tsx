@@ -107,17 +107,19 @@ export const AmbientVials = memo(function AmbientVials({
         const { vialWidth: w, vialHeight: h, topRadius, bottomRadius } = geometry;
         const rt = Math.min(topRadius, w / 2);
         const rb = Math.min(bottomRadius, w / 2);
-        const path = Skia.Path.Make();
-        path.moveTo(tube.x, tube.y + rt);
-        path.quadTo(tube.x, tube.y, tube.x + rt, tube.y);
-        path.lineTo(tube.x + w - rt, tube.y);
-        path.quadTo(tube.x + w, tube.y, tube.x + w, tube.y + rt);
-        path.lineTo(tube.x + w, tube.y + h - rb);
-        path.quadTo(tube.x + w, tube.y + h, tube.x + w - rb, tube.y + h);
-        path.lineTo(tube.x + rb, tube.y + h);
-        path.quadTo(tube.x, tube.y + h, tube.x, tube.y + h - rb);
-        path.close();
-        return path;
+        // `Skia.PathBuilder`, not the deprecated mutating `SkPath` methods.
+        // `detach()` returns an immutable path, which is what gets memoised.
+        return Skia.PathBuilder.Make()
+          .moveTo(tube.x, tube.y + rt)
+          .quadTo(tube.x, tube.y, tube.x + rt, tube.y)
+          .lineTo(tube.x + w - rt, tube.y)
+          .quadTo(tube.x + w, tube.y, tube.x + w, tube.y + rt)
+          .lineTo(tube.x + w, tube.y + h - rb)
+          .quadTo(tube.x + w, tube.y + h, tube.x + w - rb, tube.y + h)
+          .lineTo(tube.x + rb, tube.y + h)
+          .quadTo(tube.x, tube.y + h, tube.x, tube.y + h - rb)
+          .close()
+          .detach();
       }),
     [geometry]
   );
@@ -126,18 +128,20 @@ export const AmbientVials = memo(function AmbientVials({
   const highlights = useMemo(
     () =>
       geometry.tubes.map((tube) =>
-        Skia.Path.Make().addRRect(
-          Skia.RRectXY(
-            Skia.XYWHRect(
-              tube.x + geometry.vialWidth * 0.17,
-              tube.y + geometry.segmentHeight * 0.3,
-              geometry.vialWidth * 0.1,
-              geometry.vialHeight * 0.48
-            ),
-            geometry.vialWidth * 0.08,
-            geometry.vialWidth * 0.08
+        Skia.PathBuilder.Make()
+          .addRRect(
+            Skia.RRectXY(
+              Skia.XYWHRect(
+                tube.x + geometry.vialWidth * 0.17,
+                tube.y + geometry.segmentHeight * 0.3,
+                geometry.vialWidth * 0.1,
+                geometry.vialHeight * 0.48
+              ),
+              geometry.vialWidth * 0.08,
+              geometry.vialWidth * 0.08
+            )
           )
-        )
+          .detach()
       ),
     [geometry]
   );

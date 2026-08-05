@@ -8,3 +8,6 @@ package-lock.json
 .husky/_/
 docs/decant-handoff/decant-prototype.html
 *.min.js
+
+# Generated artwork tooling — Python, not Prettier's to format.
+script/make-splash.py

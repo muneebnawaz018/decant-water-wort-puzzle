@@ -341,7 +341,8 @@ they already fill the bright end of the hue wheel, so these sit lower in
 lightness instead of squeezing between adjacent hues. They replace a near-white
 `chalk` that was ΔE 3 from the text colour.
 
-Decoration names its colours; the board uses indices. `AmbientVials`' rack
+**Never `pieces[n]` outside the board.** Decoration names its colours; the board
+uses indices. `AmbientVials`' rack
 holds `colours.aqua` and friends directly, not `pieces[4]` — indices move
 whenever `pieces` is reordered, and holding them in a fixed decorative layout
 silently repainted the whole home rack the first time that happened.
@@ -434,6 +435,11 @@ The app icon is still an Expo default. The **splash** is not: `expo-splash-scree
 draws the native launch screen (`assets/splash-icon.png` on `#150A34`,
 configured in `app.json`), and `src/ui/nativeSplash.ts` holds it up until there
 is a real frame to hand off to.
+
+`assets/splash-icon.png` is generated, not drawn: `python3 script/make-splash.py`
+redraws it from the palette, so the launch mark cannot drift away from the
+colours the app itself uses. Expo's default placeholder shipped in that slot
+until it was caught on a simulator run.
 
 `react-native-bootsplash` was considered and skipped. It would mean
 hand-maintaining the iOS storyboard and Android theme that `expo prebuild`

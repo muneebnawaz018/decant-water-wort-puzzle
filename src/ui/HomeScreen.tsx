@@ -115,7 +115,7 @@ export const HomeScreen = memo(function HomeScreen({
                   <Text style={styles.continueLevel}>Level {level}</Text>
                   <View style={styles.bar}>
                     <LinearGradient
-                      colors={[apothecary.accent, apothecary.pieces[4]!]}
+                      colors={[apothecary.accent, colours.lime]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                       style={[

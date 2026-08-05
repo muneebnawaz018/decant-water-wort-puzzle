@@ -71,17 +71,21 @@ interface BoardProps {
 function tubePath(tube: TubeRect, radius: number): SkPath {
   const { x, y, width, height } = tube;
   const r = Math.min(radius, width / 2, height / 2);
-  const path = Skia.Path.Make();
 
-  path.moveTo(x, y);
-  path.lineTo(x + width, y);
-  path.lineTo(x + width, y + height - r);
-  path.quadTo(x + width, y + height, x + width - r, y + height);
-  path.lineTo(x + r, y + height);
-  path.quadTo(x, y + height, x, y + height - r);
-  path.close();
-
-  return path;
+  // `Skia.PathBuilder`, not `Skia.Path.Make()`: the mutating path methods are
+  // deprecated in Skia 2.x. The builder is chainable and `detach()` hands back
+  // an immutable `SkPath`, which is what the renderer wants anyway — a path
+  // nobody can mutate after the fact cannot drift from the layout it was
+  // measured for.
+  return Skia.PathBuilder.Make()
+    .moveTo(x, y)
+    .lineTo(x + width, y)
+    .lineTo(x + width, y + height - r)
+    .quadTo(x + width, y + height, x + width - r, y + height)
+    .lineTo(x + r, y + height)
+    .quadTo(x, y + height, x, y + height - r)
+    .close()
+    .detach();
 }
 
 export const Board = memo(function Board({
@@ -106,18 +110,20 @@ export const Board = memo(function Board({
   const highlights = useMemo(
     () =>
       layout.tubes.map((tube) =>
-        Skia.Path.Make().addRRect(
-          Skia.RRectXY(
-            Skia.XYWHRect(
-              tube.x + tube.width * 0.16,
-              tube.y + layout.segmentHeight * 0.45,
-              tube.width * 0.07,
-              tube.height - layout.segmentHeight
-            ),
-            tube.width * 0.035,
-            tube.width * 0.035
+        Skia.PathBuilder.Make()
+          .addRRect(
+            Skia.RRectXY(
+              Skia.XYWHRect(
+                tube.x + tube.width * 0.16,
+                tube.y + layout.segmentHeight * 0.45,
+                tube.width * 0.07,
+                tube.height - layout.segmentHeight
+              ),
+              tube.width * 0.035,
+              tube.width * 0.035
+            )
           )
-        )
+          .detach()
       ),
     [layout]
   );

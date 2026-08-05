@@ -13,7 +13,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { apothecary } from '@/theme/apothecary';
+import { colours } from '@/theme/colors';
 import { Wordmark } from './chrome/Wordmark';
 import { styles } from './styles/SplashScreen.styles';
 
@@ -111,7 +111,10 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
         <View style={styles.vial}>
           <Animated.View style={[styles.liquidSlot, liquidStyle]}>
             <LinearGradient
-              colors={[apothecary.pieces[4]!, apothecary.pieces[6]!]}
+              // Named colours, never `pieces[n]`: the palette is ordered by
+              // separation, so an index points at a different colour the next
+              // time it is reordered. Decoration must not move with it.
+              colors={[colours.aqua, colours.teal]}
               style={StyleSheet.absoluteFill}
             />
           </Animated.View>
