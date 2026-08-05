@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 
 import { useGameStore } from '@/state/gameStore';
@@ -8,6 +8,7 @@ import { Overlays } from './chrome/Overlays';
 import { CompleteScreen } from './CompleteScreen';
 import { DailyScreen } from './DailyScreen';
 import { usePoppins } from './fonts';
+import { hideNativeSplash } from './nativeSplash';
 import { GameScreen } from './GameScreen';
 import { HomeScreen } from './HomeScreen';
 import { ScreenTransition } from './ScreenTransition';
@@ -43,6 +44,17 @@ export function Root() {
   const { width, height } = useWindowDimensions();
   const [screen, setScreen] = useState<Screen>('splash');
   const fontsReady = usePoppins();
+  const handedOff = useRef(false);
+
+  // The native splash stays up until there is a real frame to replace it with.
+  // `onLayout` fires once this tree has been measured, which is the closest
+  // signal React gives to "something is actually on screen" — hiding any
+  // earlier shows the background colour for a beat and reads as a stutter.
+  const onFirstLayout = useCallback(() => {
+    if (handedOff.current) return;
+    handedOff.current = true;
+    hideNativeSplash();
+  }, []);
 
   const showHome = useCallback(() => setScreen('home'), []);
   const showGame = useCallback(() => setScreen('game'), []);
@@ -63,11 +75,14 @@ export function Root() {
   // Poppins carries the whole visual identity; rendering a frame in the system
   // font would flash and then reflow every screen once the real face landed.
   if (!fontsReady) {
+    // No `onLayout` here on purpose: the native splash covers this frame, and
+    // handing off to a blank view would flash the ground colour before the
+    // fonts land.
     return <View style={styles.blank} />;
   }
 
   return (
-    <View style={styles.root}>
+    <View style={styles.root} onLayout={onFirstLayout}>
       <Backdrop width={width} height={height} still={screen === 'game'} />
 
       {screen === 'splash' ? (

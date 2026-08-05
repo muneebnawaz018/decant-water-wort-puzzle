@@ -1,7 +1,7 @@
 #!/bin/sh
 set +e
 
-# Five gates, all launched at once, each reporting per-file counts.
+# Six gates, all launched at once, each reporting per-file counts.
 #
 # Prettier, ESLint and markdownlint run over the staged files only; tsc and
 # jest cannot be scoped that way and run over the project. Nothing here writes
@@ -36,7 +36,7 @@ BIN=./node_modules/.bin
 CACHE_DIR=node_modules/.cache
 mkdir -p "$CACHE_DIR"
 
-echo "🔍 prettier / eslint / tsc / markdownlint / jest — $FILE_COUNT staged file(s), $CPUS workers..."
+echo "🔍 prettier / eslint / tsc / markdownlint / jest / knip — $FILE_COUNT staged file(s), $CPUS workers..."
 
 TMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TMP_DIR"' EXIT
@@ -46,6 +46,7 @@ ESLINT_OUT="$TMP_DIR/eslint.txt"
 TSC_OUT="$TMP_DIR/tsc.txt"
 MDLINT_OUT="$TMP_DIR/mdlint.txt"
 JEST_OUT="$TMP_DIR/jest.txt"
+KNIP_OUT="$TMP_DIR/knip.txt"
 
 # --- Prettier: one line per offending file, "<file>\t<hunk-count>" ---
 run_prettier() {
@@ -106,17 +107,28 @@ run_jest() {
   return $?
 }
 
+# --- Knip: unused files, exports and dependencies. Whole-project, ~1.5s.
+# --- A deleted last caller leaves dead code behind that nothing else here
+# --- notices: tsc, eslint and the tests are all perfectly happy with it.
+run_knip() {
+  [ "$SCRIPT_COUNT" -eq 0 ] && return 0
+  "$BIN/knip" --no-progress > "$KNIP_OUT" 2>&1
+  return $?
+}
+
 run_prettier & PID_PRETTIER=$!
 run_eslint   & PID_ESLINT=$!
 run_tsc      & PID_TSC=$!
 run_mdlint   & PID_MDLINT=$!
 run_jest     & PID_JEST=$!
+run_knip     & PID_KNIP=$!
 
 wait $PID_PRETTIER; EXIT_PRETTIER=$?
 wait $PID_ESLINT;   EXIT_ESLINT=$?
 wait $PID_TSC;      EXIT_TSC=$?
 wait $PID_MDLINT;   EXIT_MDLINT=$?
 wait $PID_JEST;     EXIT_JEST=$?
+wait $PID_KNIP;     EXIT_KNIP=$?
 
 print_prettier_failures() {
   [ ! -s "$PRETTIER_OUT" ] && return
@@ -170,6 +182,13 @@ print_jest_failures() {
   echo "❌ Tests — failing. Details: npm test"
 }
 
+print_knip_failures() {
+  [ ! -s "$KNIP_OUT" ] && return
+  sed 's/^/  /' "$KNIP_OUT" | head -30
+  echo ""
+  echo "❌ Knip — unused files, exports or dependencies. Details: npm run lint:dead"
+}
+
 echo ""
 if [ $EXIT_PRETTIER -eq 0 ]; then echo "✅ Prettier   : formatted"; else print_prettier_failures; fi
 
@@ -191,8 +210,13 @@ if [ "$SCRIPT_COUNT" -eq 0 ]; then
   echo "✅ Tests      : no script files staged"
 elif [ $EXIT_JEST -eq 0 ]; then echo "✅ Tests      : passing"; else print_jest_failures; fi
 
+echo ""
+if [ "$SCRIPT_COUNT" -eq 0 ]; then
+  echo "✅ Knip       : no script files staged"
+elif [ $EXIT_KNIP -eq 0 ]; then echo "✅ Knip       : no dead code"; else print_knip_failures; fi
+
 if [ $EXIT_PRETTIER -ne 0 ] || [ $EXIT_ESLINT -ne 0 ] || [ $EXIT_TSC -ne 0 ] ||
-   [ $EXIT_MDLINT -ne 0 ] || [ $EXIT_JEST -ne 0 ]; then
+   [ $EXIT_MDLINT -ne 0 ] || [ $EXIT_JEST -ne 0 ] || [ $EXIT_KNIP -ne 0 ]; then
   echo ""
   echo "💥 Commit blocked. Fix the errors above and try again."
   exit 1

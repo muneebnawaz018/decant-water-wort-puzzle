@@ -1,0 +1,29 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["App.tsx", "script/*.mjs", "script/eslint-rules/*.cjs"],
+  "project": ["**/*.{ts,tsx,js,jsx,mjs,cjs}"],
+  "ignore": ["babel.config.js"],
+  "ignoreBinaries": ["expo-doctor"],
+  "ignoreDependencies": [
+    "babel-preset-expo",
+    "babel-plugin-module-resolver",
+    "expo-updates"
+  ],
+  "includeEntryExports": true,
+  "include": [
+    "files",
+    "dependencies",
+    "devDependencies",
+    "optionalPeerDependencies",
+    "unlisted",
+    "unresolved",
+    "binaries",
+    "exports",
+    "nsExports",
+    "types",
+    "nsTypes",
+    "enumMembers",
+    "duplicates"
+  ],
+  "treatConfigHintsAsErrors": true
+}

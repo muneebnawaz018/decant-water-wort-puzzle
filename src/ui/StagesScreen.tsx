@@ -36,7 +36,7 @@ interface Stage {
   current: boolean;
 }
 
-export function pageOf(level: number): number {
+function pageOf(level: number): number {
   return Math.floor((level - 1) / PAGE_SIZE);
 }
 

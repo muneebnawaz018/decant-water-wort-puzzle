@@ -90,7 +90,7 @@ npm run android         # expo run:android
 npm start               # expo start --dev-client — Metro for an installed build
 
 # checks
-npm run check:all       # all five gates in parallel, one summary — use this
+npm run check:all       # all six gates in parallel, one summary — use this
 npm test                # jest
 npm run typecheck       # tsc --noEmit
 npm run lint            # eslint, zero warnings tolerated
@@ -98,6 +98,8 @@ npm run lint:fix        # eslint --fix
 npm run lint:md         # markdownlint-cli2
 npm run format          # prettier --write, with a summary of what changed
 npm run format:check    # prettier --check, no writes
+npm run lint:dead       # knip — unused files, exports, deps; zero tolerated
+npm run lint:dead:fix   # knip --fix, deletes what it is sure about
 npm run doctor          # expo-doctor, must stay at 20/20
 ```
 
@@ -109,10 +111,10 @@ differences live in `docs/02-commands.md`.
 
 ## The commit gate
 
-`.husky/pre-commit` runs prettier, eslint, tsc, markdownlint and jest at once
-and blocks the commit if any fail, printing a per-file error count rather than
-a wall of output. Prettier, eslint and markdownlint see only the staged files;
-tsc and jest cannot be scoped that way and run over the project.
+`.husky/pre-commit` runs prettier, eslint, tsc, markdownlint, jest and knip at
+once and blocks the commit if any fail, printing a per-file error count rather
+than a wall of output. Prettier, eslint and markdownlint see only the staged
+files; tsc, jest and knip cannot be scoped that way and run over the project.
 
 The hook never writes to your files. A gate that reformats what you are
 committing changes what you reviewed — it tells you to run `npm run format`
@@ -122,6 +124,17 @@ re-resolves the package on every call.
 Jest is in the gate on purpose. Determinism is part of the save format here, so
 the fingerprint test that catches a repointed level has to run _before_ the
 commit, not after.
+
+Knip is configured strictly — `include` lists every issue type it supports, and
+a finding is an error, not a report. Its first run found fourteen exports that
+nothing outside their own file used, plus a dead `ts-jest`; `jest-expo` handles
+the transform. Nothing else in the gate notices dead code: tsc, eslint and the
+tests are all perfectly happy with an export whose last caller was deleted.
+
+The four `ignoreDependencies` entries are native or config-only packages knip
+cannot see through — `babel-preset-expo` and `babel-plugin-module-resolver` are
+named as strings inside `babel.config.js`, and `expo-updates` arrives as a
+native transitive of `expo-dev-client`.
 
 Two ESLint rules in `script/eslint-rules/` hold this project's own invariants,
 both errors:
@@ -288,7 +301,8 @@ To animate a shader, pass `uniforms` as a plain shared value built with
 ## The handoff redesign
 
 `docs/decant-handoff/` is the current visual source of truth: `BUILD-SPEC.md`
-plus a playable `decant-prototype.html`. It supersedes doc §9's parchment
+plus a playable `decant-prototype.html`. It is **gitignored** — a local working
+reference, not shipped source. It supersedes doc §9's parchment
 theme. Read the spec before touching any screen.
 
 Theme is now dark: deep purple ground, warm lamp glow, gold chrome, pure
@@ -416,4 +430,41 @@ no audio assets exist yet. Colourblind marks have a toggle but the Board does
 not draw symbols yet. `android/` and `ios/` already exist — prebuild has been
 run.
 
-Icons and splash are still Expo defaults.
+The app icon is still an Expo default. The **splash** is not: `expo-splash-screen`
+draws the native launch screen (`assets/splash-icon.png` on `#150A34`,
+configured in `app.json`), and `src/ui/nativeSplash.ts` holds it up until there
+is a real frame to hand off to.
+
+`react-native-bootsplash` was considered and skipped. It would mean
+hand-maintaining the iOS storyboard and Android theme that `expo prebuild`
+regenerates, and the two would fight over `LaunchScreen.storyboard` on every
+prebuild. Expo's own module is already in the plugin pipeline.
+
+Two details there are load-bearing:
+
+- `preventAutoHideAsync()` runs at **module scope**. Auto-hide fires on the
+  first drawn frame, so by the time a component effect runs it has already
+  happened — and the flash it was meant to prevent has already been seen.
+- `hideNativeSplash()` is called from `Root`'s `onLayout`, not from the effect
+  that loads the fonts. Hiding while the tree is still blank shows the ground
+  colour for a beat, which reads as a stutter rather than a launch.
+
+Changing any splash value needs `npm run prebuild` — it is baked into native
+assets, not read at runtime.
+
+## `app.config.ts`, not `app.json`
+
+The Expo config is TypeScript so it can `import { colours }`. JSON cannot, which
+meant the splash background and the Android adaptive-icon background were second
+copies of hexes that already lived in the palette — and the icon was still
+carrying Expo's default pale blue behind a near-black app.
+
+Two constraints there:
+
+- The import must carry its extension (`./src/theme/colors.ts`). Expo transpiles
+  the config file but resolves its imports through plain Node, which cannot find
+  an extensionless `.ts`. `allowImportingTsExtensions` in `tsconfig.json` exists
+  for that one line.
+- `colors.ts` must stay free of React Native imports. It is loaded outside the
+  app runtime here, so a native import in it breaks `expo prebuild` and every
+  EAS build with it.

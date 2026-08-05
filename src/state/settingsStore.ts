@@ -19,7 +19,7 @@ export interface Settings {
 }
 
 /** Spec §7. "Off" is the absence of a track, so it is not in the list. */
-export const MUSIC_TRACKS = ['Herbarium', 'Rainfall', 'Lo-fi'] as const;
+const MUSIC_TRACKS = ['Herbarium', 'Rainfall', 'Lo-fi'] as const;
 
 export type ToggleKey =
   'sound' | 'music' | 'tapSound' | 'haptics' | 'colourblind' | 'dailyReminder';

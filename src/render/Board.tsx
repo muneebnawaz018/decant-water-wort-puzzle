@@ -38,7 +38,7 @@ import { liquidEffect } from './liquidEffect';
 import { useUiValue } from './useUiValue';
 
 /** How far a selected tube lifts, doc §7. */
-export const SELECTION_LIFT = 8;
+const SELECTION_LIFT = 8;
 
 export interface PourAnimation {
   from: number;

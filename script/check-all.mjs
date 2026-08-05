@@ -14,6 +14,7 @@ const TASKS = [
   ['Markdown (markdownlint)', 'markdownlint-cli2', []],
   ['Types (tsc)', 'tsc', ['--noEmit']],
   ['Tests (jest)', 'jest', ['--silent', '--watchman=false']],
+  ['Dead code (knip)', 'knip', ['--no-progress']],
 ];
 
 const ESC = '\x1b';

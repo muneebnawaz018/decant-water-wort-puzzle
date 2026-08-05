@@ -60,7 +60,7 @@ const DEFAULTS: Required<Omit<AcceptanceOptions, 'minFragmentation'>> = {
  * colours sharing a single spare tube, not from fragmentation. Solvability and
  * the already-solved-tube check carry the gate on those levels.
  */
-export function defaultMinFragmentation(capacity: number): number {
+function defaultMinFragmentation(capacity: number): number {
   return capacity >= 5 ? 0.5 : 0.6;
 }
 

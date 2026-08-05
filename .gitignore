@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# design handoff — the prototype and its spec are a local working reference,
+# not part of the shipped source. Keep a copy; do not commit it.
+docs/decant-handoff/

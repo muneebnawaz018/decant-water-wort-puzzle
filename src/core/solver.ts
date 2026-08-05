@@ -18,7 +18,7 @@ export interface SolveResult {
  * Canonical key for a board. Tube order carries no meaning, so equivalent
  * boards that differ only by tube position collapse to the same key.
  */
-export function stateKey(state: WaterState): string {
+function stateKey(state: WaterState): string {
   return state.tubes
     .map((tube) => tube.join(','))
     .sort()

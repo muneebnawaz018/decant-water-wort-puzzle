@@ -5,7 +5,7 @@ import { ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
 
 /** Spec §4.2: the shelf is narrower than the screen, and the vials sit on it. */
-export const SHELF_WIDTH = 214;
+const SHELF_WIDTH = 214;
 export const SHELF_HEIGHT = 11;
 
 /**

@@ -12,10 +12,9 @@ import {
  * so the first frame is never a system-font flash that reflows once the real
  * face arrives.
  *
- * The family names themselves live in `@/theme/fonts` — style files need them
- * and must not reach into the UI layer.
+ * The family names themselves live in `@/theme/fonts`; style files import them
+ * from there, not from here, so the theme never depends on the UI layer.
  */
-export { POPPINS } from '@/theme/fonts';
 
 export function usePoppins(): boolean {
   const [loaded] = useFonts({

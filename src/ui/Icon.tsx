@@ -8,7 +8,7 @@ import { apothecary } from '@/theme/apothecary';
  * assets: they scale to any density, tint from the theme, and add nothing to
  * the bundle.
  */
-export const ICONS = {
+const ICONS = {
   back: 'M15 18 L9 12 L15 6',
   play: 'M7 4 L20 12 L7 20 Z',
   stages: 'M3 3 h7 v7 h-7 Z M14 3 h7 v7 h-7 Z M14 14 h7 v7 h-7 Z M3 14 h7 v7 h-7 Z',

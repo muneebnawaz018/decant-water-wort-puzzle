@@ -2,6 +2,10 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    // `app.config.ts` must import `src/theme/colors.ts` with its extension:
+    // Expo's config loader transpiles the config file itself but resolves its
+    // imports through plain Node, which cannot find an extensionless .ts.
+    "allowImportingTsExtensions": true,
     "noUncheckedIndexedAccess": true,
     "types": ["jest"],
     "paths": {

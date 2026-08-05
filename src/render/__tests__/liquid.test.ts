@@ -1,3 +1,4 @@
+import { colours } from '@/theme/colors';
 import { LIQUID_SKSL, rgba } from '../liquid';
 
 /**
@@ -25,18 +26,24 @@ describe('liquid shader', () => {
 });
 
 describe('rgba', () => {
+  // Real palette entries, not invented hexes: this converter is what every
+  // liquid colour passes through on its way to the shader, so the cases worth
+  // pinning are the ones the app actually renders.
   it('converts a hex colour to 0..1 components', () => {
-    expect(rgba('#FFFFFF')).toEqual([1, 1, 1, 1]);
-    expect(rgba('#000000')).toEqual([0, 0, 0, 1]);
+    expect(rgba(colours.white)).toEqual([1, 1, 1, 1]);
+    expect(rgba(colours.black)).toEqual([0, 0, 0, 1]);
   });
 
   it('reads the channels in the right order', () => {
-    const [r, g, b] = rgba('#804020') as [number, number, number, number];
+    // `mango` is the palette's one strictly-descending colour (FF/8A/1E), so
+    // a swapped channel cannot slip through on a tie. `coral` cannot do this
+    // job — its green and blue are equal.
+    const [r, g, b] = rgba(colours.mango) as [number, number, number, number];
     expect(r).toBeGreaterThan(g);
     expect(g).toBeGreaterThan(b);
   });
 
   it('carries alpha through', () => {
-    expect(rgba('#123456', 0.5)[3]).toBe(0.5);
+    expect(rgba(colours.grape, 0.5)[3]).toBe(0.5);
   });
 });

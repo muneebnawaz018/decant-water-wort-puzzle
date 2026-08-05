@@ -24,7 +24,7 @@ export function canPour(state: WaterState, from: number, to: number): boolean {
 }
 
 /** How many segments a pour would actually move. 0 means the pour is illegal. */
-export function pourCount(state: WaterState, from: number, to: number): number {
+function pourCount(state: WaterState, from: number, to: number): number {
   if (!canPour(state, from, to)) return 0;
   const space = state.capacity - state.tubes[to]!.length;
   return Math.min(topRun(state.tubes[from]!), space);

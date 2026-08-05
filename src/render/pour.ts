@@ -34,12 +34,12 @@ export const PHASE = {
 export const TILT = 1.78;
 
 /** Drops left clinging to the lip once the stream stops. */
-export const DRIP_COUNT = 3;
+const DRIP_COUNT = 3;
 
 /** Downward acceleration for thrown droplets. Tuned against POUR_MS. */
 export const GRAVITY = 5.2;
 
-export const PARTICLE_COUNT = 20;
+const PARTICLE_COUNT = 20;
 
 /**
  * Metaball threshold. Blur the liquid layer, then push alpha through a steep
@@ -48,7 +48,7 @@ export const PARTICLE_COUNT = 20;
  */
 export const GOO_MATRIX = [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 26, -10];
 
-export interface Point {
+interface Point {
   x: number;
   y: number;
 }
@@ -117,7 +117,7 @@ export function phaseProgress(progress: number, start: number, end: number): num
 }
 
 /** Smoothstep. Takes the mechanical edge off the travel either side. */
-export function ease(t: number): number {
+function ease(t: number): number {
   'worklet';
   return t * t * (3 - 2 * t);
 }

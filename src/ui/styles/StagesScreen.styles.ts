@@ -5,7 +5,7 @@ import { ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
 /** Spec §4.3 shows a four-across grid. */
 export const COLUMNS = 4;
-export const GAP = 14;
+const GAP = 14;
 
 export const styles = StyleSheet.create({
   root: { flex: 1 },
