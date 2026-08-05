@@ -256,7 +256,26 @@ Perf rules being followed in the UI, worth keeping:
 - **One reaction per animated element, not one per property.** `useUiValue3`
   computes x, y and opacity together; three separate `useUiValue` calls meant
   three per-frame subscriptions each, and the backdrop's fourteen motes made
-  forty-two.
+  forty-two. `useUiValue2` does the same for the pairs — the meniscus wobble
+  and each bubble — taking the rack from twenty-four reactions a frame to
+  twelve.
+- **A canvas redraws every node on it when any one value changes.** This is the
+  rule most of the cost on this app traced back to, and it has two
+  consequences worth keeping in mind.
+
+  Static art on an animated canvas is re-rasterised forever. Home's rack was
+  fourteen draw calls per vial, twelve of them carrying a `BlurMask`, and the
+  bubbles alone were re-running those gaussians sixty times a second for a
+  pixel-identical result. It is now recorded once with `createPicture` and
+  replayed as a single op; only the meniscus and the bubbles are live nodes.
+
+  And motion belongs on its own surface. The backdrop's fourteen two-pixel
+  motes were forcing three full-screen gradient fills every frame — behind
+  every screen, for as long as the app is open. The gradients now have their
+  own canvas underneath and rasterise once.
+
+  So: if it cannot move, it goes in a `Picture` or on a separate canvas.
+
 - **Never select a store method to derive rendered state.** The selector
   returns a stable function identity, so the component never re-renders when
   the data behind it changes. Home reads `lastClaim` and compares it; reading

@@ -45,6 +45,42 @@ export function useUiValue<T>(
 }
 
 /**
+ * Two values from one reaction.
+ *
+ * Same trade as `useUiValue3`, one arity down. The meniscus needs a width and
+ * an x, and each bubble a y and an opacity — as separate `useUiValue` calls
+ * that was two subscriptions each, so twelve moving shapes cost twenty-four
+ * per-frame reactions where twelve will do.
+ */
+export function useUiValue2(
+  source: SharedValue<number>,
+  compute: (input: number) => [number, number],
+  initial: [number, number]
+): [SharedValue<number>, SharedValue<number>] {
+  const a = useSharedValue(initial[0]);
+  const b = useSharedValue(initial[1]);
+
+  useAnimatedReaction(
+    () => source.value,
+    (input) => {
+      const [x, y] = compute(input);
+      a.value = x;
+      b.value = y;
+    },
+    [compute]
+  );
+
+  // The reaction only fires on change, so seed the first frame from JS.
+  useEffect(() => {
+    const [x, y] = compute(source.value);
+    a.value = x;
+    b.value = y;
+  }, [a, b, compute, source]);
+
+  return [a, b];
+}
+
+/**
  * Three values from one reaction.
  *
  * Each `useUiValue` subscribes to the clock separately, so an element needing

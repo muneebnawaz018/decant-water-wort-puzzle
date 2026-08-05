@@ -91,43 +91,65 @@ export const Backdrop = memo(function Backdrop({
   if (width <= 0 || height <= 0) return null;
 
   return (
-    <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
-      <Rect x={0} y={0} width={width} height={height}>
-        <LinearGradient
-          start={vec(ground.start.x, ground.start.y)}
-          end={vec(ground.end.x, ground.end.y)}
-          colors={[apothecary.bg, apothecary.bg2]}
-        />
-      </Rect>
+    <>
+      {/*
+        The three gradients get their own canvas, and it is the whole point of
+        splitting this in two.
 
-      <Rect x={0} y={0} width={width} height={height}>
-        <RadialGradient
-          c={vec(lamp.cx, lamp.cy)}
-          r={lamp.r}
-          colors={[BACKDROP.lamp, BACKDROP.lampFade]}
-        />
-      </Rect>
-
-      <Rect x={0} y={0} width={width} height={height}>
-        <RadialGradient
-          c={vec(wash.cx, wash.cy)}
-          r={wash.r}
-          colors={[BACKDROP.wash, BACKDROP.washFade]}
-        />
-      </Rect>
-
-      <Group>
-        {motes.map((mote, index) => (
-          <AmbientMote
-            key={index}
-            mote={mote}
-            clock={clock}
-            width={width}
-            height={height}
+        Skia redraws every node on a canvas when any value on it changes. With
+        the motes sharing this surface, fourteen two-pixel dots were forcing
+        three full-screen gradient fills every frame — three times the screen
+        in overdraw, sixty times a second, behind every screen in the app, for
+        as long as it is open. Nothing here can move, so on its own surface it
+        rasterises once and is composited thereafter.
+      */}
+      <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
+        <Rect x={0} y={0} width={width} height={height}>
+          <LinearGradient
+            start={vec(ground.start.x, ground.start.y)}
+            end={vec(ground.end.x, ground.end.y)}
+            colors={[apothecary.bg, apothecary.bg2]}
           />
-        ))}
-      </Group>
-    </Canvas>
+        </Rect>
+
+        <Rect x={0} y={0} width={width} height={height}>
+          <RadialGradient
+            c={vec(lamp.cx, lamp.cy)}
+            r={lamp.r}
+            colors={[BACKDROP.lamp, BACKDROP.lampFade]}
+          />
+        </Rect>
+
+        <Rect x={0} y={0} width={width} height={height}>
+          <RadialGradient
+            c={vec(wash.cx, wash.cy)}
+            r={wash.r}
+            colors={[BACKDROP.wash, BACKDROP.washFade]}
+          />
+        </Rect>
+      </Canvas>
+
+      {/*
+        Only the motes redraw per frame now, and on the board this canvas is
+        not mounted at all — so `still` costs one surface rather than a
+        per-frame repaint of the gradients underneath it.
+      */}
+      {motes.length > 0 ? (
+        <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Group>
+            {motes.map((mote, index) => (
+              <AmbientMote
+                key={index}
+                mote={mote}
+                clock={clock}
+                width={width}
+                height={height}
+              />
+            ))}
+          </Group>
+        </Canvas>
+      ) : null}
+    </>
   );
 });
 

@@ -22,7 +22,7 @@ import {
 } from 'react-native-reanimated';
 
 import { colours, tint, ui } from '@/theme/colors';
-import { useUiValue } from './useUiValue';
+import { useUiValue2 } from './useUiValue';
 
 interface AmbientVialsProps {
   width: number;
@@ -326,27 +326,20 @@ const Meniscus = memo(function Meniscus({
 }) {
   const phase = index * 0.31;
 
-  const computeWidth = useCallback(
-    (input: number) => {
+  // One reaction, not two. The x depends on the width — computing them apart
+  // meant the same sine twice per frame as well as a second subscription.
+  const compute = useCallback(
+    (input: number): [number, number] => {
       'worklet';
       const wave = Math.sin((input + phase) * Math.PI * 4);
-      return width * (0.94 + wave * 0.06);
-    },
-    [phase, width]
-  );
-
-  const computeX = useCallback(
-    (input: number) => {
-      'worklet';
-      const wave = Math.sin((input + phase) * Math.PI * 4);
+      const w = width * (0.94 + wave * 0.06);
       // Keep it centred as it narrows.
-      return x + (width - width * (0.94 + wave * 0.06)) / 2;
+      return [w, x + (width - w) / 2];
     },
     [phase, width, x]
   );
 
-  const w = useUiValue(clock, computeWidth, computeWidth(0));
-  const cx = useUiValue(clock, computeX, computeX(0));
+  const [w, cx] = useUiValue2(clock, compute, compute(0));
 
   return (
     <Rect x={cx} y={y - 1} width={w} height={3.5} color={colours.white} opacity={0.5} />
@@ -404,27 +397,22 @@ const Bubble = memo(function Bubble({
   };
   colour: string;
 }) {
-  const computeY = useCallback(
-    (input: number) => {
+  // Both values come off the same phase, so they share a reaction. Nine
+  // bubbles at two subscriptions each was eighteen per frame for nine dots.
+  const compute = useCallback(
+    (input: number): [number, number] => {
       'worklet';
       const t = (input + bubble.offset) % 1;
-      return bubble.baseY - bubble.travel * t;
+      return [
+        bubble.baseY - bubble.travel * t,
+        // Fade in off the floor, fade out before the surface.
+        Math.sin(t * Math.PI) * 0.4,
+      ];
     },
     [bubble]
   );
 
-  const computeOpacity = useCallback(
-    (input: number) => {
-      'worklet';
-      const t = (input + bubble.offset) % 1;
-      // Fade in off the floor, fade out before the surface.
-      return Math.sin(t * Math.PI) * 0.4;
-    },
-    [bubble]
-  );
-
-  const cy = useUiValue(clock, computeY, computeY(0));
-  const opacity = useUiValue(clock, computeOpacity, computeOpacity(0));
+  const [cy, opacity] = useUiValue2(clock, compute, compute(0));
 
   return (
     <Circle cx={bubble.x} cy={cy} r={bubble.radius} color={colour} opacity={opacity} />
