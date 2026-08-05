@@ -1,0 +1,202 @@
+#!/bin/sh
+set +e
+
+# Five gates, all launched at once, each reporting per-file counts.
+#
+# Prettier, ESLint and markdownlint run over the staged files only; tsc and
+# jest cannot be scoped that way and run over the project. Nothing here writes
+# to your files — a failing gate tells you what to fix and blocks the commit,
+# because a hook that silently reformats what you are committing changes what
+# you reviewed.
+
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM \
+  | grep -E '\.(js|jsx|ts|tsx|mjs|cjs|json|css|md)$' \
+  | while read -r f; do [ -f "$f" ] && printf '%s\n' "$f"; done)
+
+STAGED_SCRIPT_FILES=$(printf '%s\n' "$STAGED_FILES" | grep -E '\.(js|jsx|ts|tsx|mjs|cjs)$' || true)
+STAGED_MD_FILES=$(printf '%s\n' "$STAGED_FILES" | grep -E '\.md$' || true)
+
+if [ -z "$STAGED_FILES" ]; then
+  echo "✅ No checkable files staged."
+  exit 0
+fi
+
+FILE_COUNT=$(printf '%s\n' "$STAGED_FILES" | grep -c . || true)
+SCRIPT_COUNT=$(printf '%s\n' "$STAGED_SCRIPT_FILES" | grep -c . || true)
+MD_COUNT=$(printf '%s\n' "$STAGED_MD_FILES" | grep -c . || true)
+FILE_COUNT=${FILE_COUNT:-0}
+SCRIPT_COUNT=${SCRIPT_COUNT:-0}
+MD_COUNT=${MD_COUNT:-0}
+
+CPUS=$(sysctl -n hw.logicalcpu 2>/dev/null || nproc 2>/dev/null || echo 4)
+
+# The local binaries directly: `npx` re-resolves the package on every call,
+# which costs ~0.2s a time and dominates the run once it is paid per file.
+BIN=./node_modules/.bin
+CACHE_DIR=node_modules/.cache
+mkdir -p "$CACHE_DIR"
+
+echo "🔍 prettier / eslint / tsc / markdownlint / jest — $FILE_COUNT staged file(s), $CPUS workers..."
+
+TMP_DIR=$(mktemp -d)
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+PRETTIER_OUT="$TMP_DIR/prettier.txt"
+ESLINT_OUT="$TMP_DIR/eslint.txt"
+TSC_OUT="$TMP_DIR/tsc.txt"
+MDLINT_OUT="$TMP_DIR/mdlint.txt"
+JEST_OUT="$TMP_DIR/jest.txt"
+
+# --- Prettier: one line per offending file, "<file>\t<hunk-count>" ---
+run_prettier() {
+  [ "$FILE_COUNT" -eq 0 ] && return 0
+  OFFENDERS="$TMP_DIR/prettier_offenders.txt"
+  ERRORS="$TMP_DIR/prettier_errors.txt"
+  printf '%s\n' "$STAGED_FILES" | tr '\n' '\0' | \
+    xargs -0 "$BIN/prettier" --list-different > "$OFFENDERS" 2> "$ERRORS"
+  # Files prettier cannot parse are reported on stderr and never reach stdout,
+  # so fold them into the offender list or a broken file would pass.
+  sed -n 's/^\[error\] \([^:]*\):.*/\1/p' "$ERRORS" | sort -u >> "$OFFENDERS"
+  [ ! -s "$OFFENDERS" ] && return 0
+  : > "$PRETTIER_OUT"
+  while read -r file; do
+    [ -z "$file" ] && continue
+    FORMATTED=$(mktemp)
+    if ! "$BIN/prettier" "$file" > "$FORMATTED" 2>/dev/null; then
+      printf "%s\t1\n" "$file" >> "$PRETTIER_OUT"
+      rm -f "$FORMATTED"
+      continue
+    fi
+    HUNKS=$(diff "$file" "$FORMATTED" 2>/dev/null | grep -cE "^[0-9]+(,[0-9]+)?[acd][0-9]+" || true)
+    { [ -z "$HUNKS" ] || [ "$HUNKS" -eq 0 ]; } && HUNKS=1
+    printf "%s\t%s\n" "$file" "$HUNKS" >> "$PRETTIER_OUT"
+    rm -f "$FORMATTED"
+  done < "$OFFENDERS"
+  return 1
+}
+
+# --- ESLint: one process, cached between runs ---
+run_eslint() {
+  [ "$SCRIPT_COUNT" -eq 0 ] && return 0
+  printf '%s\n' "$STAGED_SCRIPT_FILES" | tr '\n' '\0' | \
+    xargs -0 "$BIN/eslint" --max-warnings=0 --no-warn-ignored \
+      --cache --cache-location "$CACHE_DIR/eslint-precommit" > "$ESLINT_OUT" 2>&1
+  return $?
+}
+
+# --- TypeScript: whole-project, incremental so the second run is cheap ---
+run_tsc() {
+  "$BIN/tsc" --noEmit --incremental \
+    --tsBuildInfoFile "$CACHE_DIR/tsc-precommit.tsbuildinfo" > "$TSC_OUT" 2>&1
+}
+
+run_mdlint() {
+  [ "$MD_COUNT" -eq 0 ] && return 0
+  printf '%s\n' "$STAGED_MD_FILES" | tr '\n' '\0' | \
+    xargs -0 "$BIN/markdownlint-cli2" > "$MDLINT_OUT" 2>&1
+  return $?
+}
+
+# --- Jest: the core is pure and the suite runs in seconds. Determinism here
+# --- is load-bearing (a changed seed silently repoints every save), so the
+# --- fingerprint tests have to run before a commit, not after.
+run_jest() {
+  [ "$SCRIPT_COUNT" -eq 0 ] && return 0
+  "$BIN/jest" --silent --watchman=false > "$JEST_OUT" 2>&1
+  return $?
+}
+
+run_prettier & PID_PRETTIER=$!
+run_eslint   & PID_ESLINT=$!
+run_tsc      & PID_TSC=$!
+run_mdlint   & PID_MDLINT=$!
+run_jest     & PID_JEST=$!
+
+wait $PID_PRETTIER; EXIT_PRETTIER=$?
+wait $PID_ESLINT;   EXIT_ESLINT=$?
+wait $PID_TSC;      EXIT_TSC=$?
+wait $PID_MDLINT;   EXIT_MDLINT=$?
+wait $PID_JEST;     EXIT_JEST=$?
+
+print_prettier_failures() {
+  [ ! -s "$PRETTIER_OUT" ] && return
+  while IFS="	" read -r f count; do
+    [ -z "$f" ] && continue
+    printf "  %s (%s)\n" "$f" "$count"
+  done < "$PRETTIER_OUT"
+  echo ""
+  echo "❌ Prettier — formatting issues. Fix with: npm run format"
+}
+
+# ESLint's stylish format: an absolute path, then indented "line:col message".
+print_eslint_failures() {
+  [ ! -s "$ESLINT_OUT" ] && return
+  awk -v root="$(pwd)/" '
+    /^\// && /\.(js|jsx|ts|tsx|mjs|cjs)$/ {
+      file = $0; sub("^" root, "", file)
+      counts[file] = 0; order[++n] = file; next
+    }
+    /^[[:space:]]+[0-9]+:[0-9]+/ { if (file != "") counts[file]++; next }
+    /^$/ { file = "" }
+    END { for (i = 1; i <= n; i++) if (counts[order[i]] > 0) printf "  %s (%d)\n", order[i], counts[order[i]] }
+  ' "$ESLINT_OUT"
+  echo ""
+  echo "❌ ESLint — lint errors. Details: npm run lint"
+}
+
+# tsc: "<file>(line,col): error TSnnnn: message"
+print_tsc_failures() {
+  [ ! -s "$TSC_OUT" ] && return
+  awk -F'[(]' '/\([0-9]+,[0-9]+\): error/ { counts[$1]++ }
+    END { for (f in counts) printf "  %s (%d)\n", f, counts[f] }' "$TSC_OUT" | sort
+  echo ""
+  echo "❌ TypeScript — type errors. Details: npm run typecheck"
+}
+
+# markdownlint-cli2: "<file>:line[:col] MDxxx/rule message"
+print_mdlint_failures() {
+  [ ! -s "$MDLINT_OUT" ] && return
+  awk -F: '/:[0-9]+:[0-9]+ (error )?MD[0-9]+\// { counts[$1]++; next }
+    /:[0-9]+ (error )?MD[0-9]+\// { counts[$1]++ }
+    END { for (f in counts) printf "  %s (%d)\n", f, counts[f] }' "$MDLINT_OUT" | sort
+  echo ""
+  echo "❌ Markdown — markdownlint errors. Details: npm run lint:md"
+}
+
+print_jest_failures() {
+  [ ! -s "$JEST_OUT" ] && return
+  grep -E "^(FAIL|Tests:)" "$JEST_OUT" | sed 's/^/  /'
+  echo ""
+  echo "❌ Tests — failing. Details: npm test"
+}
+
+echo ""
+if [ $EXIT_PRETTIER -eq 0 ]; then echo "✅ Prettier   : formatted"; else print_prettier_failures; fi
+
+echo ""
+if [ "$SCRIPT_COUNT" -eq 0 ]; then
+  echo "✅ ESLint     : no script files staged"
+elif [ $EXIT_ESLINT -eq 0 ]; then echo "✅ ESLint     : no lint errors or warnings"; else print_eslint_failures; fi
+
+echo ""
+if [ $EXIT_TSC -eq 0 ]; then echo "✅ TypeScript : no type errors"; else print_tsc_failures; fi
+
+echo ""
+if [ "$MD_COUNT" -eq 0 ]; then
+  echo "✅ Markdown   : no .md files staged"
+elif [ $EXIT_MDLINT -eq 0 ]; then echo "✅ Markdown   : no markdownlint errors"; else print_mdlint_failures; fi
+
+echo ""
+if [ "$SCRIPT_COUNT" -eq 0 ]; then
+  echo "✅ Tests      : no script files staged"
+elif [ $EXIT_JEST -eq 0 ]; then echo "✅ Tests      : passing"; else print_jest_failures; fi
+
+if [ $EXIT_PRETTIER -ne 0 ] || [ $EXIT_ESLINT -ne 0 ] || [ $EXIT_TSC -ne 0 ] ||
+   [ $EXIT_MDLINT -ne 0 ] || [ $EXIT_JEST -ne 0 ]; then
+  echo ""
+  echo "💥 Commit blocked. Fix the errors above and try again."
+  exit 1
+fi
+
+echo ""
+echo "✅ All checks passed — committing."

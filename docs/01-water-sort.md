@@ -1,8 +1,9 @@
 # 01 — Water Sort
 
 **Theme:** Apothecary Bench
-**Working title:** Vial (verify availability on Play before committing)
-**Engine:** React Native
+**Working title:** Decant (verify availability on Play before committing)
+**Engine:** React Native (Expo SDK 57, prebuild — native dirs generated, not
+managed-only)
 **Build:** 6 days after the shell exists, 3 weeks if it carries the shell
 **Ship order:** First
 
@@ -10,17 +11,24 @@
 
 ## 1. Why this one goes first
 
-It has the least that can go wrong. No physics, no real-time loop, no art dependency, no camera. The board is coloured rectangles in glass tubes. Every visual asset is a shape you can draw in Skia.
+It has the least that can go wrong. No physics, no real-time loop, no art
+dependency, no camera. The board is coloured rectangles in glass tubes. Every
+visual asset is a shape you can draw in Skia.
 
-Its real job is not to succeed commercially. It is to prove the pipeline works end to end: monorepo, generation engine, undo, persistence, analytics, store submission, and a build in players' hands. Judge it on whether the machine ran, not on installs.
+Its real job is not to succeed commercially. It is to prove the pipeline works
+end to end: monorepo, generation engine, undo, persistence, analytics, store
+submission, and a build in players' hands. Judge it on whether the machine ran,
+not on installs.
 
-Reference on store: Get Color, `play.google.com/store/apps/details?id=com.zm.watersort`
+Reference on store: Get Color,
+`play.google.com/store/apps/details?id=com.zm.watersort`
 
 ---
 
 ## 2. Core loop
 
-Tap a source tube, tap a destination tube, liquid pours. Repeat until every tube holds one colour or is empty.
+Tap a source tube, tap a destination tube, liquid pours. Repeat until every
+tube holds one colour or is empty.
 
 Session shape: 30 to 90 seconds per level, players chain 5 to 15 levels.
 
@@ -31,34 +39,39 @@ Session shape: 30 to 90 seconds per level, players chain 5 to 15 levels.
 A tube holds up to `capacity` segments (default 4), stacked bottom to top.
 
 A pour from tube A to tube B is legal when all of these hold:
+
 - A is not empty
 - B is not full
 - B is empty, **or** the top segment of B matches the top segment of A
 
-On a legal pour, move **all consecutive matching segments** from the top of A, limited by free space in B. Moving one at a time feels sluggish and players hate it.
+On a legal pour, move **all consecutive matching segments** from the top of A,
+limited by free space in B. Moving one at a time feels sluggish and players
+hate it.
 
-The level is solved when every tube is either empty or contains `capacity` segments of a single colour.
+The level is solved when every tube is either empty or contains `capacity`
+segments of a single colour.
 
-There is no fail state and no timer. Players restart or undo. This matters: the genre sells relaxation, and adding a timer breaks the entire proposition.
+There is no fail state and no timer. Players restart or undo. This matters: the
+genre sells relaxation, and adding a timer breaks the entire proposition.
 
 ---
 
 ## 4. Data model
 
 ```ts
-type Colour = number;              // index into theme.pieces
+type Colour = number; // index into theme.pieces
 
 interface WaterState {
-  tubes: Colour[][];               // index 0 = bottom
+  tubes: Colour[][]; // index 0 = bottom
   capacity: number;
   colourCount: number;
-  extraTubes: number;              // empty tubes beyond colourCount
+  extraTubes: number; // empty tubes beyond colourCount
 }
 
 interface PourMove {
   from: number;
   to: number;
-  count: number;                   // segments actually moved
+  count: number; // segments actually moved
 }
 ```
 
@@ -109,6 +122,7 @@ inverseMoves(state): PourMove[] {
 ### Acceptance gate
 
 Reject a generated board if any of these are true:
+
 - Fewer than `minMoves` moves needed (estimate by counting non-uniform tubes)
 - Any tube is already solved at start beyond one freebie
 - The board is reachable in under 60% of the scramble steps applied
@@ -117,18 +131,20 @@ Run 200 boards through `tools/level-preview` and look at them before shipping.
 
 ### Difficulty curve
 
-| Levels | Colours | Capacity | Extra tubes | Scramble steps |
-|---|---|---|---|---|
-| 1–5 | 3 | 4 | 2 | 8 |
-| 6–20 | 4 | 4 | 2 | 16 |
-| 21–50 | 5 | 4 | 2 | 28 |
-| 51–100 | 6 | 4 | 2 | 40 |
-| 101–200 | 7 | 4 | 2 | 55 |
-| 201–350 | 8 | 4 | 1 | 70 |
-| 351–500 | 9 | 5 | 1 | 90 |
-| 501+ | 10–12 | 5 | 1 | 110 |
+| Levels  | Colours | Capacity | Extra tubes | Scramble steps |
+| ------- | ------- | -------- | ----------- | -------------- |
+| 1–5     | 3       | 4        | 2           | 8              |
+| 6–20    | 4       | 4        | 2           | 16             |
+| 21–50   | 5       | 4        | 2           | 28             |
+| 51–100  | 6       | 4        | 2           | 40             |
+| 101–200 | 7       | 4        | 2           | 55             |
+| 201–350 | 8       | 4        | 1           | 70             |
+| 351–500 | 9       | 5        | 1           | 90             |
+| 501+    | 10–12   | 5        | 1           | 110            |
 
-The lever that actually controls difficulty is **extra tubes**, not colour count. Going from 2 spare tubes to 1 is a much bigger jump than adding a colour. Save it.
+The lever that actually controls difficulty is **extra tubes**, not colour
+count. Going from 2 spare tubes to 1 is a much bigger jump than adding a
+colour. Save it.
 
 Every 10th level, drop back one row in this table.
 
@@ -136,24 +152,30 @@ Every 10th level, drop back one row in this table.
 
 ## 6. Screens
 
-**Board:** tubes laid out in two rows, centred. Level number top-left, move counter top-right. Undo, hint, restart along the bottom.
+**Board:** tubes laid out in two rows, centred. Level number top-left, move
+counter top-right. Undo, hint, restart along the bottom.
 
 Tube layout by count:
+
 - 5 to 8 tubes: two rows
 - 9 to 12 tubes: two rows, smaller
 - 13+: three rows
 
-Tap a tube to lift its top run slightly (selected state). Tap a second tube to pour. Tap the same tube again to deselect.
+Tap a tube to lift its top run slightly (selected state). Tap a second tube to
+pour. Tap the same tube again to deselect.
 
-**Complete:** liquid settles, tubes glow in sequence, move count and best shown, Next button.
+**Complete:** liquid settles, tubes glow in sequence, move count and best
+shown, Next button.
 
 ---
 
 ## 7. Feel
 
-This game lives entirely on the pour animation. Get it right and the rest follows.
+This game lives entirely on the pour animation. Get it right and the rest
+follows.
 
-- Liquid arcs from source to destination, it does not teleport. 350ms, ease-in-out.
+- Liquid arcs from source to destination, it does not teleport. 350ms,
+  ease-in-out.
 - The receiving level rises as the arc lands, not before.
 - Pour sound pitched by how full the destination is. Higher as it fills.
 - Selected tube lifts 8px with a soft shadow.
@@ -162,33 +184,36 @@ This game lives entirely on the pour animation. Get it right and the rest follow
 - Level completing: tubes chime left to right in sequence, then celebration.
 - Haptic on every pour, heavier on tube completion.
 
-Do not let the player queue taps during the pour animation. Lock input for the 350ms or you get double-pour bugs.
+Do not let the player queue taps during the pour animation. Lock input for the
+350ms or you get double-pour bugs.
 
 ---
 
 ## 8. Ad slots (phase 2, stubbed now)
 
-| Slot | Trigger | Notes |
-|---|---|---|
-| `interstitial_level_complete` | Every 4th completion | Never mid-level. Skip if under 90s since last. |
-| `rewarded_extra_undo` | After 3 free undos | Explicit button only |
-| `rewarded_hint` | Hint button, after 1 free hint per level | |
-| `rewarded_extra_tube` | Player taps "add a tube" | Strongest slot in this genre. Adds one empty tube for the current level. |
-| `banner_level_select` | Menu only | Never on the board |
+| Slot                          | Trigger                                  | Notes                                                                    |
+| ----------------------------- | ---------------------------------------- | ------------------------------------------------------------------------ |
+| `interstitial_level_complete` | Every 4th completion                     | Never mid-level. Skip if under 90s since last.                           |
+| `rewarded_extra_undo`         | After 3 free undos                       | Explicit button only                                                     |
+| `rewarded_hint`               | Hint button, after 1 free hint per level |                                                                          |
+| `rewarded_extra_tube`         | Player taps "add a tube"                 | Strongest slot in this genre. Adds one empty tube for the current level. |
+| `banner_level_select`         | Menu only                                | Never on the board                                                       |
 
-The extra-tube reward is the money slot. It converts because it solves the exact frustration the player is feeling at that moment.
+The extra-tube reward is the money slot. It converts because it solves the
+exact frustration the player is feeling at that moment.
 
 ---
 
 ## 9. Theme: Apothecary Bench
 
-Glass vials in a wooden rack on a workbench. Brass fittings, handwritten paper labels, warm lamplight from the upper left.
+Glass vials in a wooden rack on a workbench. Brass fittings, handwritten paper
+labels, warm lamplight from the upper left.
 
-```
+```text
 bg        #F4EBDC   aged parchment
 surface   #E3D3B8   worn bench
 board     #C9A227   brass rack
-ink       #2E2419   
+ink       #2E2419
 inkMuted  #7A6A55
 accent    #B5651D   copper
 pieces    #7B2D26 (garnet)  #1F5673 (cobalt)  #386641 (verdigris)
@@ -197,52 +222,60 @@ pieces    #7B2D26 (garnet)  #1F5673 (cobalt)  #386641 (verdigris)
           #3D3B4F (slate)   #A6543A (sienna)  #5C4033 (walnut)
 ```
 
-Font: serif display (Lora, Crimson) for headings, humanist sans (Source Sans) for body.
+Font: serif display (Lora, Crimson) for headings, humanist sans (Source Sans)
+for body.
 
-Liquids render with a subtle vertical gradient and a meniscus curve at the top. Glass gets a thin specular highlight down the left edge. Skip real refraction, it costs frames and nobody notices.
+Liquids render with a subtle vertical gradient and a meniscus curve at the top.
+Glass gets a thin specular highlight down the left edge. Skip real refraction,
+it costs frames and nobody notices.
 
-Colourblind mode: each colour gets a small repeating symbol embossed on the segment (dot, stripe, cross, wave, triangle, grid).
+Colourblind mode: each colour gets a small repeating symbol embossed on the
+segment (dot, stripe, cross, wave, triangle, grid).
 
 ---
 
 ## 10. Store listing
 
-**Title:** Vial: Water Sort Puzzle (under 30 chars)
+**Title:** Decant: Water Sort Puzzle (25 chars, under the 30 cap)
 **Short:** Pour, sort, and settle. No timers, no pressure.
 
 Long description angles to use:
+
 - Offline, plays anywhere
 - No ads during puzzles, only between levels
 - No move limits, no forced timers
 - Thousands of generated levels, daily puzzle
 
-Keywords worth targeting: water sort, colour sort, liquid sort, pour puzzle, tube puzzle, offline puzzle, relaxing puzzle.
+Keywords worth targeting: water sort, colour sort, liquid sort, pour puzzle,
+tube puzzle, offline puzzle, relaxing puzzle.
 
-The genre is crowded. Your listing differentiator is the ad promise, because incumbent reviews are dominated by ad complaints. Say it plainly in the first two lines.
+The genre is crowded. Your listing differentiator is the ad promise, because
+incumbent reviews are dominated by ad complaints. Say it plainly in the first
+two lines.
 
 ---
 
 ## 11. Day plan
 
-| Day | Work |
-|---|---|
-| 1 | `WaterGenerator`, `WaterCore`, unit tests on legality and solvability |
-| 2 | Skia board render, tube layout, tap handling, selection state |
-| 3 | Pour animation, difficulty ramp, generate and review 200 levels |
-| 4 | Juice pass, sound, haptics, completion sequence |
-| 5 | Theme, colourblind mode, icon, screenshots, listing |
-| 6 | QA on three devices, offline test, build, submit |
+| Day | Work                                                                  |
+| --- | --------------------------------------------------------------------- |
+| 1   | `WaterGenerator`, `WaterCore`, unit tests on legality and solvability |
+| 2   | Skia board render, tube layout, tap handling, selection state         |
+| 3   | Pour animation, difficulty ramp, generate and review 200 levels       |
+| 4   | Juice pass, sound, haptics, completion sequence                       |
+| 5   | Theme, colourblind mode, icon, screenshots, listing                   |
+| 6   | QA on three devices, offline test, build, submit                      |
 
 ---
 
 ## 12. Risks
 
-| Risk | Mitigation |
-|---|---|
-| Pour animation feels cheap | Budget the full of day 3 for it, it is the whole game |
-| Generated boards trivially easy | Tune `isAcceptable`, review 200 by hand |
-| Genre saturation buries the listing | Long-tail keywords, ad-promise positioning |
-| Input queueing causes double pours | Lock input during animation |
+| Risk                                | Mitigation                                            |
+| ----------------------------------- | ----------------------------------------------------- |
+| Pour animation feels cheap          | Budget the full of day 3 for it, it is the whole game |
+| Generated boards trivially easy     | Tune `isAcceptable`, review 200 by hand               |
+| Genre saturation buries the listing | Long-tail keywords, ad-promise positioning            |
+| Input queueing causes double pours  | Lock input during animation                           |
 
 ---
 

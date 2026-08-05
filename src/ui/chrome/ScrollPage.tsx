@@ -1,0 +1,45 @@
+import { memo, type ReactNode } from 'react';
+import { ScrollView, View } from 'react-native';
+
+import { useScreenPadding } from '../hooks/useScreenPadding';
+import { ScreenHeader } from './ScreenHeader';
+import { styles } from './styles/ScrollPage.styles';
+
+interface ScrollPageProps {
+  title: string;
+  onBack: () => void;
+  /** Rendered at the right end of the header — a coin pill, usually. */
+  trailing?: ReactNode;
+  children: ReactNode;
+}
+
+/**
+ * The shape every screen below Home shares (spec §4): safe-area top, a header,
+ * then a scrolling body that clears the home indicator.
+ *
+ * Settings, Shop, Stats and Daily were each repeating this by hand, down to the
+ * same `insets.bottom + 30`. One component means a change to the page frame is
+ * a change in one place, and a screen becomes only its own content.
+ */
+export const ScrollPage = memo(function ScrollPage({
+  title,
+  onBack,
+  trailing,
+  children,
+}: ScrollPageProps) {
+  const padding = useScreenPadding();
+
+  return (
+    <View style={[styles.root, padding.top]}>
+      <ScreenHeader title={title} onBack={onBack} trailing={trailing} />
+
+      <ScrollView
+        style={styles.page}
+        contentContainerStyle={[styles.content, padding.scrollTail]}
+        showsVerticalScrollIndicator={false}
+      >
+        {children}
+      </ScrollView>
+    </View>
+  );
+});
