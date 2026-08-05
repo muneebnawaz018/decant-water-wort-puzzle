@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024"><defs>
+<linearGradient id="purple" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#2E1A5E"/><stop offset="1" stop-color="#140A32"/></linearGradient>
+<radialGradient id="glow" cx="0.5" cy="0.14" r="0.75"><stop offset="0" stop-color="#FFBE64" stop-opacity="0.24"/><stop offset="0.55" stop-color="#FFBE64" stop-opacity="0"/></radialGradient>
+<radialGradient id="mglow" cx="0.85" cy="1" r="0.7"><stop offset="0" stop-color="#A24DFF" stop-opacity="0.3"/><stop offset="0.6" stop-color="#A24DFF" stop-opacity="0"/></radialGradient>
+<linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFEFB4"/><stop offset="0.5" stop-color="#FFCF6A"/><stop offset="1" stop-color="#C58A22"/></linearGradient>
+<linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity="0.34"/><stop offset="0.5" stop-color="#ffffff" stop-opacity="0.02"/><stop offset="1" stop-color="#000000" stop-opacity="0.10"/></linearGradient>
+</defs><rect width="1024" height="1024" fill="url(#purple)"/><rect width="1024" height="1024" fill="url(#mglow)"/><rect width="1024" height="1024" fill="url(#glow)"/></svg>

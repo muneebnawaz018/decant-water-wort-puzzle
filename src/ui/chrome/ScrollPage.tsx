@@ -35,7 +35,9 @@ export const ScrollPage = memo(function ScrollPage({
 
       <ScrollView
         style={styles.page}
-        contentContainerStyle={[styles.content, padding.scrollTail]}
+        // The nav bar floats over every screen below Home, so the last card
+        // has to be scrollable clear of it.
+        contentContainerStyle={[styles.content, padding.scrollTailWithNav]}
         showsVerticalScrollIndicator={false}
       >
         {children}

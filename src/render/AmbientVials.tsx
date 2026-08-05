@@ -1,11 +1,15 @@
 import {
-  BlurMask,
+  BlurStyle,
   Canvas,
   Circle,
+  ClipOp,
+  createPicture,
   Group,
-  Path,
+  PaintStyle,
+  Picture,
   Rect,
   Skia,
+  StrokeJoin,
 } from '@shopify/react-native-skia';
 import { memo, useCallback, useEffect, useMemo } from 'react';
 import {
@@ -17,7 +21,7 @@ import {
   type SharedValue,
 } from 'react-native-reanimated';
 
-import { colours, ui } from '@/theme/colors';
+import { colours, tint, ui } from '@/theme/colors';
 import { useUiValue } from './useUiValue';
 
 interface AmbientVialsProps {
@@ -33,22 +37,53 @@ const CYCLE_MS = 5200;
 const VIALS = 3;
 const CAPACITY = 4;
 
+/** Radius of the outer glow under each segment, spec §3. */
+const GLOW_BLUR = 8;
+
 /**
- * The three sorted vials on Home's shelf (spec §4.2).
+ * How far each segment is lightened from its vial's base colour, bottom to
+ * top. Deepest at the base, palest at the lip — the way a lamp above a real
+ * vial catches it.
  *
- * They are full and already sorted, each holding four segments — the mockup
- * shows a finished, pleasing arrangement, not a puzzle mid-solve. Bottom
- * segment first, matching the prototype's rack.
+ * The steps widen going up rather than dividing the range evenly. Equal steps
+ * in sRGB do not read as equal steps: the light end of a ramp compresses, and
+ * four even stops leave the top pair looking like one band, which is the exact
+ * problem this arrangement exists to avoid.
+ */
+const SHADES = [0, 0.2, 0.44, 0.72] as const;
+
+/**
+ * The three vials on Home's shelf (spec §4.2).
+ *
+ * Full, four segments each, bottom segment first — the mockup shows a pleasing
+ * arrangement rather than a puzzle mid-solve.
+ *
+ * One hue per vial, four shades of it. The earlier arrangement gave every
+ * segment its own colour, which forced the twelve-colour palette's two dark
+ * entries (`fern`, `olive`) onto the shelf; against the bright ten they read
+ * as mud. A single-hue ramp gets its separation from lightness instead, so
+ * nothing has to be dark to be distinct.
+ *
+ * The three bases are far apart on the wheel — cyan, pink, orange — so the
+ * rack still reads as three different things at a glance.
+ *
+ * A base has to sit mid-lightness for this to work. `lime` was tried and does
+ * not: it is the palette's lightest liquid, above L* 84, so it is already most
+ * of the way to white and the ramp runs out of room by the third step. What
+ * should be four shades reads as one pale wash.
+ *
+ * Worth knowing if this is ever revisited: shades are the one arrangement the
+ * game itself would never generate, since the board needs colours a player can
+ * tell apart at speed. Fine for decoration that never has to be sorted, wrong
+ * the moment this rack is reused to preview real play.
  *
  * Named colours, not palette indices: this is decoration with a fixed look,
  * and indices move whenever `pieces` is reordered for separation. Holding
  * indices here silently repainted the whole rack the last time that happened.
  */
-const RACK: ReadonlyArray<readonly string[]> = [
-  [colours.aqua, colours.teal, colours.lime, colours.lime],
-  [colours.plum, colours.grape, colours.rose, colours.rose],
-  [colours.mango, colours.tangerine, colours.coral, colours.coral],
-];
+const RACK: ReadonlyArray<readonly string[]> = (['aqua', 'rose', 'mango'] as const).map(
+  (base) => SHADES.map((amount) => tint(base, amount))
+);
 
 /**
  * A decorative rack of vials for Home.
@@ -146,90 +181,121 @@ export const AmbientVials = memo(function AmbientVials({
     [geometry]
   );
 
+  /**
+   * The whole static layer — glass, segments, glows, seams, highlights and
+   * strokes — recorded once.
+   *
+   * It was fourteen draw calls per vial in JSX, twelve of them carrying a
+   * `BlurMask`. Skia redraws every node on a canvas whenever any value on it
+   * changes, so the bubbles alone were re-rasterising twelve gaussian blurs
+   * sixty times a second to produce a pixel-identical result. `RACK` is a
+   * constant and the geometry is memoised — none of it can move.
+   *
+   * A picture replays as one op. The blurs are paid when the geometry changes
+   * rather than every frame forever.
+   */
+  const still = useMemo(() => {
+    const { vialWidth: w, vialHeight: h, segmentHeight: sh } = geometry;
+
+    return createPicture(
+      (canvas) => {
+        const glass = Skia.Paint();
+        glass.setAntiAlias(true);
+        glass.setColor(Skia.Color(colours.white));
+        glass.setAlphaf(0.08);
+
+        const highlight = Skia.Paint();
+        highlight.setAntiAlias(true);
+        highlight.setColor(Skia.Color(colours.white));
+        highlight.setAlphaf(0.42);
+
+        const edge = Skia.Paint();
+        edge.setAntiAlias(true);
+        edge.setColor(Skia.Color(colours.white));
+        edge.setAlphaf(0.32);
+        edge.setStyle(PaintStyle.Stroke);
+        edge.setStrokeWidth(3);
+        edge.setStrokeJoin(StrokeJoin.Round);
+
+        const seam = Skia.Paint();
+        seam.setColor(Skia.Color(ui.shadow));
+        seam.setAlphaf(0.16);
+
+        // One filter for every glow. Twelve identical mask filters would be
+        // twelve allocations carrying one value.
+        const bloom = Skia.MaskFilter.MakeBlur(BlurStyle.Normal, GLOW_BLUR, false);
+
+        geometry.tubes.forEach((tube, index) => {
+          const shape = shapes[index]!;
+          const segments = RACK[index]!;
+
+          // Empty glass.
+          canvas.drawPath(shape, glass);
+
+          canvas.save();
+          canvas.clipPath(shape, ClipOp.Intersect, true);
+
+          segments.forEach((fill, segment) => {
+            const y = tube.y + h - (segment + 1) * sh;
+            const colour = Skia.Color(fill);
+            const band = Skia.XYWHRect(tube.x, y, w, sh + 0.5);
+
+            // Spec §3 asks for an outer glow per segment. A blurred copy under
+            // the flat fill gives the bloom without shading the fill itself
+            // into stripes.
+            const glow = Skia.Paint();
+            glow.setAntiAlias(true);
+            glow.setColor(colour);
+            glow.setAlphaf(0.55);
+            glow.setMaskFilter(bloom);
+            canvas.drawRect(band, glow);
+
+            const flat = Skia.Paint();
+            flat.setAntiAlias(true);
+            flat.setColor(colour);
+            canvas.drawRect(band, flat);
+
+            // A hairline at each seam. Without it two adjacent segments of one
+            // colour read as a single tall band, and the rack loses the "four
+            // units per vial" that tells a player what the game is.
+            if (segment < segments.length - 1) {
+              canvas.drawRect(Skia.XYWHRect(tube.x, y, w, 1), seam);
+            }
+          });
+
+          canvas.restore();
+
+          // Glass highlight: one bright stripe down the left shoulder.
+          canvas.drawPath(highlights[index]!, highlight);
+          canvas.drawPath(shape, edge);
+        });
+      },
+      { width, height }
+    );
+  }, [geometry, shapes, highlights, width, height]);
+
   if (width < 40 || height < 40) return null;
 
-  const { vialWidth, segmentHeight } = geometry;
+  const { vialWidth, segmentHeight, vialHeight } = geometry;
 
   return (
     <Canvas style={{ width, height }}>
+      <Picture picture={still} />
+
+      {/* Only what actually moves stays a live node. */}
       {geometry.tubes.map((tube, index) => {
         const segments = RACK[index]!;
+        const topY = tube.y + vialHeight - segments.length * segmentHeight;
 
         return (
-          <Group key={index}>
-            {/* Empty glass. */}
-            <Path path={shapes[index]!} color={colours.white} opacity={0.08} />
-
-            <Group clip={shapes[index]!}>
-              {segments.map((fill, segment) => {
-                const y = tube.y + geometry.vialHeight - (segment + 1) * segmentHeight;
-                const isTop = segment === segments.length - 1;
-
-                return (
-                  <Group key={segment}>
-                    {/* Spec §3 asks for an outer glow per segment. A blurred
-                        copy under the flat fill gives the bloom without
-                        shading the fill itself into stripes. */}
-                    <Rect
-                      x={tube.x}
-                      y={y}
-                      width={vialWidth}
-                      height={segmentHeight + 0.5}
-                      color={fill}
-                      opacity={0.55}
-                    >
-                      <BlurMask blur={8} style="normal" />
-                    </Rect>
-
-                    <Rect
-                      x={tube.x}
-                      y={y}
-                      width={vialWidth}
-                      height={segmentHeight + 0.5}
-                      color={fill}
-                    />
-
-                    {/* A hairline at each seam. Without it two adjacent
-                        segments of one colour read as a single tall band, and
-                        the rack loses the "four units per vial" that tells a
-                        player what the game is. */}
-                    {segment < segments.length - 1 ? (
-                      <Rect
-                        x={tube.x}
-                        y={y}
-                        width={vialWidth}
-                        height={1}
-                        color={ui.shadow}
-                        opacity={0.16}
-                      />
-                    ) : null}
-
-                    {isTop ? (
-                      <Meniscus
-                        clock={clock}
-                        index={index}
-                        x={tube.x + vialWidth * 0.06}
-                        y={y}
-                        width={vialWidth * 0.88}
-                      />
-                    ) : null}
-                  </Group>
-                );
-              })}
-            </Group>
-
-            {/* Glass highlight: one bright stripe down the left shoulder. */}
-            <Path path={highlights[index]!} color={colours.white} opacity={0.42} />
-
-            <Path
-              path={shapes[index]!}
-              style="stroke"
-              strokeWidth={3}
-              strokeJoin="round"
-              color={colours.white}
-              opacity={0.32}
-            />
-          </Group>
+          <Meniscus
+            key={index}
+            clock={clock}
+            index={index}
+            x={tube.x + vialWidth * 0.06}
+            y={topY}
+            width={vialWidth * 0.88}
+          />
         );
       })}
 

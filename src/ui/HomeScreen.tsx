@@ -14,7 +14,7 @@ import { percentWidth } from '@/utils';
 import { CoinPill } from './chrome/CoinPill';
 import { GlossButton } from './chrome/GlossButton';
 import { HeroRack } from './chrome/HeroRack';
-import { NavBar, type NavDestination } from './chrome/NavBar';
+import { type NavDestination } from './chrome/NavBar';
 import { Panel } from './chrome/Panel';
 import { useScreenPadding } from './hooks/useScreenPadding';
 import { Icon } from './Icon';
@@ -26,9 +26,8 @@ interface HomeScreenProps {
   onNavigate: (destination: NavDestination) => void;
 }
 
-/** Entrance stagger, spec §6: 50 / 130 / 210 / 290ms, nav bar at 360ms. */
+/** Entrance stagger, spec §6: 50 / 130 / 210 / 290ms. */
 const STAGGER = [50, 130, 210, 290] as const;
-const NAV_DELAY = 360;
 
 export const HomeScreen = memo(function HomeScreen({
   onPlay,
@@ -159,12 +158,9 @@ export const HomeScreen = memo(function HomeScreen({
         </View>
       </View>
 
-      <Animated.View
-        style={styles.navSlot}
-        entering={FadeInDown.duration(500).delay(NAV_DELAY)}
-      >
-        <NavBar onNavigate={onNavigate} />
-      </Animated.View>
+      {/* Reserves the floating nav bar's space so the Play button never sits
+          under it. Root owns the bar itself. */}
+      <View style={styles.navSlot} />
     </View>
   );
 });

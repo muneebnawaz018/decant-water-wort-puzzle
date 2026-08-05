@@ -1,9 +1,13 @@
 import { useCallback, useRef, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+
+import { gradients } from '@/theme/colors';
 
 import { useGameStore } from '@/state/gameStore';
 import { Backdrop } from './chrome/Backdrop';
-import { type NavDestination } from './chrome/NavBar';
+import { NavBar, type NavDestination } from './chrome/NavBar';
 import { Overlays } from './chrome/Overlays';
 import { CompleteScreen } from './CompleteScreen';
 import { DailyScreen } from './DailyScreen';
@@ -20,6 +24,22 @@ import { StatsScreen } from './StatsScreen';
 import { styles } from './styles/Root.styles';
 
 type Screen = 'splash' | 'home' | 'game' | 'complete' | NavDestination;
+
+/**
+ * Where the bottom bar is shown.
+ *
+ * Everywhere except the three screens that own the whole display: the splash,
+ * the board — where a stray tap on a nav item mid-pour would be a lost move —
+ * and the win screen, which has its own two buttons and a home icon.
+ */
+const WITH_NAV: ReadonlySet<Screen> = new Set<Screen>([
+  'home',
+  'stages',
+  'settings',
+  'daily',
+  'shop',
+  'stats',
+]);
 
 /** Screens deeper than home slide in; returning home crossfades. */
 const FORWARD: ReadonlySet<Screen> = new Set<Screen>([
@@ -42,6 +62,7 @@ const FORWARD: ReadonlySet<Screen> = new Set<Screen>([
  */
 export function Root() {
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [screen, setScreen] = useState<Screen>('splash');
   const fontsReady = usePoppins();
   const handedOff = useRef(false);
@@ -124,6 +145,26 @@ export function Root() {
           ) : null}
         </ScreenTransition>
       )}
+
+      {WITH_NAV.has(screen) ? (
+        <View style={[styles.navSlot, { paddingBottom: insets.bottom + 10 }]}>
+          {/* Content scrolls *under* a floating bar. An opaque bar hides it
+              once it is behind, but the moment of sliding into the edge still
+              reads as a glitch — so it fades out into the ground first. */}
+          <LinearGradient
+            colors={gradients.navFade}
+            style={styles.navFade}
+            pointerEvents="none"
+          />
+          {/* Mounted here rather than inside each screen: one gradient, one
+              entrance, and navigating never restarts it. `active` is the
+              current screen, so the bar always says where you are. */}
+          <NavBar
+            onNavigate={navigate}
+            active={screen === 'home' ? undefined : (screen as NavDestination)}
+          />
+        </View>
+      ) : null}
 
       <Overlays />
     </View>

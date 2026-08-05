@@ -76,43 +76,75 @@ export const apothecary: Theme = {
    * Ordered by separation, not by the spec's listing order.
    *
    * `paramsForLevel` takes the first N, so this order decides which colours a
-   * board actually uses. Farthest-point ordered: the closest pair anywhere in
-   * the first eleven is dE 33, and the one tight pair (plum next to grape,
-   * dE 10) only ever co-occurs on a twelve-colour board. Listing order put
-   * them together from eight colours on — level 201.
+   * board actually uses. Two measures are held at once, and the order was
+   * searched rather than hand-picked:
+   *
+   * - Normal vision is a floor, not a goal. Every pair inside the first eleven
+   *   stays above dE 30, which is what `liquid separation` enforces. No
+   *   ordering that dips below that was considered, however well it scored
+   *   otherwise.
+   * - Subject to that, the worst pair under simulated protanopia,
+   *   deuteranopia and tritanopia is pushed as high as it will go at the board
+   *   sizes players actually meet. Four colours went from dE 14 to 30, six
+   *   from 5 to 14, eight from 5 to 7.
+   *
+   * Ten and eleven colours come out marginally worse than the previous order
+   *   (4.8 and 0.2, against 5.3 and 0.5) and that is accepted: both numbers are
+   *   far below perceptible either way, so nothing is lost that was working,
+   *   and those sizes start at level 501. The gain sits on levels 6 to 350,
+   *   where nearly every player is.
+   *
+   * None of this makes colour alone sufficient — see the `colour vision` tests
+   * for how badly twelve hues collapse. Colourblind marks remain the mechanism
+   * that carries identity; this ordering only decides how much work they have
+   * to do, and how early.
    *
    * The index is a piece's identity, so this reordering repaints every board
    * without changing any puzzle: generation, seeds and the saved records all
    * work in indices, never in colours.
    */
   pieces: [
-    colours.coral,
-    colours.grape,
-    colours.teal,
+    colours.aqua,
     colours.tangerine,
-    colours.olive,
     colours.rose,
-    colours.lime,
-    colours.blueberry,
+    colours.olive,
+    colours.coral,
     colours.mango,
     colours.fern,
-    colours.aqua,
     colours.plum,
+    colours.teal,
+    colours.lime,
+    colours.blueberry,
+    colours.grape,
   ],
-  // Index-aligned with `pieces`, so these moved with them.
+  /**
+   * Index-aligned with `pieces`.
+   *
+   * Ordered on the same principle as the colours, for the same reason: a board
+   * takes the first N, so the glyphs that co-occur early have to be the ones
+   * least like each other. The set holds six near-pairs — filled against
+   * outlined (`dot`/`ring`), one against two (`wave`/`waves`), and rotations of
+   * each other (`plus`/`cross`, `square`/`diamond`, `triangle`/`star`,
+   * `stripe`/`grid`). The first six entries take one from each pair, so no
+   * partner appears until seven colours are on the board.
+   *
+   * These deliberately do not travel with their old colours. A glyph carries
+   * no meaning of its own — only its distinctness from the others on screen
+   * matters — so pairing was free to be re-spent on separation.
+   */
   symbols: [
     'dot',
-    'cross',
-    'waves',
-    'ring',
-    'grid',
+    'wave',
     'plus',
-    'diamond',
     'square',
     'triangle',
     'stripe',
-    'wave',
+    'ring',
+    'waves',
+    'cross',
+    'diamond',
     'star',
+    'grid',
   ],
 };
 

@@ -22,19 +22,30 @@ const ITEMS: ReadonlyArray<{
 ];
 
 /**
- * Home's bottom navigation (spec §4.2): one grouped rounded panel, flat icons.
+ * The bottom navigation (spec §4.2): one grouped rounded panel, flat icons.
  * Grouped rather than five separate buttons — the panel is what reads as a bar.
+ *
+ * It is mounted once in `Root`, not per screen, so navigating never restarts
+ * its entrance or pays for a new gradient. `active` marks where you are: a bar
+ * that looks identical everywhere is decoration, not navigation.
  */
 export const NavBar = memo(function NavBar({
   onNavigate,
+  active,
 }: {
   onNavigate: (destination: NavDestination) => void;
+  active?: NavDestination;
 }) {
   return (
     <LinearGradient colors={gradients.navBar} style={styles.bar}>
       <View style={styles.gloss} pointerEvents="none" />
       {ITEMS.map((item) => (
-        <NavButton key={item.id} {...item} onNavigate={onNavigate} />
+        <NavButton
+          key={item.id}
+          {...item}
+          onNavigate={onNavigate}
+          active={item.id === active}
+        />
       ))}
     </LinearGradient>
   );
@@ -45,11 +56,13 @@ const NavButton = memo(function NavButton({
   icon,
   label,
   onNavigate,
+  active,
 }: {
   id: NavDestination;
   icon: IconName;
   label: string;
   onNavigate: (destination: NavDestination) => void;
+  active: boolean;
 }) {
   const onPress = useCallback(() => onNavigate(id), [onNavigate, id]);
 
@@ -57,11 +70,18 @@ const NavButton = memo(function NavButton({
     <Pressable
       style={styles.button}
       onPress={onPress}
-      accessibilityRole="button"
+      accessibilityRole="tab"
+      accessibilityState={{ selected: active }}
       accessibilityLabel={label}
     >
-      <Icon name={icon} size={24} color={apothecary.goldLight} />
-      <Text style={styles.label}>{label}</Text>
+      <View style={[styles.iconSlot, active && styles.iconSlotActive]}>
+        <Icon
+          name={icon}
+          size={24}
+          color={active ? apothecary.gold : apothecary.goldLight}
+        />
+      </View>
+      <Text style={[styles.label, active && styles.labelActive]}>{label}</Text>
     </Pressable>
   );
 });

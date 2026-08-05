@@ -16,6 +16,7 @@ export const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 12,
     marginBottom: 10,
+    overflow: 'hidden',
     backgroundColor: ui.well,
   },
   swatch: {

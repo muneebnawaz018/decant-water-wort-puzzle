@@ -108,6 +108,28 @@ export function fade(name: ColourName): string {
   return alpha(name, 0);
 }
 
+/**
+ * A palette colour lightened towards white by `amount` (0 keeps it, 1 is
+ * white). Opaque, unlike `alpha` — a tint has to hold its own against whatever
+ * sits behind it, and a translucent one picks up the backdrop's purple.
+ *
+ * Mixing in sRGB rather than a perceptual space on purpose. It is the cheaper
+ * arithmetic and these are decorative steps, not colours anything is measured
+ * against; `glyphOn` still does the real luminance work where legibility is at
+ * stake.
+ */
+export function tint(name: ColourName, amount: number): string {
+  const value = parseInt(raw[name].slice(1), 16);
+  const clamped = amount < 0 ? 0 : amount > 1 ? 1 : amount;
+  const towards = (channel: number): number =>
+    Math.round(channel + (0xff - channel) * clamped);
+
+  const r = towards((value >> 16) & 0xff);
+  const g = towards((value >> 8) & 0xff);
+  const b = towards(value & 0xff);
+  return `rgb(${r},${g},${b})`;
+}
+
 export const colours = raw;
 
 /**
@@ -216,7 +238,14 @@ export const gradients = {
   coin: [raw.goldPale, raw.gold, raw.goldDark] as const,
   wordmark: [raw.goldPale, raw.goldSheen, raw.goldBronze] as const,
   /** The nav bar sits slightly translucent over the ground. */
-  navBar: [alpha('panelTop', 0.85), alpha('panel', 0.9)] as const,
+  // Opaque, not translucent. The bar floats over the screens, so anything
+  // less showed the grid tiles sliding through it as you scrolled.
+  navBar: [raw.panelTop, raw.panel] as const,
+  /**
+   * Behind the nav bar, fading up into the screen. The bar itself is opaque, but
+   * content still slid visibly into its top edge; this dissolves it first.
+   */
+  navFade: [fade('nightDeep'), raw.nightDeep] as const,
   /** Reward chips. */
   gift: [raw.mangoLight, raw.mango] as const,
   advert: [raw.blueberryLight, raw.blueberry] as const,

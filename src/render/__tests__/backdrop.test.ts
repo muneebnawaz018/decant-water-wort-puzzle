@@ -35,9 +35,71 @@ describe('ambientMotes', () => {
     }
   });
 
+  it('puts as many motes down the left as down the right', () => {
+    // The old sin-based hash was not uniform over small sequential integers
+    // and landed twelve of fourteen motes on the right half, eight of them in
+    // the far quarter. It read as drift blowing sideways rather than as an
+    // even field, which is exactly what someone noticed on the device.
+    const xs = ambientMotes(14).map((m) => m.x);
+    const left = xs.filter((x) => x < 0.5).length;
+    expect(Math.abs(left - (xs.length - left))).toBeLessThanOrEqual(2);
+  });
+
+  it('leaves no empty band across the screen', () => {
+    // Evenly split halves are not enough on their own — the old field also had
+    // a quarter of the width with nothing in it at all.
+    const xs = ambientMotes(14).map((m) => m.x);
+    for (const quarter of [0, 1, 2, 3]) {
+      const inBand = xs.filter(
+        (x) => x >= quarter * 0.25 && x < (quarter + 1) * 0.25
+      ).length;
+      expect(inBand).toBeGreaterThan(0);
+    }
+  });
+
+  it('spreads the starting phases through the rise', () => {
+    // Otherwise the field pulses: a clump of motes fading in together, then a
+    // gap with the screen nearly empty.
+    const offsets = ambientMotes(14).map((m) => m.offset);
+    for (const half of [0, 1]) {
+      const inHalf = offsets.filter((o) => o >= half * 0.5 && o < (half + 1) * 0.5).length;
+      expect(inHalf).toBeGreaterThan(3);
+    }
+  });
+
+  it('does not tie sideways drift to which side a mote starts on', () => {
+    // `drift` was derived from the same draw as `x`, so motes on the right
+    // always drifted right and the field leaned further over time.
+    const motes = ambientMotes(14);
+    const rightward = motes.filter((m) => m.x > 0.5 && m.drift > 0).length;
+    const rightSide = motes.filter((m) => m.x > 0.5).length;
+    expect(rightward).toBeLessThan(rightSide);
+  });
+
   it('varies speed, so they never rise as one rank', () => {
     const speeds = new Set(ambientMotes(14).map((m) => m.speed));
-    expect(speeds.size).toBeGreaterThan(10);
+    expect(speeds.size).toBeGreaterThan(1);
+  });
+
+  it('staggers the start of every rise', () => {
+    // With speed quantised, `offset` carries most of the variety. Two motes
+    // sharing a speed and an offset would rise as one.
+    const phases = new Set(ambientMotes(14).map((m) => `${m.speed}:${m.offset}`));
+    expect(phases.size).toBe(14);
+  });
+
+  it('keeps speed a whole number, so the clock wrap is continuous', () => {
+    // Phase is `(clock * speed + offset) % 1`. On the wrap 1 → 0 that shifts
+    // by `-speed mod 1`, which is only zero for an integer speed. A fractional
+    // one teleports every mote on the wrap frame.
+    for (const mote of ambientMotes(14)) {
+      expect(Number.isInteger(mote.speed)).toBe(true);
+      expect(mote.speed).toBeGreaterThan(0);
+
+      const before = (1 * mote.speed + mote.offset) % 1;
+      const after = (0 * mote.speed + mote.offset) % 1;
+      expect(after).toBeCloseTo(before, 10);
+    }
   });
 });
 

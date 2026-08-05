@@ -77,6 +77,10 @@ already happened here.
   which is why the Expo config is TypeScript rather than `app.json`.
 - **Components hold no `StyleSheet`.** Every `Foo.tsx` has a
   `styles/Foo.styles.ts` beside it. `local/no-inline-stylesheet` enforces it.
+- **The splash's static image and its animation must match.** `src/theme/splash.ts`
+  holds the vial's size; the stylesheet, `app.config.ts` and
+  `script/make-splash.py` all read from it. The native splash is the empty vial
+  and the animated one fills it, so the handoff shows nothing moving.
 - **Level generation is deterministic and that is load-bearing.** No board is
   ever saved; level N is rebuilt from its seed. The curve, the salts, the
   generator and the RNG are therefore all part of the save format, and a test
@@ -128,9 +132,40 @@ difficulty modes, undo/redo, the full Skia board with a shader-drawn pour, nine
 screens against the current design, persistence, coins and daily rewards, and
 the native splash.
 
-Not built: audio (settings persist, no assets yet), analytics, ads, the
-onboarding tutorial, and colourblind marks on the board. The app icon is still
-an Expo default.
+Not built: audio (settings persist, no assets yet), analytics, ads, and the
+onboarding tutorial.
+
+The app icons are original vector art. `assets/icons/*.svg` are the masters;
+every PNG an icon field in `app.config.ts` points at is generated from them by
+`script/make-icons.sh` — edit an SVG, run the script, commit both. It covers
+iOS, the Android adaptive foreground/background pair, and the Android 13+
+monochrome layer. Prebuild expands those into every size each platform wants.
+
+### Colourblind marks
+
+A toggle in Settings stamps a distinct glyph on every liquid — dot, wave, plus,
+square, and so on, one per colour. It is purely additive: colours do not change,
+so a player who leaves it off sees exactly the board they see today.
+
+The marks are not a courtesy. Twelve colours cannot be told apart by hue alone
+with two working cone types: simulate protanopia over a full board and the
+closest pair lands under dE 1, the same pixel in effect. `colour vision` in
+`src/theme/__tests__/colors.test.ts` asserts that failure, so nobody later reads
+a healthy-looking palette and deletes the glyphs to save a draw call.
+
+What the palette _can_ do is decide how early the marks become mandatory. Both
+`pieces` and `symbols` in `src/theme/apothecary.ts` are ordered for it — a board
+takes the first N of each, so the order controls what co-occurs early. The
+colours were searched under a hard floor (every pair in the first eleven stays
+above dE 30 for normal vision) and then tuned for the worst case across the
+three deficiencies: dE 30 at four colours, 14 at six, 7 at eight. The glyphs
+follow the same rule, keeping look-alike pairs off the board until seven
+colours. Both have regression pins in that test; raising one number lowers
+another.
+
+It currently defaults to off, which is worth revisiting before release — the
+palette turns ambiguous for a deuteranope from four colours on, around level 6,
+long before anyone thinks to open Settings.
 
 ## Licence
 

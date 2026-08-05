@@ -356,11 +356,57 @@ Colourblind marks pick their own colour via `glyphOn(fill)`. A fixed white
 mark disappeared on `lime` and `tangerine`, both above L\* 84 — the
 accessibility feature failing silently on two of twelve colours.
 
+**The marks are load-bearing, not a nicety.** `colour vision` in
+`src/theme/__tests__/colors.test.ts` simulates protanopia, deuteranopia and
+tritanopia over the palette. Twelve hues do not survive two working cone
+types: at a full board the closest pair is under dE 1, and no repalette fixes
+that, so a test asserts the failure rather than hoping nobody checks. Colour
+carries identity for trichromats; glyphs carry it for everyone else.
+
+`pieces` and `symbols` are both ordered for that. A board takes the first N of
+each, so the order decides what co-occurs early. The colour order was searched
+under a hard floor — every pair inside the first eleven stays above dE 30 for
+normal vision — and then maximised for the worst case across the three
+deficiencies at the sizes players actually reach: dE 30 at four colours, 14 at
+six, 7 at eight. Ten and eleven came out a shade worse than the previous order
+and that was accepted; both are far below perceptible either way, and those
+sizes start at level 501. Glyphs follow the same rule, since the set holds six
+near-pairs (`dot`/`ring`, `wave`/`waves`, `plus`/`cross`, `square`/`diamond`,
+`triangle`/`star`, `stripe`/`grid`) — one of each in the first six, so a
+partner never lands before seven colours.
+
+Both orders have regression pins in that test. Raising one number lowers
+another; check the trade before moving either list.
+
 `src/theme/apothecary.ts` still exports the `Theme` shape the renderer takes,
 but every value in it now points at `colors.ts`.
 
 Poppins is bundled and loaded in `Root` before the first frame; a system-font
 frame would flash and reflow every screen.
+
+The **nav bar is mounted once in `Root`**, floating over the screens, not
+rendered by each of them. It shows on Home and on all five destinations, and is
+hidden on the splash, the board — where a stray tap mid-pour would cost a move —
+and the win screen. `active` marks the current destination; a bar that looks the
+same everywhere is decoration rather than navigation. Screens clear it through
+`padding.scrollTailWithNav`, so no screen needs to know its height twice.
+
+The bar's strip is **opaque and full-width**, with a short gradient dissolve
+above it. Three attempts were needed and the first two are instructive: a
+translucent bar let the stage grid slide visibly through it, and a fade spanning
+the whole slot was still ~70% transparent at the bar's top edge, because a
+gradient interpolates across its own height. It now covers only its own band, so
+it reaches full opacity exactly where the solid strip starts.
+
+Anything the UI shows but cannot yet deliver wears a `SoonBadge`, or a
+`SoonOverlay` where a badge is too easy to miss on the way to pressing Buy. The
+overlay veils the artwork only — covering the whole card buried the name and
+muddied the swatches, which are the part worth previewing. The shop's
+skins have one because **nothing reads `economyStore.owned`** — the renderer
+paints from the palette — so a purchase would have taken 200 coins and changed
+nothing on screen. They preview instead of selling until the board honours a
+skin. The real-money rows are marked for the same reason: spec §10 puts the
+store SDK in phase 2.
 
 Shared chrome is in `src/ui/chrome/`: `Backdrop`, `Panel`, `GlossButton`,
 `Wordmark`, `CoinPill`, `NavBar`, `HeroRack`, `Overlays`.
@@ -405,6 +451,12 @@ Cartoon, not realistic. Two rules, both learned by getting them wrong:
 - **Bold dark outlines** on tubes, not thin grey hairlines. Hairlines read as a
   chart; a heavy `theme.ink` stroke reads as drawn.
 
+Paths are built with `Skia.PathBuilder.Make()...detach()`, never
+`Skia.Path.Make()` plus mutating calls — the mutating API is deprecated in Skia
+2.x and warns on every build. `detach()` hands back an immutable path, which is
+what the memoised layout wants anyway. `Skia.Path.MakeFromSVGString` is **not**
+deprecated; icons and colourblind glyphs still use it.
+
 **Two Skia traps, both found the hard way. Do not undo these.**
 
 1. `useDerivedValue` output does **not** drive Skia props in this version pair
@@ -427,19 +479,102 @@ Home uses `src/render/AmbientVials.tsx`, a slow decorative loop, in place of the
 static board preview it had before. One shared value, cancelled on unmount.
 
 Not started: `src/audio`, `src/analytics`, `src/ads`. Sound settings persist but
-no audio assets exist yet. Colourblind marks have a toggle but the Board does
-not draw symbols yet. `android/` and `ios/` already exist — prebuild has been
-run.
+no audio assets exist yet. `android/` and `ios/` already exist — prebuild has
+been run.
 
-The app icon is still an Expo default. The **splash** is not: `expo-splash-screen`
-draws the native launch screen (`assets/splash-icon.png` on `#150A34`,
-configured in `app.json`), and `src/ui/nativeSplash.ts` holds it up until there
-is a real frame to hand off to.
+Colourblind marks are done end to end: `src/render/ColourMark.tsx` draws them,
+`Board` takes a `marks` prop, and `GameScreen` feeds it the `colourblind`
+setting. The toggle is purely additive — it overlays glyphs and never touches a
+fill, so a player who leaves it off sees exactly the board they see today. It
+still defaults to off, which is worth revisiting: the palette collapses for a
+deuteranope from four colours on, so roughly one man in twelve meets an
+ambiguous board around level 6, well before anyone goes looking through
+Settings.
+
+The app icons are original vector art, not Expo defaults. `assets/icons/*.svg`
+are the masters and `script/make-icons.sh` renders them into the PNGs the icon
+fields in `app.config.ts` point at — iOS, the Android adaptive
+foreground/background pair, and the Android 13+ monochrome layer. Edit an SVG,
+run the script, commit both.
+
+Two traps that script exists to avoid. macOS `qlmanage` renders these SVGs
+faithfully but **flattens alpha onto white**, which turns the adaptive
+foreground and the monochrome layer into white squares — the icon still looks
+plausible in a file browser and is wrong on a launcher. And `sharp-cli` writes
+PNG bytes under the source basename, extension included, so the file it leaves
+is called `<name>.svg` and is a PNG; the script renames it. It fetches
+`sharp-cli` through `npx` rather than taking a dependency, since nothing at
+build or run time needs it.
+
+The adaptive foreground keeps its padding on purpose: launchers crop the outer
+~18% to whatever mask shape they use, so the vial sits inside the safe zone.
+`adaptiveIcon.backgroundColor` is `colours.nightDeep`, from the palette — the
+icon README suggests `#140A32`, a shade off, and the palette wins so there is
+one source for it.
+
+The **splash** is separate: `expo-splash-screen` draws the native launch screen
+(`assets/splash-icon.png` on `#150A34`), and `src/ui/nativeSplash.ts` holds it
+up until there is a real frame to hand off to.
+
+### The two splashes are one splash
+
+The OS cannot run an animation before React Native exists, so the launch window
+is always a static image — that part is not a choice. What _is_ a choice is
+making the static image the animation's own first frame, which is what this
+does: the native splash is the **empty vial**, and the in-app splash pours
+liquid into the identical shape at the identical place. The handoff is invisible
+because nothing moves across it.
+
+Three things have to agree or the vial jumps at launch:
+
+| Where                                  | What it sets                                                                  |
+| -------------------------------------- | ----------------------------------------------------------------------------- |
+| `src/theme/splash.ts`                  | `VIAL_WIDTH` 54, `VIAL_HEIGHT` 150 — the shared numbers                       |
+| `src/ui/styles/SplashScreen.styles.ts` | The animated vial's box                                                       |
+| `script/make-splash.py`                | The PNG, cropped tight, drawn at the same aspect, stroke, radii and highlight |
+
+`src/theme/splash.ts` exists as its own React-Native-free module so
+`app.config.ts` can import it — the config is loaded by plain Node, which cannot
+resolve `StyleSheet`.
+
+**`imageWidth` is the side of a square box, not the rendered width.**
+expo-splash-screen generates a square imageset (54×54, 108×108, 162×162) and
+fits the image inside it, so a 54×150 vial passed `imageWidth: 54` rendered
+19dp wide against the animated vial's 54. It takes `VIAL_HEIGHT`, and the
+contained image then measures exactly 54×150. Verified by measuring the
+highlight stripe across a launch burst: 9×89dp centred at (186, 417) in both the
+native frame and the first React frame.
+
+The vial **rises** rather than starting high (`VIAL_RISE`, 44dp). Composition
+wants it above centre with the wordmark beneath, but centre is where the OS
+draws the native image — so it begins there and glides up as the wordmark
+arrives, which also makes the two read as one movement. Any static offset here
+puts the jump straight back.
+
+The splash's own layout follows from this. The vial is the only thing in the
+centred column and the wordmark is absolutely positioned beneath it — anything
+stacked in that flow would push the vial off centre, and the OS centres the
+native image with no such offset.
+
+**The window itself is painted, in three places.** Between the OS dismissing the
+splash and React drawing its first frame, what shows is the native root view —
+white by default, which flashed for a frame on every launch:
+
+- `backgroundColor` in `app.config.ts` (and `android.backgroundColor`), which
+  becomes iOS's root view colour and Android's `windowBackground`.
+- `SystemUI.setBackgroundColorAsync` at module scope in `App.tsx`, so a dev
+  reload or an Android config change cannot repaint it white later.
+- `App.styles.ts` colours the outermost React view, for the instant before the
+  screens below paint themselves.
+
+A dev build can still show a brief white frame from expo-dev-client's own
+launcher screen. That is the launcher, not the app, and it is not in a release
+build.
 
 `assets/splash-icon.png` is generated, not drawn: `python3 script/make-splash.py`
-redraws it from the palette, so the launch mark cannot drift away from the
-colours the app itself uses. Expo's default placeholder shipped in that slot
-until it was caught on a simulator run.
+redraws it from the palette and the stylesheet's numbers, so the launch mark
+cannot drift from the app it opens. Expo's default placeholder shipped in that
+slot until it was caught on a simulator run.
 
 `react-native-bootsplash` was considered and skipped. It would mean
 hand-maintaining the iOS storyboard and Android theme that `expo prebuild`

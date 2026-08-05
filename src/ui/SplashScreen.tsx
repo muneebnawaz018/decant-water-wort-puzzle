@@ -14,6 +14,10 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { colours } from '@/theme/colors';
+// The vial cannot simply *start* higher: dead centre is where the OS draws the
+// native splash image, and the point of that image is that React takes over
+// from it without anything moving. It rises instead.
+import { VIAL_RISE } from '@/theme/splash';
 import { Wordmark } from './chrome/Wordmark';
 import { styles } from './styles/SplashScreen.styles';
 
@@ -35,6 +39,7 @@ const HOLD_MS = 700;
  */
 export function SplashScreen({ onDone }: SplashScreenProps) {
   const fill = useSharedValue(0);
+  const vialRise = useSharedValue(0);
   const title = useSharedValue(0);
   const titleLift = useSharedValue(14);
   const tagline = useSharedValue(0);
@@ -45,6 +50,16 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
       duration: FILL_MS,
       easing: Easing.inOut(Easing.cubic),
     });
+
+    // Starts with the wordmark, so the two read as one movement rather than as
+    // the vial getting out of the way of the text.
+    vialRise.value = withDelay(
+      500,
+      withTiming(-VIAL_RISE, {
+        duration: RISE_MS,
+        easing: Easing.inOut(Easing.cubic),
+      })
+    );
 
     title.value = withDelay(500, withTiming(1, { duration: RISE_MS }));
     titleLift.value = withDelay(
@@ -82,17 +97,21 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
     return () => {
       // Leaving early must not leave animations running against a dead tree.
       cancelAnimation(fill);
+      cancelAnimation(vialRise);
       cancelAnimation(title);
       cancelAnimation(titleLift);
       cancelAnimation(tagline);
       cancelAnimation(hint);
     };
-  }, [fill, title, titleLift, tagline, hint, onDone]);
+  }, [fill, vialRise, title, titleLift, tagline, hint, onDone]);
 
   const liquidStyle = useAnimatedStyle(() => ({
     height: `${fill.value * 100}%`,
   }));
   const glowStyle = useAnimatedStyle(() => ({ opacity: fill.value * 0.55 }));
+  const vialStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: vialRise.value }],
+  }));
   const titleStyle = useAnimatedStyle(() => ({
     opacity: title.value,
     transform: [{ translateY: titleLift.value }],
@@ -106,7 +125,7 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
 
   return (
     <Pressable style={styles.root} onPress={skip} accessibilityRole="button">
-      <View style={styles.vialSlot}>
+      <Animated.View style={[styles.vialSlot, vialStyle]}>
         <Animated.View style={[styles.glow, glowStyle]} pointerEvents="none" />
         <View style={styles.vial}>
           <Animated.View style={[styles.liquidSlot, liquidStyle]}>
@@ -120,15 +139,17 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
           </Animated.View>
           <View style={styles.shine} pointerEvents="none" />
         </View>
-      </View>
-
-      <Animated.View style={titleStyle}>
-        <Wordmark size={46} />
       </Animated.View>
 
-      <Animated.Text style={[styles.tagline, taglineStyle]}>
-        measure · pour · settle
-      </Animated.Text>
+      <View style={styles.titleBlock} pointerEvents="none">
+        <Animated.View style={titleStyle}>
+          <Wordmark size={46} />
+        </Animated.View>
+
+        <Animated.Text style={[styles.tagline, taglineStyle]}>
+          measure · pour · settle
+        </Animated.Text>
+      </View>
 
       <Animated.Text style={[styles.hint, hintStyle]}>TAP TO BEGIN</Animated.Text>
     </Pressable>

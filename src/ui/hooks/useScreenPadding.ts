@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { NAV_BAR_HEIGHT } from '../chrome/styles/NavBar.styles';
+
 /** Breathing room under the last card so it clears the home indicator. */
 const SCROLL_TAIL = 30;
 
@@ -9,8 +11,11 @@ export interface ScreenPadding {
   top: { paddingTop: number };
   /** For a screen that also ends at the bottom edge. */
   frame: { paddingTop: number; paddingBottom: number };
-  /** For the content container of a scroll view inside such a screen. */
-  scrollTail: { paddingBottom: number };
+  /**
+   * For the content container of a scroll view inside such a screen, including
+   * room for the nav bar `Root` floats over every screen below the board.
+   */
+  scrollTailWithNav: { paddingBottom: number };
 }
 
 /**
@@ -28,7 +33,9 @@ export function useScreenPadding(): ScreenPadding {
     () => ({
       top: { paddingTop: insets.top },
       frame: { paddingTop: insets.top, paddingBottom: insets.bottom },
-      scrollTail: { paddingBottom: insets.bottom + SCROLL_TAIL },
+      scrollTailWithNav: {
+        paddingBottom: insets.bottom + SCROLL_TAIL + NAV_BAR_HEIGHT,
+      },
     }),
     [insets.top, insets.bottom]
   );

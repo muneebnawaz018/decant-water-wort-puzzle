@@ -1,13 +1,14 @@
 import { memo, useCallback } from 'react';
 import { Text, View } from 'react-native';
 
-import { useEconomyStore } from '@/state/economyStore';
 import { overlay } from '@/state/overlayStore';
 import { colours } from '@/theme/colors';
 import { CoinPill } from './chrome/CoinPill';
 import { GlossButton } from './chrome/GlossButton';
 import { Panel } from './chrome/Panel';
 import { ScrollPage } from './chrome/ScrollPage';
+import { SoonBadge } from './chrome/SoonBadge';
+import { SoonOverlay } from './chrome/SoonOverlay';
 import { SettingGroup } from './chrome/SettingRow';
 import { feedbackTap } from './feedback';
 import { styles } from './styles/ShopScreen.styles';
@@ -16,6 +17,9 @@ import { styles } from './styles/ShopScreen.styles';
  * Vial skins. Cosmetic only — spec §4.7 is explicit that nothing here may
  * affect play, and the swatches are drawn from the liquid palette rather than
  * shipped as art.
+ *
+ * Marked "Soon" until the board actually renders one. A shop that takes coins
+ * for something invisible is worse than a shop that says it is not ready.
  */
 const SKINS = [
   {
@@ -61,34 +65,28 @@ export const ShopScreen = memo(function ShopScreen({ onBack }: { onBack: () => v
 });
 
 const SkinTile = memo(function SkinTile({
-  id,
   name,
   swatch,
 }: {
-  id: string;
   name: string;
   swatch: readonly string[];
 }) {
-  const owned = useEconomyStore((state) => state.owned.includes(id));
-
-  const buy = useCallback(() => {
+  // Nothing reads `owned` yet — the renderer paints from the palette, not from
+  // a skin — so a purchase here would take 200 coins and change nothing on
+  // screen. Until the board honours a skin, this previews and does not sell.
+  const preview = useCallback(() => {
     feedbackTap();
-    overlay.modal({
-      title: 'Unlock skin',
-      body: `Spend ${SKIN_PRICE} coins to unlock ${name}?`,
-      confirmLabel: 'Buy',
-      cancelLabel: 'Cancel',
-      onConfirm: () => {
-        const bought = useEconomyStore.getState().buy(id, SKIN_PRICE);
-        overlay.toast(bought ? 'Skin unlocked!' : 'Not enough coins');
-      },
-    });
-  }, [id, name]);
+    overlay.toast(`${name} arrives in a later update`);
+  }, [name]);
 
   return (
     <View style={styles.tileSlot}>
       <Panel contentStyle={styles.tile}>
         <View style={styles.preview}>
+          {/* Over the swatches only. Veiling the whole card buried the skin's
+              name and muddied the colours, which are the one thing worth
+              previewing. */}
+          <SoonOverlay />
           {swatch.map((colour) => (
             <View
               key={colour}
@@ -98,10 +96,9 @@ const SkinTile = memo(function SkinTile({
         </View>
         <Text style={styles.tileName}>{name}</Text>
         <GlossButton
-          label={owned ? 'Owned' : `${SKIN_PRICE} coins`}
-          variant={owned ? 'ghost' : 'primary'}
-          onPress={buy}
-          disabled={owned}
+          label={`${SKIN_PRICE} coins`}
+          variant="ghost"
+          onPress={preview}
           compact
           style={styles.buy}
         />
@@ -127,9 +124,10 @@ const ExtraRow = memo(function ExtraRow({
   return (
     <View style={[styles.extra, !last && styles.extraDivider]}>
       <Text style={styles.extraLabel}>{label}</Text>
+      <SoonBadge />
       <GlossButton
         label={price}
-        variant="primary"
+        variant="ghost"
         onPress={buy}
         compact
         style={styles.extraBuy}

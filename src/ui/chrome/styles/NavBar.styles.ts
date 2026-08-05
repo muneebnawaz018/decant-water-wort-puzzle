@@ -1,8 +1,16 @@
 import { StyleSheet } from 'react-native';
 
 import { apothecary } from '@/theme/apothecary';
-import { ui } from '@/theme/colors';
+import { alpha, ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
+
+/**
+ * The bar's own height, without safe-area inset: 13 + 13 padding, a 30 icon
+ * slot, a 6 gap and a 10 label. Screens reserve this much space at the bottom
+ * so their last card does not hide under it.
+ */
+export const NAV_BAR_HEIGHT = 74;
+
 export const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
@@ -28,9 +36,20 @@ export const styles = StyleSheet.create({
     backgroundColor: ui.line,
   },
   button: { flex: 1, alignItems: 'center', gap: 6 },
+  // A slot behind the icon rather than a tint on it: at 24px a colour shift
+  // alone is easy to miss, and the pill reads as "you are here" at a glance.
+  iconSlot: {
+    width: 44,
+    height: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconSlotActive: { backgroundColor: alpha('gold', 0.16) },
   label: {
     fontFamily: POPPINS.medium,
     fontSize: 10,
     color: apothecary.inkMuted,
   },
+  labelActive: { fontFamily: POPPINS.semibold, color: apothecary.goldLight },
 });

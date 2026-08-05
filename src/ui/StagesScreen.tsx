@@ -10,13 +10,13 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DIFFICULTIES, DIFFICULTY_INFO, type Difficulty } from '@/game/difficulty';
 import { useGameStore } from '@/state/gameStore';
 import { useSettingsStore } from '@/state/settingsStore';
 import { apothecary } from '@/theme/apothecary';
 import { ChromeIconButton, ScreenHeader } from './chrome/ScreenHeader';
+import { useScreenPadding } from './hooks/useScreenPadding';
 import { feedbackTap } from './feedback';
 import { Icon } from './Icon';
 import { COLUMNS, styles } from './styles/StagesScreen.styles';
@@ -44,7 +44,7 @@ export const StagesScreen = memo(function StagesScreen({
   onBack,
   onPick,
 }: StagesScreenProps) {
-  const insets = useSafeAreaInsets();
+  const padding = useScreenPadding();
   const record = useGameStore((state) => state.record);
   const difficulty = useGameStore((state) => state.difficulty);
   const level = useGameStore((state) => state.level);
@@ -106,7 +106,7 @@ export const StagesScreen = memo(function StagesScreen({
   const to = from + PAGE_SIZE - 1;
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
+    <View style={[styles.root, padding.top]}>
       <ScreenHeader title="Choose a shelf" onBack={onBack} />
 
       <View style={styles.tabs}>
@@ -136,7 +136,7 @@ export const StagesScreen = memo(function StagesScreen({
         keyExtractor={keyExtractor}
         numColumns={COLUMNS}
         columnWrapperStyle={styles.row}
-        contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + 30 }]}
+        contentContainerStyle={[styles.grid, padding.scrollTailWithNav]}
         showsVerticalScrollIndicator={false}
         // A page is 50 tiles; only the visible window is ever mounted.
         initialNumToRender={20}

@@ -6,6 +6,8 @@
  * ground between them. Together they stop a flat dark screen reading as black.
  */
 
+import { createRng } from '@/core/rng';
+
 export interface RadialSpec {
   cx: number;
   cy: number;
@@ -63,36 +65,68 @@ export interface Mote {
   radius: number;
   /** Where in its rise this mote starts, so they do not move as one. */
   offset: number;
-  /** Rises per full clock turn. Varies so the drift never looks like a grid. */
+  /**
+   * Rises per full clock turn. Whole numbers only, and that is load-bearing:
+   * a mote's phase is `(clock * speed + offset) % 1`, so when the clock wraps
+   * 1 → 0 the phase shifts by `-speed mod 1`. That is zero only for an integer
+   * speed. A fractional one teleports every mote on the wrap frame, which
+   * reads as a blink. Variety comes in whole steps instead, and `offset`
+   * carries the rest of it.
+   */
   speed: number;
   /** Sideways drift over one rise, as a fraction of width. */
   drift: number;
 }
 
-/** Deterministic hash in 0..1. `Math.random` would re-roll every render. */
-function hash(n: number): number {
-  const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
-  return x - Math.floor(x);
-}
+/**
+ * Fixed seed for the drift. Any value works — what matters is that it never
+ * changes at runtime, so the field is identical on every launch and a
+ * re-render cannot re-roll it.
+ */
+const MOTE_SEED = 0x5eed;
+
+/** Narrowest and widest a mote gets, in points. */
+const MIN_RADIUS = 1;
+const RADIUS_RANGE = 1.6;
+
+/** Margin kept clear at each edge, as a fraction of width. */
+const EDGE_INSET = 0.05;
 
 /**
  * Warm motes drifting up through the scene (spec §6, "ambient").
+ *
+ * Positions are stratified, not sampled: the width is cut into one band per
+ * mote and each mote is placed somewhere inside its own band. Fourteen
+ * independent draws clump — that is what independent draws do at this sample
+ * size — and a clump reads as a deliberate cluster rather than as atmosphere.
+ * Stratifying keeps the field even across the screen while the jitter inside
+ * each band keeps it from looking like a row of pickets.
+ *
+ * The starting phases are stratified the same way, so the motes are spread
+ * through their rise as well as across the width. Those bands are shuffled
+ * before use: handing band `i` of the width the `i`th phase would march them
+ * up the screen in a diagonal rank.
  *
  * Kept to a low count on purpose: this runs behind every screen for as long as
  * the app is open, so it is the one animation whose cost is always being paid.
  */
 export function ambientMotes(count = 14): Mote[] {
+  const rng = createRng(MOTE_SEED);
+  const phases = rng.shuffle(Array.from({ length: count }, (_, i) => i));
+
   const motes: Mote[] = [];
   for (let i = 0; i < count; i++) {
-    const a = hash(i);
-    const b = hash(i + 53);
-    const c = hash(i + 149);
+    const band = (i + rng.next()) / count;
+    const phase = (phases[i]! + rng.next()) / count;
+
     motes.push({
-      x: 0.05 + a * 0.9,
-      radius: 1 + b * 1.6,
-      offset: c,
-      speed: 0.55 + b * 0.6,
-      drift: (a - 0.5) * 0.06,
+      x: EDGE_INSET + band * (1 - EDGE_INSET * 2),
+      radius: MIN_RADIUS + rng.next() * RADIUS_RANGE,
+      offset: phase,
+      speed: 1 + Math.floor(rng.next() * 3),
+      // Drawn independently of `x`. Deriving it from the position, as this
+      // once did, tied every mote's drift to which side it started on.
+      drift: (rng.next() - 0.5) * 0.06,
     });
   }
   return motes;

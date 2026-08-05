@@ -10,11 +10,8 @@ import {
 import { memo, useCallback, useEffect, useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import {
-  cancelAnimation,
-  Easing,
+  useFrameCallback,
   useSharedValue,
-  withRepeat,
-  withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
 
@@ -37,8 +34,15 @@ interface BackdropProps {
   still?: boolean;
 }
 
-/** One full mote rise. Slow: this is atmosphere, not an effect. */
+/** One full clock turn. Slow: this is atmosphere, not an effect. */
 const DRIFT_MS = 14000;
+
+/**
+ * Longest frame gap the clock will honour, in ms. Past this the drift is
+ * pinned rather than advanced: a long stall would otherwise be paid back as
+ * one large jump on the frame that recovers.
+ */
+const MAX_FRAME_MS = 50;
 
 /**
  * The layered background from spec §3, drawn once behind the whole app.
@@ -54,16 +58,30 @@ export const Backdrop = memo(function Backdrop({
 }: BackdropProps) {
   const clock = useSharedValue(0);
 
+  /**
+   * The drift is accumulated per frame rather than run as a `withTiming`
+   * repeat, for two reasons.
+   *
+   * A timing animation is wall-clock driven, so a stalled UI thread — the next
+   * screen building its Skia scene, say — is repaid in a single frame and the
+   * motes visibly jump. Adding a clamped delta costs at most one frame of
+   * drift no matter how long the stall ran.
+   *
+   * And pausing here is `setActive(false)`, which leaves the clock where it
+   * stopped. Restarting a repeat meant re-seeding it to 0, so every return
+   * from the board snapped all fourteen motes back to their starting phase at
+   * once.
+   */
+  const frame = useFrameCallback((info) => {
+    'worklet';
+    const elapsed = info.timeSincePreviousFrame ?? 0;
+    const step = elapsed > MAX_FRAME_MS ? MAX_FRAME_MS : elapsed;
+    clock.value = (clock.value + step / DRIFT_MS) % 1;
+  }, false);
+
   useEffect(() => {
-    if (still) return;
-    clock.value = 0;
-    clock.value = withRepeat(
-      withTiming(1, { duration: DRIFT_MS, easing: Easing.linear }),
-      -1,
-      false
-    );
-    return () => cancelAnimation(clock);
-  }, [clock, still]);
+    frame.setActive(!still);
+  }, [frame, still]);
 
   const lamp = useMemo(() => lampGlow(width, height), [width, height]);
   const wash = useMemo(() => washGlow(width, height), [width, height]);

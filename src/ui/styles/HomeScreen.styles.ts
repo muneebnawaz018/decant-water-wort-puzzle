@@ -3,6 +3,8 @@ import { StyleSheet } from 'react-native';
 import { apothecary, SPACE } from '@/theme/apothecary';
 import { ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
+import { NAV_BAR_HEIGHT } from '../chrome/styles/NavBar.styles';
+
 export const styles = StyleSheet.create({
   root: { flex: 1, paddingHorizontal: SPACE.screen },
 
@@ -25,7 +27,8 @@ export const styles = StyleSheet.create({
     borderColor: apothecary.line,
     backgroundColor: apothecary.surface,
   },
-  navSlot: { marginBottom: 10 },
+  // Clears the bar that Root floats over every screen.
+  navSlot: { height: NAV_BAR_HEIGHT + 10 },
   iconButtonOff: { opacity: 0.42 },
 
   // Hero sits at the top of the column; the cards are pushed to the bottom by

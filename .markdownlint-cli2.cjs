@@ -12,6 +12,9 @@ module.exports = {
   globs: ['**/*.md'],
   ignores: [
     'node_modules',
+    // Asset documentation that ships beside the artwork, authored outside the
+    // project's own docs conventions.
+    'assets',
     'android',
     'ios',
     'dist',
