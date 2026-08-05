@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { gradients } from '@/theme/colors';
+import { s } from '@/theme/scale';
 
 import { useGameStore } from '@/state/gameStore';
 import { Backdrop } from './chrome/Backdrop';
@@ -147,7 +148,7 @@ export function Root() {
       )}
 
       {WITH_NAV.has(screen) ? (
-        <View style={[styles.navSlot, { paddingBottom: insets.bottom + 10 }]}>
+        <View style={[styles.navSlot, { paddingBottom: insets.bottom + s(10) }]}>
           {/* Content scrolls *under* a floating bar. An opaque bar hides it
               once it is behind, but the moment of sliding into the edge still
               reads as a glitch — so it fades out into the ground first. */}

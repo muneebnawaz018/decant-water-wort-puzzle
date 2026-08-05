@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { s } from '@/theme/scale';
 import { NAV_BAR_HEIGHT } from '../chrome/styles/NavBar.styles';
 
 /** Breathing room under the last card so it clears the home indicator. */
-const SCROLL_TAIL = 30;
+const SCROLL_TAIL = s(30);
 
 export interface ScreenPadding {
   /** For a screen root that owns its own header. */
@@ -16,10 +17,19 @@ export interface ScreenPadding {
    * room for the nav bar `Root` floats over every screen below the board.
    */
   scrollTailWithNav: { paddingBottom: number };
+  /**
+   * Left and right safe-area insets, for anything that spans the full width.
+   *
+   * Zero in portrait on a phone, which is why this went unnoticed: the insets
+   * that are not zero belong to landscape and to iPad, where the home indicator
+   * and the display cutout push content in from the sides. A screen adds this
+   * to its own padding rather than replacing it.
+   */
+  sides: { paddingLeft: number; paddingRight: number };
 }
 
 /**
- * Safe-area padding, pre-shaped into the three forms the screens actually use.
+ * Safe-area padding, pre-shaped into the forms the screens actually use.
  *
  * Every screen was building these inline, which meant the tail padding under a
  * scroll view was `insets.bottom + 30` in five files and would have drifted the
@@ -36,7 +46,8 @@ export function useScreenPadding(): ScreenPadding {
       scrollTailWithNav: {
         paddingBottom: insets.bottom + SCROLL_TAIL + NAV_BAR_HEIGHT,
       },
+      sides: { paddingLeft: insets.left, paddingRight: insets.right },
     }),
-    [insets.top, insets.bottom]
+    [insets.top, insets.bottom, insets.left, insets.right]
   );
 }

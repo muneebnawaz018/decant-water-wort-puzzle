@@ -9,6 +9,7 @@ import Animated, {
 
 import { apothecary } from '@/theme/apothecary';
 import { ui } from '@/theme/colors';
+import { useTapHandler } from '../hooks/useTapHandler';
 import { styles } from './styles/GlossButton.styles';
 
 type Variant = 'primary' | 'neutral' | 'ghost';
@@ -43,6 +44,7 @@ export const GlossButton = memo(function GlossButton({
   compact = false,
 }: GlossButtonProps) {
   const press = useSharedValue(0);
+  const handlePress = useTapHandler(onPress);
 
   const onPressIn = useCallback(() => {
     press.value = withTiming(1, { duration: 90 });
@@ -60,7 +62,7 @@ export const GlossButton = memo(function GlossButton({
   if (variant === 'ghost') {
     return (
       <Pressable
-        onPress={onPress}
+        onPress={handlePress}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         disabled={disabled}
@@ -77,7 +79,7 @@ export const GlossButton = memo(function GlossButton({
 
   return (
     <Pressable
-      onPress={onPress}
+      onPress={handlePress}
       onPressIn={onPressIn}
       onPressOut={onPressOut}
       disabled={disabled}

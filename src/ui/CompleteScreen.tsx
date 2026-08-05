@@ -15,6 +15,7 @@ import { coinsFor } from '@/game/stars';
 import { useGameStore } from '@/state/gameStore';
 import { apothecary } from '@/theme/apothecary';
 import { alpha, colours } from '@/theme/colors';
+import { s } from '@/theme/scale';
 import { fract, plural } from '@/utils';
 import { GlossButton } from './chrome/GlossButton';
 import { Panel } from './chrome/Panel';
@@ -92,7 +93,12 @@ export const CompleteScreen = memo(function CompleteScreen({
           style={styles.buttons}
           entering={FadeIn.duration(600).delay(rewardDelay + 250)}
         >
-          <GlossButton label="Replay" onPress={onReplay} style={styles.button} />
+          <GlossButton
+            label="Replay"
+            variant="primary"
+            onPress={onReplay}
+            style={styles.button}
+          />
           <GlossButton
             label={`Level ${level + 1}`}
             variant="primary"
@@ -162,14 +168,14 @@ const CompleteStar = memo(function CompleteStar({
   if (!earned) {
     return (
       <View style={styles.starSlot}>
-        <Icon name="star" size={46} color={alpha('white', 0.14)} filled />
+        <Icon name="star" size={s(46)} color={alpha('white', 0.14)} filled />
       </View>
     );
   }
 
   return (
     <Animated.View style={[styles.starSlot, style]}>
-      <Icon name="star" size={46} color={apothecary.gold} filled />
+      <Icon name="star" size={s(46)} color={apothecary.gold} filled />
     </Animated.View>
   );
 });

@@ -3,71 +3,81 @@ import { StyleSheet } from 'react-native';
 import { apothecary } from '@/theme/apothecary';
 import { colours, ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
+import { s } from '@/theme/scale';
 import { text } from '@/theme/typography';
+
+/**
+ * The switch travel, exported because the component animates the knob by it.
+ * Left as a literal in the handler it drifted from the track the moment the
+ * track scaled — the knob slid to the middle of an on state rather than to its
+ * end. It is the track's width less the knob and both paddings.
+ */
+export const KNOB_TRAVEL = s(46) - s(21) - s(3) * 2;
+
 export const styles = StyleSheet.create({
-  group: { marginBottom: 16 },
-  groupTitle: { ...text.eyebrow, marginBottom: 8, marginLeft: 4 },
+  group: { marginBottom: s(16) },
+  groupTitle: { ...text.eyebrow, marginBottom: s(8), marginLeft: s(4) },
 
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 15,
-    paddingVertical: 13,
+    gap: s(12),
+    paddingHorizontal: s(15),
+    paddingVertical: s(13),
   },
   divider: { borderBottomWidth: 1, borderBottomColor: ui.divider },
   rowIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: s(34),
+    height: s(34),
+    borderRadius: s(10),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: ui.well,
   },
   rowLabel: { ...text.rowLabel, flex: 1 },
-  chevron: { fontSize: 18, color: apothecary.inkMuted },
+  chevron: { fontSize: s(18), color: apothecary.inkMuted },
 
   track: {
-    width: 46,
-    height: 27,
-    borderRadius: 14,
-    padding: 3,
+    width: s(46),
+    height: s(27),
+    borderRadius: s(14),
+    padding: s(3),
     backgroundColor: ui.disabledTrack,
   },
   trackOn: { backgroundColor: apothecary.accent },
   knob: {
-    width: 21,
-    height: 21,
-    borderRadius: 11,
+    width: s(21),
+    height: s(21),
+    borderRadius: s(11),
     backgroundColor: colours.white,
     shadowColor: ui.shadow,
     shadowOpacity: 0.4,
-    shadowRadius: 3,
+    shadowRadius: s(3),
     shadowOffset: { width: 0, height: 1 },
     elevation: 2,
   },
 
   segmented: {
     flexDirection: 'row',
-    borderRadius: 12,
-    padding: 3,
+    borderRadius: s(12),
+    padding: s(3),
     backgroundColor: ui.well,
   },
   segment: {
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: 9,
+    paddingHorizontal: s(11),
+    paddingVertical: s(6),
+    borderRadius: s(9),
     alignItems: 'center',
     justifyContent: 'center',
   },
   segmentText: {
     fontFamily: POPPINS.semibold,
-    fontSize: 12,
+    fontSize: s(12),
     color: apothecary.inkMuted,
   },
   segmentTextOn: {
     fontFamily: POPPINS.semibold,
-    fontSize: 12,
+    fontSize: s(12),
     color: ui.onGold,
   },
 });

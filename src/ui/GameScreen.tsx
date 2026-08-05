@@ -9,10 +9,11 @@ import { POUR_MS } from '@/render/pour';
 import { overlay } from '@/state/overlayStore';
 import { useSettingsStore } from '@/state/settingsStore';
 import { useGameStore, type TapOutcome } from '@/state/gameStore';
+import { s } from '@/theme/scale';
 import { plural } from '@/utils';
 import { ChromeIconButton } from './chrome/ScreenHeader';
 import { useScreenPadding } from './hooks/useScreenPadding';
-import { feedbackFor } from './feedback';
+import { feedbackFor, feedbackWarn } from './feedback';
 import { ControlButton } from './chrome/ControlButton';
 import {
   CONTROLS_HEIGHT,
@@ -108,7 +109,11 @@ export const GameScreen = memo(function GameScreen({
   // callback keeps a stable identity and the gesture is never rebuilt.
   const handleTap = useCallback(
     (x: number, y: number) => {
-      const index = hitTest(layout, x, y);
+      // Slop scales with the chrome. `layout.ts` stays pure and React-free, so
+      // it cannot ask the device how big it is — its default 12 is a phone
+      // number, and on a tablet a fixed 12dp halo around a tube twice the size
+      // is a noticeably tighter target than the one phone players get.
+      const index = hitTest(layout, x, y, s(12));
       if (index === -1) return;
       playPour(useGameStore.getState().tapTube(index));
     },
@@ -131,6 +136,9 @@ export const GameScreen = memo(function GameScreen({
     // Selecting the source is the hint: the player still chooses where it
     // goes, so it points rather than plays.
     if (!useGameStore.getState().hint()) {
+      // The button ticked on the way in. Answer the refusal differently, or
+      // "no hint left" feels identical to a hint being given.
+      feedbackWarn();
       overlay.toast('No pour available — try undo');
     }
   }, []);
@@ -138,6 +146,7 @@ export const GameScreen = memo(function GameScreen({
     // Spec §10 makes this the rewarded-ad slot. The ad is phase 2; the vial
     // is free for now so the escape hatch exists at all.
     const added = useGameStore.getState().addTube();
+    if (!added) feedbackWarn();
     overlay.toast(added ? 'An empty vial, on the house' : 'Only one spare vial per level');
   }, []);
 

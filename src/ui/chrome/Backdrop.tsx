@@ -16,7 +16,9 @@ import {
 } from 'react-native-reanimated';
 
 import {
+  advanceDrift,
   ambientMotes,
+  ASSUMED_FRAME_MS,
   groundVector,
   lampGlow,
   moteOpacity,
@@ -38,13 +40,6 @@ interface BackdropProps {
 const DRIFT_MS = 14000;
 
 /**
- * Longest frame gap the clock will honour, in ms. Past this the drift is
- * pinned rather than advanced: a long stall would otherwise be paid back as
- * one large jump on the frame that recovers.
- */
-const MAX_FRAME_MS = 50;
-
-/**
  * The layered background from spec §3, drawn once behind the whole app.
  *
  * It sits in `Root` rather than in each screen so it survives screen changes —
@@ -57,6 +52,9 @@ export const Backdrop = memo(function Backdrop({
   still = false,
 }: BackdropProps) {
   const clock = useSharedValue(0);
+
+  /** The panel's frame interval, learned from the frames themselves. */
+  const frameMs = useSharedValue(ASSUMED_FRAME_MS);
 
   /**
    * The drift is accumulated per frame rather than run as a `withTiming`
@@ -71,12 +69,20 @@ export const Backdrop = memo(function Backdrop({
    * stopped. Restarting a repeat meant re-seeding it to 0, so every return
    * from the board snapped all fourteen motes back to their starting phase at
    * once.
+   *
+   * Both the estimate and the clamp are in frames rather than milliseconds, so
+   * the drift moves at the same speed per second on any panel and a hitch costs
+   * the same number of frames on all of them.
    */
   const frame = useFrameCallback((info) => {
     'worklet';
-    const elapsed = info.timeSincePreviousFrame ?? 0;
-    const step = elapsed > MAX_FRAME_MS ? MAX_FRAME_MS : elapsed;
-    clock.value = (clock.value + step / DRIFT_MS) % 1;
+    const next = advanceDrift(
+      { clock: clock.value, frameMs: frameMs.value },
+      info.timeSincePreviousFrame ?? 0,
+      DRIFT_MS
+    );
+    clock.value = next.clock;
+    frameMs.value = next.frameMs;
   }, false);
 
   useEffect(() => {

@@ -43,3 +43,7 @@ yarn-error.*
 # design handoff — the prototype and its spec are a local working reference,
 # not part of the shipped source. Keep a copy; do not commit it.
 docs/decant-handoff/
+
+# raw audio downloads, for whenever real sound effects land. Large, and never
+# shipped: `script/prepare-sounds.py` cuts them down to what the app uses.
+assets/audio/source/

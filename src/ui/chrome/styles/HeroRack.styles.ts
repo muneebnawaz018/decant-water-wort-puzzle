@@ -3,17 +3,18 @@ import { StyleSheet } from 'react-native';
 import { apothecary } from '@/theme/apothecary';
 import { ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
+import { s } from '@/theme/scale';
 
 /** Spec §4.2: the shelf is narrower than the screen, and the vials sit on it. */
-const SHELF_WIDTH = 214;
-export const SHELF_HEIGHT = 11;
+const SHELF_WIDTH = s(214);
+export const SHELF_HEIGHT = s(11);
 
 /**
  * The vials sit *inside* the shelf's width, not over it — the prototype draws
  * a 206px shelf under three 42px vials, so the shelf reads as furniture the
  * rack stands on rather than a bar stuck to their feet.
  */
-export const VIAL_WIDTH = 176;
+export const VIAL_WIDTH = s(176);
 
 /**
  * The rack's height is fixed rather than flexed.
@@ -23,10 +24,10 @@ export const VIAL_WIDTH = 176;
  * prototype gives the rack its natural height and lets the *column* centre in
  * whatever is left, so the space above and below the whole lockup matches.
  */
-export const RACK_HEIGHT = 150;
+export const RACK_HEIGHT = s(150);
 
 export const styles = StyleSheet.create({
-  root: { alignItems: 'center', gap: 20 },
+  root: { alignItems: 'center', gap: s(20) },
 
   vialArea: { height: RACK_HEIGHT, alignItems: 'center' },
   vialBox: { width: VIAL_WIDTH, height: RACK_HEIGHT - SHELF_HEIGHT },
@@ -34,11 +35,11 @@ export const styles = StyleSheet.create({
   shelf: {
     width: SHELF_WIDTH,
     height: SHELF_HEIGHT,
-    borderRadius: 6,
+    borderRadius: s(6),
     shadowColor: ui.shadow,
     shadowOpacity: 0.4,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 5 },
+    shadowRadius: s(14),
+    shadowOffset: { width: 0, height: s(5) },
     elevation: 5,
   },
   shelfGloss: {
@@ -47,15 +48,15 @@ export const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1,
-    borderRadius: 6,
+    borderRadius: s(6),
     backgroundColor: ui.buttonGloss,
   },
 
-  title: { alignItems: 'center', gap: 6 },
+  title: { alignItems: 'center', gap: s(6) },
   tagline: {
     fontFamily: POPPINS.regular,
-    fontSize: 13,
-    letterSpacing: 0.4,
+    fontSize: s(13),
+    letterSpacing: s(0.4),
     color: apothecary.inkMuted,
   },
 });

@@ -3,21 +3,22 @@ import { StyleSheet } from 'react-native';
 import { apothecary, SPACE } from '@/theme/apothecary';
 import { colours, ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
+import { s } from '@/theme/scale';
 export const styles = StyleSheet.create({
   shadow: {
     borderRadius: SPACE.buttonRadius,
     shadowColor: ui.shadow,
     shadowOpacity: 0.3,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 7 },
+    shadowRadius: s(16),
+    shadowOffset: { width: 0, height: s(7) },
     elevation: 6,
   },
   primaryShadow: {
     borderRadius: SPACE.buttonRadius,
     shadowColor: ui.shadow,
     shadowOpacity: 0.32,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: s(18),
+    shadowOffset: { width: 0, height: s(8) },
     elevation: 8,
   },
   face: {
@@ -27,15 +28,19 @@ export const styles = StyleSheet.create({
   },
   neutralFace: {
     borderColor: apothecary.line,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingVertical: s(14),
+    paddingHorizontal: s(16),
   },
   primaryFace: {
     borderColor: ui.buttonEdge,
-    paddingVertical: 18,
-    paddingHorizontal: 20,
+    paddingVertical: s(18),
+    paddingHorizontal: s(20),
   },
-  compactFace: { paddingVertical: 9, paddingHorizontal: 14, borderRadius: 11 },
+  compactFace: {
+    paddingVertical: s(9),
+    paddingHorizontal: s(14),
+    borderRadius: s(11),
+  },
   gloss: {
     position: 'absolute',
     top: 0,
@@ -47,35 +52,39 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: s(10),
   },
 
-  label: { fontFamily: POPPINS.medium, fontSize: 15, color: apothecary.ink },
+  label: {
+    fontFamily: POPPINS.medium,
+    fontSize: s(15),
+    color: apothecary.ink,
+  },
   primaryLabel: {
     fontFamily: POPPINS.bold,
-    fontSize: 18,
-    letterSpacing: 0.9,
+    fontSize: s(18),
+    letterSpacing: s(0.9),
     color: colours.white,
     textShadowColor: ui.buttonTextShadow,
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 1,
   },
 
-  compactLabel: { fontSize: 12.5, letterSpacing: 0.2 },
+  compactLabel: { fontSize: s(12.5), letterSpacing: s(0.2) },
 
   ghost: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 13,
+    gap: s(8),
+    paddingVertical: s(12),
+    paddingHorizontal: s(16),
+    borderRadius: s(13),
     backgroundColor: ui.line,
   },
   ghostLabel: {
     fontFamily: POPPINS.semibold,
-    fontSize: 14,
+    fontSize: s(14),
     color: apothecary.ink,
   },
 

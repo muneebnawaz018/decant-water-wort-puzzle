@@ -10,7 +10,6 @@ import { ScrollPage } from './chrome/ScrollPage';
 import { SoonBadge } from './chrome/SoonBadge';
 import { SoonOverlay } from './chrome/SoonOverlay';
 import { SettingGroup } from './chrome/SettingRow';
-import { feedbackTap } from './feedback';
 import { styles } from './styles/ShopScreen.styles';
 
 /**
@@ -75,7 +74,6 @@ const SkinTile = memo(function SkinTile({
   // a skin — so a purchase here would take 200 coins and change nothing on
   // screen. Until the board honours a skin, this previews and does not sell.
   const preview = useCallback(() => {
-    feedbackTap();
     overlay.toast(`${name} arrives in a later update`);
   }, [name]);
 

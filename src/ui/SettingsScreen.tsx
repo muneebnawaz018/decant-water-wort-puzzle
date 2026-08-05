@@ -5,8 +5,9 @@ import { DIFFICULTIES, DIFFICULTY_INFO, isDifficulty } from '@/game/difficulty';
 import { overlay } from '@/state/overlayStore';
 import { useSettingsStore, type ToggleKey } from '@/state/settingsStore';
 import { ScrollPage } from './chrome/ScrollPage';
+import { confirmDifficultyChange } from './confirmDifficulty';
+import { SoonBadge } from './chrome/SoonBadge';
 import { Segmented, SettingGroup, SettingRow, Switch } from './chrome/SettingRow';
-import { feedbackTap } from './feedback';
 import { styles } from './styles/SettingsScreen.styles';
 
 const VERSION = 'Decant · v0.1.0';
@@ -25,8 +26,7 @@ export const SettingsScreen = memo(function SettingsScreen({
 
   const setDifficulty = useCallback((id: string) => {
     if (!isDifficulty(id)) return;
-    feedbackTap();
-    useSettingsStore.getState().setDifficulty(id);
+    confirmDifficultyChange(id);
   }, []);
 
   return (
@@ -44,15 +44,21 @@ export const SettingsScreen = memo(function SettingsScreen({
         </SettingRow>
       </SettingGroup>
 
+      {/*
+        Audio is marked rather than offered. There are no sound assets in the
+        build, so a switch here would be a control that visibly moves and
+        changes nothing — which a player reads as a broken game, not a missing
+        feature. The badge says which it is.
+      */}
       <SettingGroup title="Sound & feel">
         <SettingRow icon="sound" label="Sound">
-          <Toggle setting="sound" label="Sound" />
+          <SoonBadge />
         </SettingRow>
         <SettingRow icon="music" label="Music">
-          <Toggle setting="music" label="Music" />
+          <SoonBadge />
         </SettingRow>
         <SettingRow icon="tap" label="Sound on tap">
-          <Toggle setting="tapSound" label="Sound on tap" />
+          <SoonBadge />
         </SettingRow>
         <SettingRow icon="vibrate" label="Vibration">
           <Toggle setting="haptics" label="Vibration" />
@@ -64,8 +70,19 @@ export const SettingsScreen = memo(function SettingsScreen({
 
       <SettingGroup title="More">
         <SettingRow icon="book" label="How to play" onPress={howToPlay} />
-        <SettingRow icon="star" label="Rate us" onPress={rateUs} />
-        <SettingRow icon="restart" label="Restore purchases" onPress={restore} />
+        {/*
+          Both of these need something the app does not have yet: a store
+          listing to send a rating to, and a purchase SDK to restore from.
+          Marked for the same reason as the audio rows — and with no `onPress`,
+          so neither is tappable and neither fires a tick that promises an
+          action.
+        */}
+        <SettingRow icon="star" label="Rate us">
+          <SoonBadge />
+        </SettingRow>
+        <SettingRow icon="restart" label="Restore purchases">
+          <SoonBadge />
+        </SettingRow>
         <SettingRow
           icon="shield"
           label="Privacy policy"
@@ -95,7 +112,6 @@ const Toggle = memo(function Toggle({
   const value = useSettingsStore((state) => state[setting]);
 
   const onChange = useCallback(() => {
-    feedbackTap();
     const store = useSettingsStore.getState();
     store.toggle(setting);
     if (setting === 'sound' && !useSettingsStore.getState().sound) {
@@ -113,19 +129,6 @@ function howToPlay(): void {
     confirmLabel: 'Got it',
     cancelLabel: null,
   });
-}
-
-function rateUs(): void {
-  overlay.modal({
-    title: 'Enjoying Decant?',
-    body: 'A quick rating really helps us. Rate on the store?',
-    confirmLabel: 'Rate',
-    cancelLabel: 'Later',
-  });
-}
-
-function restore(): void {
-  overlay.toast('Nothing to restore');
 }
 
 function privacy(): void {

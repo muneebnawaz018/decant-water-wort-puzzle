@@ -27,7 +27,11 @@ const config: ExpoConfig = {
   // keep honest for a target the game does not ship on.
   platforms: ['ios', 'android'],
   icon: './assets/icon.png',
-  userInterfaceStyle: 'light',
+  // The app is the dark purple theme end to end. This drives the native chrome
+  // — iOS keyboard/alert appearance, Android's system UI — and declaring
+  // `light` against a near-black app made both fight the design on first
+  // launch.
+  userInterfaceStyle: 'dark',
   // The colour behind every React view, and — the reason it is here — the one
   // the window shows in the gap between the OS dismissing the splash and the
   // first React frame being drawn. It defaults to white, which flashed for a

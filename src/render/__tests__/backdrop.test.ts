@@ -1,4 +1,13 @@
-import { ambientMotes, groundVector, lampGlow, moteOpacity, washGlow } from '../backdrop';
+import {
+  advanceDrift,
+  ambientMotes,
+  ASSUMED_FRAME_MS,
+  groundVector,
+  lampGlow,
+  moteOpacity,
+  washGlow,
+  type DriftState,
+} from '../backdrop';
 
 describe('backdrop geometry', () => {
   it('hangs the lamp above the top edge', () => {
@@ -119,5 +128,75 @@ describe('moteOpacity', () => {
 
   it('is brightest low, where the lamp is not washing it out', () => {
     expect(moteOpacity(0.2)).toBeGreaterThan(moteOpacity(0.8));
+  });
+});
+
+describe('advanceDrift', () => {
+  const CYCLE = 14000;
+
+  /** Run `frames` frames of `interval` ms and hand back the final state. */
+  const run = (interval: number, frames: number, from?: DriftState): DriftState => {
+    let state: DriftState = from ?? { clock: 0, frameMs: ASSUMED_FRAME_MS };
+    for (let i = 0; i < frames; i++) state = advanceDrift(state, interval, CYCLE);
+    return state;
+  };
+
+  it('learns the panel rate from the frames themselves', () => {
+    expect(run(1000 / 120, 200).frameMs).toBeCloseTo(1000 / 120, 1);
+    expect(run(1000 / 30, 200).frameMs).toBeCloseTo(1000 / 30, 1);
+  });
+
+  it('drifts at the same speed whatever the rate', () => {
+    // One second of wall clock, three panels. Position must agree — the whole
+    // point of advancing by elapsed time rather than by a per-frame step.
+    const at60 = run(1000 / 60, 60).clock;
+    const at120 = run(1000 / 120, 120).clock;
+    const at30 = run(1000 / 30, 30).clock;
+
+    expect(at120).toBeCloseTo(at60, 6);
+    expect(at30).toBeCloseTo(at60, 6);
+    expect(at60).toBeCloseTo(1000 / CYCLE, 6);
+  });
+
+  it('pins a stall to three frames of drift, not the whole gap', () => {
+    const settled = run(1000 / 60, 200);
+    const stalled = advanceDrift(settled, 2000, CYCLE);
+    const moved = stalled.clock - settled.clock;
+
+    expect(moved).toBeCloseTo((3 * settled.frameMs) / CYCLE, 6);
+  });
+
+  it('scales that ceiling with the panel, so a hitch costs the same frames', () => {
+    const slow = run(1000 / 60, 200);
+    const fast = run(1000 / 120, 200);
+
+    const slowJump = advanceDrift(slow, 2000, CYCLE).clock - slow.clock;
+    const fastJump = advanceDrift(fast, 2000, CYCLE).clock - fast.clock;
+
+    // Half the frame interval, half the jump. A fixed millisecond ceiling gave
+    // the 120Hz panel twice the tolerance, on the display where a jump shows
+    // most.
+    expect(fastJump).toBeCloseTo(slowJump / 2, 6);
+  });
+
+  it('keeps a stall out of the rate estimate', () => {
+    const settled = run(1000 / 120, 200);
+    const after = advanceDrift(settled, 2000, CYCLE);
+
+    // A hitch that raised the estimate would raise the ceiling meant to catch
+    // it, and the next hitch would be paid out larger still.
+    expect(after.frameMs).toBeCloseTo(settled.frameMs, 6);
+  });
+
+  it('ignores a zero or negative delta', () => {
+    const settled = run(1000 / 60, 60);
+    expect(advanceDrift(settled, 0, CYCLE).clock).toBe(settled.clock);
+    expect(advanceDrift(settled, -5, CYCLE).clock).toBe(settled.clock);
+  });
+
+  it('wraps rather than running past one', () => {
+    const state = run(1000 / 60, 60 * 20);
+    expect(state.clock).toBeGreaterThanOrEqual(0);
+    expect(state.clock).toBeLessThan(1);
   });
 });

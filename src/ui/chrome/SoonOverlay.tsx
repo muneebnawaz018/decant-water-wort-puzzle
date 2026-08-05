@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 
 import { Icon } from '../Icon';
 import { styles } from './styles/SoonOverlay.styles';
+import { s } from '@/theme/scale';
 
 /**
  * A veil over anything the UI shows but cannot yet deliver.
@@ -24,7 +25,7 @@ export const SoonOverlay = memo(function SoonOverlay({
   return (
     <View style={styles.veil} pointerEvents="none">
       <View style={styles.pill}>
-        <Icon name="lock" size={11} color={styles.text.color} />
+        <Icon name="lock" size={s(11)} color={styles.text.color} />
         <Text style={styles.text}>{label}</Text>
       </View>
     </View>

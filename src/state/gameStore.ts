@@ -15,6 +15,13 @@ import {
   type Progress,
   type ProgressByDifficulty,
 } from './progress';
+import {
+  clearSession,
+  loadSession,
+  packMoves,
+  restoreSession,
+  saveSession,
+} from './session';
 import { useSettingsStore } from './settingsStore';
 
 export interface GameState {
@@ -79,19 +86,48 @@ export const useGameStore = create<GameState>((set, get) => {
   const startLevel = progressFor(record, difficulty).currentLevel;
   const first = generateLevel(startLevel, difficulty);
 
+  // A level left half-solved comes back as it was left. The stored session is
+  // only honoured for the level and mode the player is actually returning to;
+  // anything else is a leftover and the level starts clean.
+  const saved = loadSession();
+  const resumed =
+    saved && saved.difficulty === difficulty && saved.level === startLevel
+      ? restoreSession(saved, first.state)
+      : null;
+  // Unreadable or no longer replayable — see `replay`. Drop it rather than
+  // leave a record that fails the same way on every launch.
+  if (saved && !resumed) clearSession();
+
+  /**
+   * Writes the level in progress. Called after anything that changes it.
+   *
+   * MMKV is synchronous, so this lands before the frame does and a force-quit
+   * cannot lose the move that caused it — the reason the save is here and not
+   * behind an AppState listener, which never runs when the process is killed.
+   */
+  const persistSession = (): void => {
+    const { difficulty: mode, level, history, extraTaken } = get();
+    saveSession({
+      difficulty: mode,
+      level,
+      moves: packMoves(history),
+      extraTaken,
+    });
+  };
+
   return {
     level: startLevel,
     difficulty,
-    board: first.state,
-    initial: first.state,
+    board: resumed?.board ?? first.state,
+    initial: resumed?.initial ?? first.state,
     par: first.report.lowerBound,
     earned: 0,
-    history: [],
+    history: resumed?.history ?? [],
     future: [],
     selected: null,
     solved: false,
     locked: false,
-    extraTaken: false,
+    extraTaken: saved?.extraTaken === true && resumed !== null,
     record,
 
     progress: () => progressFor(get().record, get().difficulty),
@@ -101,6 +137,9 @@ export const useGameStore = create<GameState>((set, get) => {
       const generated = generateLevel(level, mode);
       const next = setCurrentLevel(get().record, mode, level);
       saveProgress(next);
+      // A new level has nothing in progress yet, and the old record must not
+      // outlive the level it belongs to.
+      clearSession();
 
       set({
         level,
@@ -124,6 +163,10 @@ export const useGameStore = create<GameState>((set, get) => {
       // Each mode remembers where it was left, so switching is not a reset.
       const level = progressFor(get().record, difficulty).currentLevel;
       const generated = generateLevel(level, difficulty);
+      // Switching modes drops whatever was in progress. Keeping one session
+      // per mode would need a record per mode; the level is remembered either
+      // way, and the moves within it are cheap to redo.
+      clearSession();
 
       set({
         difficulty,
@@ -161,7 +204,17 @@ export const useGameStore = create<GameState>((set, get) => {
       }
 
       if (!canPour(board, selected, index)) {
-        // Keep the selection: the player is aiming, not starting over.
+        // Move the selection to the tube just tapped rather than keeping the
+        // old one armed. A refused pour is nearly always a mis-tap on the
+        // source, not on the target, so treating the second tap as the new
+        // source is what the player meant — otherwise they have to tap the
+        // wrong tube again to clear it before they can start over.
+        //
+        // The target always has liquid in it: a pour into an empty tube is
+        // legal whenever the source has anything, so reaching here means the
+        // target is full or holds a different colour. Guarded anyway.
+        const takeable = board.tubes[index]!.length > 0;
+        set({ selected: takeable ? index : null });
         return { kind: 'illegal', tube: index };
       }
 
@@ -206,6 +259,11 @@ export const useGameStore = create<GameState>((set, get) => {
         };
       });
 
+      // Solved levels have nothing left to resume, and the record would
+      // otherwise sit there until the next level was opened.
+      if (nowSolved) clearSession();
+      else persistSession();
+
       return {
         kind: 'poured',
         move: applied.move,
@@ -233,6 +291,7 @@ export const useGameStore = create<GameState>((set, get) => {
         selected: null,
         solved: false,
       });
+      persistSession();
     },
 
     redo: () => {
@@ -281,6 +340,9 @@ export const useGameStore = create<GameState>((set, get) => {
         };
       });
 
+      if (nowSolved) clearSession();
+      else persistSession();
+
       return {
         kind: 'poured',
         move: applied.move,
@@ -301,6 +363,9 @@ export const useGameStore = create<GameState>((set, get) => {
         solved: false,
         earned: 0,
       });
+      // Not a clear: restart keeps the spare vial, which is the one thing left
+      // worth remembering about a board with no moves on it.
+      persistSession();
     },
 
     hint: () => {
@@ -337,6 +402,7 @@ export const useGameStore = create<GameState>((set, get) => {
         extraTaken: true,
         selected: null,
       });
+      persistSession();
       return true;
     },
 

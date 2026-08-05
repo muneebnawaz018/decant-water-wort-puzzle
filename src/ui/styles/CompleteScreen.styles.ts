@@ -2,9 +2,10 @@ import { StyleSheet } from 'react-native';
 
 import { apothecary, SPACE } from '@/theme/apothecary';
 import { POPPINS } from '@/theme/fonts';
+import { s } from '@/theme/scale';
 export const styles = StyleSheet.create({
   root: { flex: 1 },
-  homeButton: { position: 'absolute', top: 60, left: SPACE.screen, zIndex: 5 },
+  homeButton: { position: 'absolute', top: s(60), left: SPACE.screen, zIndex: 5 },
 
   burst: {
     position: 'absolute',
@@ -13,7 +14,7 @@ export const styles = StyleSheet.create({
     width: 0,
     height: 0,
   },
-  spark: { position: 'absolute', width: 7, height: 7, borderRadius: 2 },
+  spark: { position: 'absolute', width: s(7), height: s(7), borderRadius: s(2) },
 
   content: {
     flex: 1,
@@ -23,38 +24,41 @@ export const styles = StyleSheet.create({
   },
   title: {
     fontFamily: POPPINS.bold,
-    fontSize: 32,
+    fontSize: s(32),
     color: apothecary.gold,
     textAlign: 'center',
   },
-  stars: { flexDirection: 'row', gap: 14, marginTop: 16, marginBottom: 6 },
-  starSlot: { width: 46, height: 46 },
+  stars: { flexDirection: 'row', gap: s(14), marginTop: s(16), marginBottom: s(6) },
+  starSlot: { width: s(46), height: s(46) },
   moves: {
     fontFamily: POPPINS.semibold,
-    fontSize: 14,
+    fontSize: s(14),
     color: apothecary.inkMuted,
   },
 
   reward: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    marginTop: 14,
+    gap: s(8),
+    paddingHorizontal: s(16),
+    paddingVertical: s(9),
+    marginTop: s(14),
   },
   coin: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: s(18),
+    height: s(18),
+    borderRadius: s(9),
     backgroundColor: apothecary.gold,
   },
   rewardText: {
     fontFamily: POPPINS.semibold,
-    fontSize: 15,
+    fontSize: s(15),
     color: apothecary.goldLight,
   },
 
-  buttons: { flexDirection: 'row', gap: 12, marginTop: 30 },
-  button: { minWidth: 120 },
+  // Stretched across the content width and split evenly, so the two read as a
+  // pair. Sized to their labels they came out lopsided — "Level 2" is longer
+  // than "Replay", and the wider button looked like the only real one.
+  buttons: { flexDirection: 'row', gap: s(12), marginTop: s(30), alignSelf: 'stretch' },
+  button: { flex: 1 },
 });

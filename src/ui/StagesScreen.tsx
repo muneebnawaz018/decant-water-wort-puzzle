@@ -13,11 +13,12 @@ import Animated, {
 
 import { DIFFICULTIES, DIFFICULTY_INFO, type Difficulty } from '@/game/difficulty';
 import { useGameStore } from '@/state/gameStore';
-import { useSettingsStore } from '@/state/settingsStore';
 import { apothecary } from '@/theme/apothecary';
+import { s } from '@/theme/scale';
 import { ChromeIconButton, ScreenHeader } from './chrome/ScreenHeader';
+import { confirmDifficultyChange } from './confirmDifficulty';
 import { useScreenPadding } from './hooks/useScreenPadding';
-import { feedbackTap } from './feedback';
+import { useTapHandler } from './hooks/useTapHandler';
 import { Icon } from './Icon';
 import { COLUMNS, styles } from './styles/StagesScreen.styles';
 
@@ -73,6 +74,21 @@ export const StagesScreen = memo(function StagesScreen({
         current: n === furthest,
       });
     }
+    // Pad the last row out to a full one.
+    //
+    // The tiles are `flex: 1`, so a short final row divides the whole width
+    // between however few tiles are in it — at four columns a 50-tile page put
+    // levels 49 and 50 on their own row at double width, which has been the
+    // case since this screen was written and only becomes obvious once the
+    // column count moves. Spacers are the standard fix: FlatList has no notion
+    // of an incomplete row.
+    const orphans = list.length % COLUMNS;
+    if (orphans > 0) {
+      for (let n = 0; n < COLUMNS - orphans; n++) {
+        list.push({ level: -1 - n, locked: true, stars: 0, current: false });
+      }
+    }
+
     return list;
   }, [page, furthest, progress.stars]);
 
@@ -81,7 +97,6 @@ export const StagesScreen = memo(function StagesScreen({
   const select = useCallback(
     (stage: Stage) => {
       if (stage.locked) return;
-      feedbackTap();
       loadLevel(stage.level);
       onPick();
     },
@@ -89,9 +104,14 @@ export const StagesScreen = memo(function StagesScreen({
   );
 
   const renderItem = useCallback(
-    ({ item, index }: { item: Stage; index: number }) => (
-      <StageTile stage={item} index={index} accent={accent} onSelect={select} />
-    ),
+    ({ item, index }: { item: Stage; index: number }) =>
+      // A row-filling spacer, not a level. It has to occupy a slot rather than
+      // be skipped, or the real tiles beside it stretch to cover it.
+      item.level < 1 ? (
+        <View style={styles.tileSlot} />
+      ) : (
+        <StageTile stage={item} index={index} accent={accent} onSelect={select} />
+      ),
     [select, accent]
   );
 
@@ -146,7 +166,7 @@ export const StagesScreen = memo(function StagesScreen({
 
       {pageLocked ? (
         <Animated.View style={styles.lockNotice} entering={FadeIn.duration(260)}>
-          <Icon name="lock" size={16} color={apothecary.inkMuted} />
+          <Icon name="lock" size={s(16)} color={apothecary.inkMuted} />
           <Text style={styles.lockText}>Finish the block before this one</Text>
         </Animated.View>
       ) : null}
@@ -158,16 +178,16 @@ const keyExtractor = (stage: Stage) => String(stage.level);
 
 const ModeTab = memo(function ModeTab({ id, active }: { id: Difficulty; active: boolean }) {
   const info = DIFFICULTY_INFO[id];
-  const onPress = useCallback(() => {
-    feedbackTap();
-    useSettingsStore.getState().setDifficulty(id);
-  }, [id]);
+  const choose = useCallback(() => confirmDifficultyChange(id), [id]);
+  const onPress = useTapHandler(choose);
 
   if (active) {
     return (
       <Pressable
         style={styles.tabPress}
-        onPress={onPress}
+        // The mode you are already in. Same rule as the nav bar and the
+        // segmented control: nothing to change, nothing to feel.
+        disabled
         accessibilityRole="tab"
         accessibilityState={{ selected: true }}
       >
@@ -204,7 +224,10 @@ const StageTile = memo(function StageTile({
   accent: string;
   onSelect: (stage: Stage) => void;
 }) {
-  const onPress = useCallback(() => onSelect(stage), [onSelect, stage]);
+  const select = useCallback(() => onSelect(stage), [onSelect, stage]);
+  // `disabled` on the Pressable keeps a locked tile silent, so the tick can
+  // live here rather than behind a check.
+  const onPress = useTapHandler(select);
 
   return (
     <Animated.View
@@ -224,7 +247,9 @@ const StageTile = memo(function StageTile({
         >
           {stage.current && !stage.locked ? <CurrentRing accent={accent} /> : null}
 
-          {stage.locked ? <Icon name="lock" size={16} color={apothecary.inkMuted} /> : null}
+          {stage.locked ? (
+            <Icon name="lock" size={s(16)} color={apothecary.inkMuted} />
+          ) : null}
 
           <Text style={[styles.tileNumber, stage.locked && styles.tileNumberLocked]}>
             {stage.level}

@@ -1,4 +1,5 @@
 import { colours, gradients, ui } from './colors';
+import { s } from './scale';
 
 /**
  * Design tokens, from `docs/decant-handoff/BUILD-SPEC.md` §3.
@@ -156,15 +157,21 @@ export const BACKDROP = {
   washFade: ui.washFade,
 } as const;
 
-/** Spacing and shape, spec §3. */
+/**
+ * Spacing and shape, spec §3.
+ *
+ * Scaled, because side padding is the thing that tells a screen how wide its
+ * content is allowed to be. Left at 24 on a tablet, every card ran within 24dp
+ * of both bezels and the whole layout read as a stretched phone.
+ */
 export const SPACE = {
   /** Screen side padding, and the gap between stacked blocks. */
-  screen: 24,
-  block: 24,
-  cardRadius: 20,
-  buttonRadius: 16,
+  screen: s(24),
+  block: s(24),
+  cardRadius: s(20),
+  buttonRadius: s(16),
   /** Vial glass: square shoulders, round base. */
-  vialRadius: { top: 12, bottom: 26 },
+  vialRadius: { top: s(12), bottom: s(26) },
 } as const;
 
 /** Gold gradient for the wordmark, top to bottom. Spec §3. */

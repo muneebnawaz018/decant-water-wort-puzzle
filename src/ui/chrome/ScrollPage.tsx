@@ -30,7 +30,10 @@ export const ScrollPage = memo(function ScrollPage({
   const padding = useScreenPadding();
 
   return (
-    <View style={[styles.root, padding.top]}>
+    // `sides` on the frame rather than on the scroll content, so the header and
+    // the body are inset together and a cutout cannot clip one but not the
+    // other.
+    <View style={[styles.root, padding.top, padding.sides]}>
       <ScreenHeader title={title} onBack={onBack} trailing={trailing} />
 
       <ScrollView

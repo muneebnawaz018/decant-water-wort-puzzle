@@ -3,23 +3,36 @@ import { StyleSheet } from 'react-native';
 import { apothecary, SPACE } from '@/theme/apothecary';
 import { ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
-/** Spec §4.3 shows a four-across grid. */
-export const COLUMNS = 4;
-const GAP = 14;
+import { columnsFor, s, WINDOW_WIDTH } from '@/theme/scale';
+
+const GAP = s(14);
+
+/**
+ * Spec §4.3 shows a four-across grid, and on a phone that is exactly what this
+ * is — `columnsFor` returns the fallback unchanged below the tablet threshold.
+ *
+ * Above it, four is the wrong answer. The tiles are `flex: 1` with
+ * `aspectRatio: 1`, so on a 1024pt iPad a four-column grid produces 230dp
+ * squares each holding one level number: the grid grows, the content in it does
+ * not, and a screen whose whole job is showing many levels at once ends up
+ * showing sixteen. Deriving the count from a phone-sized tile spends the extra
+ * width on more levels instead.
+ */
+export const COLUMNS = columnsFor(WINDOW_WIDTH - SPACE.screen * 2, s(76), GAP, 4);
 
 export const styles = StyleSheet.create({
   root: { flex: 1 },
 
   tabs: {
     flexDirection: 'row',
-    gap: 8,
+    gap: s(8),
     paddingHorizontal: SPACE.screen,
-    paddingBottom: 14,
+    paddingBottom: s(14),
   },
   tabPress: { flex: 1 },
   tab: {
-    paddingVertical: 11,
-    borderRadius: 14,
+    paddingVertical: s(11),
+    borderRadius: s(14),
     alignItems: 'center',
     borderWidth: 1,
     borderColor: apothecary.line,
@@ -27,12 +40,12 @@ export const styles = StyleSheet.create({
   tabActive: { borderColor: ui.buttonGloss },
   tabText: {
     fontFamily: POPPINS.semibold,
-    fontSize: 13,
+    fontSize: s(13),
     color: apothecary.inkMuted,
   },
   tabTextActive: {
     fontFamily: POPPINS.semibold,
-    fontSize: 13,
+    fontSize: s(13),
     color: ui.onGold,
   },
 
@@ -41,11 +54,11 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: SPACE.screen,
-    paddingBottom: 12,
+    paddingBottom: s(12),
   },
   pageLabel: {
     fontFamily: POPPINS.semibold,
-    fontSize: 14,
+    fontSize: s(14),
     color: apothecary.inkMuted,
   },
 
@@ -54,25 +67,25 @@ export const styles = StyleSheet.create({
   tileSlot: { flex: 1 },
   tile: {
     aspectRatio: 1,
-    borderRadius: 18,
+    borderRadius: s(18),
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: s(4),
     borderWidth: 1,
     borderColor: apothecary.line,
     shadowColor: ui.shadow,
     shadowOpacity: 0.3,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: s(6),
+    shadowOffset: { width: 0, height: s(4) },
     elevation: 4,
   },
   tileLocked: { opacity: 0.55 },
   tileNumber: {
     fontFamily: POPPINS.semibold,
-    fontSize: 18,
+    fontSize: s(18),
     color: apothecary.ink,
   },
-  tileNumberLocked: { fontSize: 13, color: apothecary.inkMuted },
+  tileNumberLocked: { fontSize: s(13), color: apothecary.inkMuted },
 
   ring: {
     position: 'absolute',
@@ -80,42 +93,42 @@ export const styles = StyleSheet.create({
     left: -3,
     right: -3,
     bottom: -3,
-    borderRadius: 21,
+    borderRadius: s(21),
     borderWidth: 3,
   },
 
-  stars: { flexDirection: 'row', gap: 3, height: 7 },
+  stars: { flexDirection: 'row', gap: s(3), height: s(7) },
   star: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+    width: s(7),
+    height: s(7),
+    borderRadius: s(4),
     backgroundColor: ui.emptyStar,
   },
   starFilled: {
     backgroundColor: apothecary.gold,
     shadowColor: apothecary.gold,
     shadowOpacity: 0.9,
-    shadowRadius: 6,
+    shadowRadius: s(6),
     shadowOffset: { width: 0, height: 0 },
   },
 
   lockNotice: {
     position: 'absolute',
-    bottom: 30,
+    bottom: s(30),
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    borderRadius: 20,
+    gap: s(8),
+    borderRadius: s(20),
     borderWidth: 1,
     borderColor: apothecary.line,
     backgroundColor: ui.toast,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
+    paddingHorizontal: s(16),
+    paddingVertical: s(9),
   },
   lockText: {
     fontFamily: POPPINS.medium,
-    fontSize: 12,
+    fontSize: s(12),
     color: apothecary.inkMuted,
   },
 });

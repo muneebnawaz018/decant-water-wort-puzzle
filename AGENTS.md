@@ -184,6 +184,12 @@ phase 2), `expo-updates` (ship level-gen fixes without a store review).
   1 spare is the big jump; spend it late.
 - No timer, no fail state. The genre sells relaxation.
 - Lock input for the 350ms pour animation or queued taps cause double pours.
+- **A refused pour re-arms the tube that was tapped.** The selection used to
+  stay put on the theory that the player was aiming; in practice a refusal is
+  nearly always a mis-tap on the _source_, and keeping the wrong tube armed
+  meant tapping it again just to clear it. The outcome is still `illegal`, so
+  the warning haptic and sound still fire — the pour did not happen, and only
+  the selection moved.
 - `rewarded_extra_tube` is the highest-value ad slot. Never show an ad mid-level.
 
 ## State — as of the last session
@@ -241,6 +247,46 @@ Storage keys were bumped to `progress.v2` / `settings.v2` when modes landed. The
 old v1 records are ignored rather than migrated — acceptable pre-release,
 because nothing has shipped.
 
+### The level in progress
+
+`src/state/session.ts`, key `session.v1`. Doc §13 asks for a save that survives
+a force-quit; progress between levels always had one, and this is the half that
+was missing — quitting on move 40 of 51 used to come back at move zero.
+
+**No board is stored.** Level N is rebuilt from its seed, so the moves made
+since are the only thing that cannot be recomputed; replaying them onto a fresh
+board reproduces the position exactly. A snapshot would be bigger, would
+duplicate what the generator already knows, and could drift out of step with it.
+
+The record is `{ difficulty, level, moves, extraTaken }` and the moves are flat
+`[from, to, from, to, …]`. `count` is deliberately absent — `applyPour` decides
+it, so storing it only invites a saved number and a replayed number to
+disagree. A worst-case board (51 moves, the longest over levels 1–1000) is a
+hundred small integers, which is why it can be rewritten on every pour rather
+than batched. MMKV is synchronous, so the write lands before the frame does; an
+AppState listener would not run at all when the process is killed.
+
+Lifecycle: written after every pour, undo, redo, restart and spare vial;
+cleared the moment the level is solved, and when another level or another mode
+is opened. A record with no moves and no spare vial is deleted rather than
+stored, so an opened-and-abandoned level leaves nothing behind.
+
+Two guards, both tested. `loadSession` validates every field, because the
+record outlives the app version that wrote it. And `restoreSession` returns
+null — start the level clean — if any saved move is not legal from the position
+before it. That is the escape hatch for determinism being load-bearing: change
+the curve, a salt, the generator or the RNG and level N is a different puzzle,
+so the moves stop making sense. Losing your place is acceptable; a board the
+game cannot reason about is not.
+
+The spare vial is appended before the replay rather than at the move it was
+taken. It lands at the end, so no earlier move can name it and every tube a
+move does name keeps its index — the same reason `addTube` grows `initial`.
+
+`future` is not saved. A redo stack is a within-session affordance, and
+restoring one would mean carrying moves the player has already rejected across
+a relaunch.
+
 Undo and redo are both in. `history` and `future` in `gameStore`; a fresh pour
 empties `future`, because that is a new branch and the undone moves are no
 longer reachable. Redo returns the same `poured` outcome a tap does, so it runs
@@ -259,6 +305,24 @@ Perf rules being followed in the UI, worth keeping:
   forty-two. `useUiValue2` does the same for the pairs — the meniscus wobble
   and each bubble — taking the rack from twenty-four reactions a frame to
   twelve.
+- **Time-based animation is measured in frames, not milliseconds.** The app
+  runs at whatever the panel offers, 120Hz included —
+  `CADisableMinimumFrameDurationOnPhone` is in the generated `Info.plist` (Expo
+  sets it from SDK 54; without it iOS pins ProMotion to 60), and Android
+  follows the display. So a constant like "ignore a gap over 50ms" means three
+  frames on one phone and six on another, which is backwards: the faster panel
+  is where a jump shows most.
+
+  `advanceDrift` in `src/render/backdrop.ts` learns the frame interval from the
+  frames themselves and clamps a stall to three of them. Nothing is told the
+  refresh rate and nothing needs re-telling when it changes — Android drops to
+  60 under thermal load and iOS varies ProMotion between 10 and 120 on its own,
+  so a rate read once at mount is wrong for most of a session. A stall is kept
+  out of the estimate; letting one in would raise the ceiling meant to catch
+  the next. Drift speed is unaffected by any of it — the clock advances by real
+  elapsed time, so it covers the same ground per second at every rate, and a
+  test pins that across 30, 60 and 120.
+
 - **A canvas redraws every node on it when any one value changes.** This is the
   rule most of the cost on this app traced back to, and it has two
   consequences worth keeping in mind.
@@ -459,6 +523,80 @@ key moved to `settings.v3`.
 The music icon's behaviour is spec §7 and is deliberately odd: with master
 sound off it is dimmed and opens a modal offering to turn sound back on; with
 sound on it cycles the music track and toasts the name. Keep that exact logic.
+
+## Changing mode
+
+Both places that offer the choice — the Stages tabs and Settings' segmented
+control — go through `confirmDifficultyChange` in `src/ui/confirmDifficulty.ts`,
+so the two cannot drift apart.
+
+It confirms rather than switches. A tab that looks like a filter is not one:
+each mode keeps its own unlocks and its own place, so switching moves the
+player to a different level, and it drops whatever was in progress on the
+current board. The modal names the level the other mode picks up on, and says
+so explicitly when the current level is part-solved — the spare vial counts as
+progress there too, since taking it is a one-per-level decision and switching
+away quietly hands out a fresh one.
+
+`settingsStore` owns the mode. `gameStore` follows it through a subscription,
+which is what reloads the board and clears the session, so the confirmation has
+to gate the settings call and nothing else.
+
+## Haptics
+
+`src/ui/feedback.ts` holds all three: `feedbackFor` for a board tap outcome,
+`feedbackTap` for chrome, `feedbackWarn` for a control that was pressed and
+could not do its job. All three read `settings.haptics` at call time rather
+than subscribing — a toggle must not re-render the board.
+
+**A vibration means something happened.** A tap that changes nothing must not
+have one, and that rule is held structurally rather than by remembering:
+
+- The tick lives in the shared button components — `GlossButton`,
+  `ControlButton`, `ChromeIconButton`, `NavBar`, `SettingRow`, `Switch`,
+  `Segmented`, Home's chips and Continue card, Stages' tiles and tabs — through
+  `useTapHandler`. Added per screen instead, it was on four buttons and missing
+  from the rest.
+- A disabled `Pressable` never fires `onPress`, so dead controls are silent for
+  free. That is why the dead ones are now genuinely disabled rather than merely
+  greyed: a locked stage tile, Undo at zero moves, the page arrow past the
+  frontier, and the tab or segment you are already on. Each of those used to
+  take a press and do nothing.
+- The board's `ignored` outcome — empty glass, nothing held — stays silent.
+  `selected` and `deselected` both tick, because putting a vial back down is as
+  deliberate as picking it up.
+- A refusal answers differently from a success. Hint with no pour left and a
+  second spare vial both warn, so they do not feel like the thing they were
+  asking for.
+
+The modal's scrim is deliberately not wrapped. Tapping outside a dialog to
+dismiss it is the one press in the app that should feel like nothing.
+
+Sound is not wired, and the Settings rows for it show a **Soon** badge rather
+than a switch. A control that visibly moves and changes nothing reads as a
+broken game, not a missing feature. `Rate us` and `Restore purchases` are
+marked the same way and are deliberately not tappable — neither has anything
+behind it until there is a store listing and a purchase SDK.
+
+An audio layer was built and removed. `expo-audio` works fine and the design
+was sound — an imperative player pool, no hooks, settings read at call time,
+pour pitch driven by destination fill per doc §7. What sank it was the audio
+itself: synthesised effects, generated rather than sourced to keep the
+no-third-party-asset rule, and they were not good enough to put in front of
+anyone. Sine waves and filtered noise do not sound like liquid, and no amount
+of envelope tuning changes that.
+
+The lesson to carry: **realistic audio has to be recorded, not synthesised.**
+The route when it is picked up again is a library take — Sonniss's GDC bundle
+is royalty-free with no attribution — or a phone recording of an actual glass,
+which for this game is both easy and originally owned. `script/prepare-sounds.py`
+survives for that: it cuts long library recordings down to one-shots, handling
+onset detection, resampling, levels and edge fades. `feedback.ts` is where
+playback hooks back in, beside the matching haptic.
+
+The store still carries `sound`, `music`, `musicTrack` and `tapSound`. They are
+kept rather than removed because dropping them means a storage migration for a
+feature that is coming back.
 
 ## Look
 

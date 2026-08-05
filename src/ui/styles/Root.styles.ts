@@ -1,9 +1,10 @@
 import { StyleSheet } from 'react-native';
 
 import { apothecary, SPACE } from '@/theme/apothecary';
+import { s } from '@/theme/scale';
 
 /** How far above the bar the fade starts. */
-const NAV_FADE = 40;
+const NAV_FADE = s(40);
 
 export const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: apothecary.bg2 },

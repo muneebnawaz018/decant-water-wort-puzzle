@@ -10,6 +10,7 @@ import { overlay } from '@/state/overlayStore';
 import { useSettingsStore } from '@/state/settingsStore';
 import { apothecary } from '@/theme/apothecary';
 import { colours, gradients, ui } from '@/theme/colors';
+import { s } from '@/theme/scale';
 import { percentWidth } from '@/utils';
 import { CoinPill } from './chrome/CoinPill';
 import { GlossButton } from './chrome/GlossButton';
@@ -17,6 +18,7 @@ import { HeroRack } from './chrome/HeroRack';
 import { type NavDestination } from './chrome/NavBar';
 import { Panel } from './chrome/Panel';
 import { useScreenPadding } from './hooks/useScreenPadding';
+import { useTapHandler } from './hooks/useTapHandler';
 import { Icon } from './Icon';
 import { PAGE_SIZE } from './StagesScreen';
 import { styles } from './styles/HomeScreen.styles';
@@ -51,11 +53,12 @@ export const HomeScreen = memo(function HomeScreen({
 
   const dailyReady = lastClaim !== today(new Date());
 
+  const play = useTapHandler(onPlay);
   const openDaily = useCallback(() => onNavigate('daily'), [onNavigate]);
   const openStages = useCallback(() => onNavigate('stages'), [onNavigate]);
   // Spec §7, kept exactly: with master sound off the icon is dead and offers to
   // turn it back on; with sound on it cycles the music track.
-  const onMusicPress = useCallback(() => {
+  const musicPress = useCallback(() => {
     const settings = useSettingsStore.getState();
     if (!settings.sound) {
       overlay.modal({
@@ -68,6 +71,7 @@ export const HomeScreen = memo(function HomeScreen({
     }
     overlay.toast(`Now playing · ${settings.cycleMusic()}`);
   }, []);
+  const onMusicPress = useTapHandler(musicPress);
 
   return (
     <View style={[styles.root, padding.frame]}>
@@ -81,7 +85,7 @@ export const HomeScreen = memo(function HomeScreen({
         >
           <Icon
             name={sound && music ? 'sound' : 'mute'}
-            size={20}
+            size={s(20)}
             color={apothecary.goldLight}
           />
         </Pressable>
@@ -97,7 +101,7 @@ export const HomeScreen = memo(function HomeScreen({
 
         <View style={styles.stack}>
           <Animated.View entering={FadeInDown.duration(520).delay(STAGGER[1])}>
-            <Pressable onPress={onPlay} accessibilityRole="button">
+            <Pressable onPress={play} accessibilityRole="button">
               <Panel contentStyle={styles.continueCard} radius={20}>
                 <View style={styles.badge}>
                   <LinearGradient
@@ -126,7 +130,7 @@ export const HomeScreen = memo(function HomeScreen({
                 </View>
 
                 <View style={styles.goChip}>
-                  <Icon name="play" size={12} color={ui.accentBright} filled />
+                  <Icon name="play" size={s(12)} color={ui.accentBright} filled />
                 </View>
               </Panel>
             </Pressable>
@@ -178,11 +182,13 @@ const RewardChip = memo(function RewardChip({
   detail: string;
   onPress: () => void;
 }) {
+  const handlePress = useTapHandler(onPress);
+
   return (
-    <Pressable style={styles.chipPress} onPress={onPress} accessibilityRole="button">
+    <Pressable style={styles.chipPress} onPress={handlePress} accessibilityRole="button">
       <Panel contentStyle={styles.chip} radius={16}>
         <LinearGradient colors={tint} style={styles.chipIcon}>
-          <Icon name={icon} size={18} color={colours.white} filled={icon === 'play'} />
+          <Icon name={icon} size={s(18)} color={colours.white} filled={icon === 'play'} />
         </LinearGradient>
         <View style={styles.chipText}>
           <Text style={styles.chipTitle} numberOfLines={1}>

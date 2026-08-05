@@ -3,6 +3,7 @@ import { StyleSheet } from 'react-native';
 import { apothecary, SPACE } from '@/theme/apothecary';
 import { ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
+import { s } from '@/theme/scale';
 import { NAV_BAR_HEIGHT } from '../chrome/styles/NavBar.styles';
 
 export const styles = StyleSheet.create({
@@ -11,16 +12,16 @@ export const styles = StyleSheet.create({
   // The 8/10 that used to be added to the safe-area insets inline. Kept on the
   // bar itself so the screen frame is the same shape as every other screen's.
   topbar: {
-    marginTop: 8,
+    marginTop: s(8),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingBottom: 12,
+    paddingBottom: s(12),
   },
   iconButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+    width: s(42),
+    height: s(42),
+    borderRadius: s(14),
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -35,74 +36,74 @@ export const styles = StyleSheet.create({
   // `stack`'s auto margin, so all the slack falls between the two groups
   // instead of padding the screen top.
   body: { flex: 1, gap: SPACE.block },
-  heroSlot: { alignSelf: 'stretch', marginTop: 28 },
-  stack: { marginTop: 'auto', marginBottom: 'auto', gap: 28 },
+  heroSlot: { alignSelf: 'stretch', marginTop: s(28) },
+  stack: { marginTop: 'auto', marginBottom: 'auto', gap: s(28) },
 
   continueCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    padding: 14,
+    gap: s(14),
+    padding: s(14),
   },
   badge: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
+    width: s(46),
+    height: s(46),
+    borderRadius: s(14),
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  badgeText: { fontFamily: POPPINS.bold, fontSize: 18, color: ui.onGold },
+  badgeText: { fontFamily: POPPINS.bold, fontSize: s(18), color: ui.onGold },
   continueInfo: { flex: 1, minWidth: 0 },
   eyebrow: {
     fontFamily: POPPINS.semibold,
-    fontSize: 10,
-    letterSpacing: 0.8,
+    fontSize: s(10),
+    letterSpacing: s(0.8),
     textTransform: 'uppercase',
     color: apothecary.inkMuted,
   },
   continueLevel: {
     fontFamily: POPPINS.semibold,
-    fontSize: 16,
+    fontSize: s(16),
     color: apothecary.ink,
-    marginTop: 2,
-    marginBottom: 8,
+    marginTop: s(2),
+    marginBottom: s(8),
   },
   bar: {
-    height: 6,
-    borderRadius: 4,
+    height: s(6),
+    borderRadius: s(4),
     overflow: 'hidden',
     backgroundColor: ui.wellDeep,
   },
-  barFill: { height: '100%', borderRadius: 4 },
+  barFill: { height: '100%', borderRadius: s(4) },
   goChip: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: s(34),
+    height: s(34),
+    borderRadius: s(17),
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: ui.accentWash,
   },
 
-  chips: { flexDirection: 'row', gap: 12 },
+  chips: { flexDirection: 'row', gap: s(12) },
   chipPress: { flex: 1 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 11 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: s(10), padding: s(11) },
   chipIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 11,
+    width: s(36),
+    height: s(36),
+    borderRadius: s(11),
     alignItems: 'center',
     justifyContent: 'center',
   },
   chipText: { flex: 1, minWidth: 0 },
   chipTitle: {
     fontFamily: POPPINS.semibold,
-    fontSize: 12.5,
+    fontSize: s(12.5),
     color: apothecary.ink,
   },
   chipDetail: {
     fontFamily: POPPINS.regular,
-    fontSize: 10.5,
+    fontSize: s(10.5),
     color: apothecary.inkMuted,
   },
 });

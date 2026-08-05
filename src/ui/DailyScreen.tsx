@@ -4,11 +4,11 @@ import { Text, View } from 'react-native';
 import { DAILY_REWARDS, isNextDay, today, useEconomyStore } from '@/state/economyStore';
 import { overlay } from '@/state/overlayStore';
 import { colours } from '@/theme/colors';
+import { s } from '@/theme/scale';
 import { GlossButton } from './chrome/GlossButton';
 import { Panel } from './chrome/Panel';
 import { ScrollPage } from './chrome/ScrollPage';
 import { SettingRow } from './chrome/SettingRow';
-import { feedbackTap } from './feedback';
 import { Icon } from './Icon';
 import { styles } from './styles/DailyScreen.styles';
 
@@ -41,7 +41,6 @@ export const DailyScreen = memo(function DailyScreen({
       : 0;
 
   const claim = useCallback(() => {
-    feedbackTap();
     const paid = useEconomyStore.getState().claimDaily(date);
     if (paid > 0) overlay.toast(`+${paid} coins claimed`);
   }, [date]);
@@ -49,7 +48,7 @@ export const DailyScreen = memo(function DailyScreen({
   return (
     <ScrollPage title="Daily rewards" onBack={onBack}>
       <Panel contentStyle={styles.streak}>
-        <Icon name="flame" size={24} color={colours.mango} filled />
+        <Icon name="flame" size={s(24)} color={colours.mango} filled />
         <View style={styles.streakText}>
           <Text style={styles.streakTitle}>
             {streak === 1 ? '1-day streak' : `${streak}-day streak`}

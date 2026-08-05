@@ -33,7 +33,7 @@ describe('selection', () => {
     expect(store().selected).toBeNull();
   });
 
-  it('keeps the selection after an illegal target, so aiming again is cheap', () => {
+  it('arms the tube just tapped when the pour is refused', () => {
     const { board } = store();
     const from = firstNonEmpty();
     const blocked = board.tubes.findIndex(
@@ -49,7 +49,9 @@ describe('selection', () => {
       kind: 'illegal',
       tube: blocked,
     });
-    expect(store().selected).toBe(from);
+    // A refused pour is usually a mis-tap on the source. Carrying the old
+    // selection meant tapping the wrong tube a second time just to clear it.
+    expect(store().selected).toBe(blocked);
   });
 });
 

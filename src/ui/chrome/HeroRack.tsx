@@ -4,6 +4,7 @@ import { Text, View } from 'react-native';
 
 import { AmbientVials } from '@/render/AmbientVials';
 import { apothecary } from '@/theme/apothecary';
+import { s } from '@/theme/scale';
 import { Wordmark } from './Wordmark';
 import { RACK_HEIGHT, SHELF_HEIGHT, styles, VIAL_WIDTH } from './styles/HeroRack.styles';
 
@@ -35,7 +36,7 @@ export const HeroRack = memo(function HeroRack() {
       </View>
 
       <View style={styles.title}>
-        <Wordmark size={38} />
+        <Wordmark size={s(38)} />
         <Text style={styles.tagline}>an apothecary of colour</Text>
       </View>
     </View>

@@ -4,7 +4,9 @@ import { Pressable, Text, View } from 'react-native';
 
 import { apothecary } from '@/theme/apothecary';
 import { gradients } from '@/theme/colors';
+import { s } from '@/theme/scale';
 import { Icon, type IconName } from '../Icon';
+import { useTapHandler } from '../hooks/useTapHandler';
 import { styles } from './styles/NavBar.styles';
 
 export type NavDestination = 'daily' | 'shop' | 'stages' | 'stats' | 'settings';
@@ -64,12 +66,16 @@ const NavButton = memo(function NavButton({
   onNavigate: (destination: NavDestination) => void;
   active: boolean;
 }) {
-  const onPress = useCallback(() => onNavigate(id), [onNavigate, id]);
+  const navigate = useCallback(() => onNavigate(id), [onNavigate, id]);
+  const onPress = useTapHandler(navigate);
 
   return (
     <Pressable
       style={styles.button}
       onPress={onPress}
+      // The tab you are already on has nowhere to send you. Left pressable it
+      // answered every tap with a buzz and changed nothing.
+      disabled={active}
       accessibilityRole="tab"
       accessibilityState={{ selected: active }}
       accessibilityLabel={label}
@@ -77,7 +83,7 @@ const NavButton = memo(function NavButton({
       <View style={[styles.iconSlot, active && styles.iconSlotActive]}>
         <Icon
           name={icon}
-          size={24}
+          size={s(24)}
           color={active ? apothecary.gold : apothecary.goldLight}
         />
       </View>

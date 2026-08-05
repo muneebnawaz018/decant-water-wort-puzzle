@@ -18,6 +18,7 @@ import { colours } from '@/theme/colors';
 // native splash image, and the point of that image is that React takes over
 // from it without anything moving. It rises instead.
 import { VIAL_RISE } from '@/theme/splash';
+import { s } from '@/theme/scale';
 import { Wordmark } from './chrome/Wordmark';
 import { styles } from './styles/SplashScreen.styles';
 
@@ -143,7 +144,7 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
 
       <View style={styles.titleBlock} pointerEvents="none">
         <Animated.View style={titleStyle}>
-          <Wordmark size={46} />
+          <Wordmark size={s(46)} />
         </Animated.View>
 
         <Animated.Text style={[styles.tagline, taglineStyle]}>

@@ -3,6 +3,8 @@ import { memo, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { apothecary } from '@/theme/apothecary';
+import { s } from '@/theme/scale';
+import { useTapHandler } from '../hooks/useTapHandler';
 import { Icon, type IconName } from '../Icon';
 import { styles } from './styles/ScreenHeader.styles';
 
@@ -38,15 +40,26 @@ export const ChromeIconButton = memo(function ChromeIconButton({
   icon: IconName;
   onPress: () => void;
   label: string;
+  /** Nothing left in this direction. Greys the button and stops the press —
+   * a control that looks spent should not answer a tap, least of all with a
+   * buzz that says something happened. */
   dimmed?: boolean;
 }) {
+  const handlePress = useTapHandler(onPress);
+
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>
+    <Pressable
+      onPress={handlePress}
+      disabled={dimmed}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: dimmed }}
+    >
       <LinearGradient
         colors={[apothecary.surfaceTop, apothecary.surface]}
         style={[styles.button, dimmed && styles.dimmed]}
       >
-        <Icon name={icon} size={20} color={apothecary.goldLight} />
+        <Icon name={icon} size={s(20)} color={apothecary.goldLight} />
       </LinearGradient>
     </Pressable>
   );

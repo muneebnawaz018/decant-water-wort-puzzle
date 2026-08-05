@@ -2,12 +2,13 @@ import { StyleSheet } from 'react-native';
 
 import { apothecary } from '@/theme/apothecary';
 import { ui } from '@/theme/colors';
+import { s } from '@/theme/scale';
 export const styles = StyleSheet.create({
   shadow: {
     shadowColor: ui.shadow,
     shadowOpacity: 0.32,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: s(20),
+    shadowOffset: { width: 0, height: s(8) },
     elevation: 8,
   },
   fill: {

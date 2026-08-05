@@ -2,12 +2,13 @@ import { StyleSheet } from 'react-native';
 
 import { apothecary } from '@/theme/apothecary';
 import { POPPINS } from '@/theme/fonts';
+import { s } from '@/theme/scale';
 export const styles = StyleSheet.create({
   version: {
     fontFamily: POPPINS.regular,
-    fontSize: 11,
+    fontSize: s(11),
     textAlign: 'center',
     color: apothecary.inkMuted,
-    marginTop: 12,
+    marginTop: s(12),
   },
 });

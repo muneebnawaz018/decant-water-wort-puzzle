@@ -8,6 +8,8 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { apothecary } from '@/theme/apothecary';
+import { s } from '@/theme/scale';
+import { useTapHandler } from '../hooks/useTapHandler';
 import { Icon, type IconName } from '../Icon';
 import { styles } from './styles/ControlButton.styles';
 
@@ -30,6 +32,7 @@ export const ControlButton = memo(function ControlButton({
   disabled?: boolean;
 }) {
   const press = useSharedValue(0);
+  const handlePress = useTapHandler(onPress);
 
   const onPressIn = useCallback(() => {
     press.value = withTiming(1, { duration: 90 });
@@ -44,7 +47,7 @@ export const ControlButton = memo(function ControlButton({
 
   return (
     <Pressable
-      onPress={onPress}
+      onPress={handlePress}
       onPressIn={onPressIn}
       onPressOut={onPressOut}
       disabled={disabled}
@@ -59,7 +62,7 @@ export const ControlButton = memo(function ControlButton({
             style={styles.button}
           >
             <View style={styles.gloss} pointerEvents="none" />
-            <Icon name={icon} size={23} color={apothecary.goldLight} />
+            <Icon name={icon} size={s(23)} color={apothecary.goldLight} />
           </LinearGradient>
         </Animated.View>
         <Text style={styles.label}>{label}</Text>

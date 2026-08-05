@@ -3,13 +3,14 @@ import { StyleSheet } from 'react-native';
 import { apothecary } from '@/theme/apothecary';
 import { ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
+import { s } from '@/theme/scale';
 export const styles = StyleSheet.create({
-  slot: { alignItems: 'center', gap: 5, width: 64 },
+  slot: { alignItems: 'center', gap: s(5), width: s(64) },
   disabled: { opacity: 0.4 },
   button: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: s(50),
+    height: s(50),
+    borderRadius: s(25),
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -17,8 +18,8 @@ export const styles = StyleSheet.create({
     overflow: 'hidden',
     shadowColor: ui.shadow,
     shadowOpacity: 0.35,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: s(8),
+    shadowOffset: { width: 0, height: s(4) },
     elevation: 5,
   },
   gloss: {
@@ -31,7 +32,7 @@ export const styles = StyleSheet.create({
   },
   label: {
     fontFamily: POPPINS.semibold,
-    fontSize: 11,
+    fontSize: s(11),
     color: apothecary.inkMuted,
   },
 });

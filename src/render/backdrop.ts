@@ -148,3 +148,74 @@ export function moteOpacity(t: number): number {
   // opacity without complaining and the result is undefined, so clamp.
   return value < 0 ? 0 : value > 1 ? 1 : value;
 }
+
+/**
+ * How many frames' worth of drift one frame may be asked to carry. Past this
+ * the clock is pinned rather than advanced: a long stall would otherwise be
+ * paid back as one large jump on the frame that recovers.
+ *
+ * Counted in frames, not milliseconds, because a fixed ceiling means different
+ * things on different panels. The 50ms this replaced was three frames on a
+ * 60Hz phone and six on a 120Hz one — twice the tolerance for a visible jump
+ * on the display where a jump is more visible.
+ */
+const MAX_STALL_FRAMES = 3;
+
+/** Where the frame-interval estimate starts, before any frame has landed. */
+export const ASSUMED_FRAME_MS = 1000 / 60;
+
+/**
+ * Weight of each new sample in the frame-interval estimate. Low: the interval
+ * only changes when the panel changes rate, so the estimate ignores single
+ * slow frames and tracks the underlying cadence.
+ */
+const FRAME_EMA = 0.1;
+
+/**
+ * A frame this much longer than the running estimate is a stall, not a sample,
+ * and is kept out of the average. A stall must never teach the estimate that
+ * slow is normal, because that would raise the ceiling meant to catch it.
+ *
+ * Generous on purpose — it has to let a real rate change through. Coming from
+ * the 60Hz seed, a 120Hz panel's 8.3ms frames are well under the bar and the
+ * estimate walks down to them; a 30Hz one walks up. A 200ms hitch does not.
+ */
+const STALL_RATIO = 3;
+
+/** The clock and its frame-interval estimate, after one frame. */
+export interface DriftState {
+  clock: number;
+  frameMs: number;
+}
+
+/**
+ * Advance a 0..1 drift clock by one frame, in units of frames rather than
+ * milliseconds.
+ *
+ * The refresh rate is learned from the frames themselves. Nothing has to be
+ * told what the panel runs at, and nothing has to be re-told when it changes —
+ * Android drops to 60 under thermal load and iOS varies ProMotion between 10
+ * and 120 on its own, so a rate read once at mount is wrong for most of a
+ * session.
+ *
+ * Speed is unaffected by any of this: the clock advances by real elapsed time,
+ * so the drift covers the same ground per second at every rate. The estimate
+ * only decides how much catch-up counts as a stall.
+ */
+export function advanceDrift(
+  state: DriftState,
+  elapsed: number,
+  cycleMs: number
+): DriftState {
+  'worklet';
+  const estimate = state.frameMs;
+  const frameMs =
+    elapsed > 0 && elapsed < estimate * STALL_RATIO
+      ? estimate + (elapsed - estimate) * FRAME_EMA
+      : estimate;
+
+  const ceiling = estimate * MAX_STALL_FRAMES;
+  const step = elapsed > ceiling ? ceiling : elapsed < 0 ? 0 : elapsed;
+
+  return { clock: (state.clock + step / cycleMs) % 1, frameMs };
+}
