@@ -17,9 +17,44 @@ export const styles = StyleSheet.create({
     columns: 2,
     phoneWidth: '48%',
   }),
-  tile: { padding: SPACE.tile },
-  tileValue: text.figure,
-  tileLabel: { ...text.caption, fontSize: s(11), marginTop: s(6) },
+  /**
+   * Centred, like every other tile in the app.
+   *
+   * These were the one grid reading left-aligned — a figure hard against the
+   * left inset with its caption under it, beside a Daily track and a stage grid
+   * that both centre. Two tiles of one size in one row, aligned differently,
+   * read as two components.
+   *
+   * `textAlign` as well as `alignItems`, because a label that wraps — "Three-
+   * star levels" already does at the smallest phone width — centres its box but
+   * not its second line.
+   */
+  tile: { padding: SPACE.tile, alignItems: 'center' },
+  /**
+   * The gap under the figure is `lineHeight`, not the margin.
+   *
+   * Poppins' natural leading at 26 reserves about 13dp under the digits for
+   * descenders a row of numerals never has, so the 6dp margin was buying a gap
+   * that already measured close to twenty. Stating the line box at 30 takes
+   * that back, and the margin drops to 2 — the pair now reads as one block
+   * instead of a number and a separate caption.
+   */
+  tileValue: { ...text.figure, lineHeight: s(30), textAlign: 'center' },
+  /**
+   * 13, not the 11 it was.
+   *
+   * These labels name the figure above them and nothing else on the tile
+   * competes for the space, so there was no reason for them to sit two points
+   * under the app's caption size. The longest is "Bonuses earned", which
+   * measures about 95dp inside a 141dp tile at the narrowest phone width.
+   */
+  tileLabel: {
+    ...text.caption,
+    fontSize: s(13),
+    lineHeight: s(17),
+    marginTop: s(2),
+    textAlign: 'center',
+  },
 
   /** One card per difficulty. */
   // Cards inside the group sit a tile gap apart, the same 12 the grid above

@@ -153,7 +153,7 @@ export const StagesScreen = memo(function StagesScreen({
 
       <View style={styles.pager}>
         <ChromeIconButton
-          icon="back"
+          icon="prev"
           onPress={previous}
           label="Previous page"
           dimmed={page === 0}

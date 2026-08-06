@@ -81,7 +81,23 @@ const ICONS = {
     'M524-498.45V-648q0-17.67-11.79-29.34-11.79-11.66-29-11.66T454-677.34q-12 11.67-12 29.34v166q0 9 3 16.86 3 7.85 9 15.14l132 137q13.27 13 30.63 12.5Q634-301 647-313t13-30q0-18-13-31L524-498.45ZM480.14-55Q392-55 314.62-88.37q-77.37-33.36-135.11-91.06-57.73-57.7-91.12-135.03Q55-391.78 55-479.89q0-88.11 33.58-165.6 33.59-77.48 91.02-134.91 57.43-57.43 134.82-91.52Q391.81-906 480-906q88.19 0 165.58 34.08 77.39 34.09 134.82 91.52 57.43 57.43 91.52 134.82Q906-568.19 906-480q0 88.19-34.08 165.58-34.09 77.39-91.52 134.82-57.43 57.43-134.77 91.02Q568.28-55 480.14-55Z',
 } as const;
 
-export type IconName = keyof typeof ICONS;
+/**
+ * Glyphs that are another glyph mirrored, rather than a path of their own.
+ *
+ * The stage pager used to run `back` against `next` — a bare chevron opposite
+ * an arrow with a shaft, two glyphs for one axis of travel sitting 100dp apart
+ * on the same row. `next` is the one that stays: an arrow reads as "the next
+ * page of these" where a chevron reads as "out of here", which is the header
+ * back button's job and the reason `back` cannot double as the pager's left.
+ *
+ * Mirrored rather than pasted as a second path. Material's `arrow_back` is
+ * `arrow_forward` reflected, so transcribing it is a second copy of one shape
+ * that can drift from the first — and a reflection is exact where a
+ * transcription is only careful.
+ */
+const MIRRORED = { prev: 'next' } as const satisfies Record<string, keyof typeof ICONS>;
+
+export type IconName = keyof typeof ICONS | keyof typeof MIRRORED;
 
 /**
  * Parsed paths, shared across every instance and every mount.
@@ -96,7 +112,21 @@ const PATHS = new Map<IconName, ReturnType<typeof Skia.Path.MakeFromSVGString>>(
 function iconPath(name: IconName) {
   let path = PATHS.get(name);
   if (path === undefined) {
-    path = Skia.Path.MakeFromSVGString(ICONS[name]);
+    const mirrored = name in MIRRORED;
+    const source = mirrored ? MIRRORED[name as keyof typeof MIRRORED] : name;
+    path = Skia.Path.MakeFromSVGString(ICONS[source as keyof typeof ICONS]);
+    // Reflected about the grid's centre line: x' = 960 - x, y unchanged. The
+    // matrix is stated row-major rather than composed from `translate` and
+    // `scale` calls, whose pre- and post-multiply order is the easiest thing
+    // here to get backwards — and a path mirrored about x = 0 lands entirely
+    // off the canvas, which looks like a missing icon rather than a wrong one.
+    //
+    // Mutating in place is safe: this is a path parsed a line ago and not yet
+    // in `PATHS`, so nothing else holds it. What gets cached is the mirrored
+    // path, which is never transformed again.
+    if (path && mirrored) {
+      path.transform(Skia.Matrix([-1, 0, ICON_VIEWBOX, 0, 1, 0, 0, 0, 1]));
+    }
     PATHS.set(name, path);
   }
   return path;

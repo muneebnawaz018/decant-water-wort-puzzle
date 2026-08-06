@@ -48,18 +48,31 @@ export const styles = StyleSheet.create({
     borderRadius: s(14),
     padding: HAIRLINE,
     backgroundColor: ui.edge,
+    overflow: 'hidden',
     shadowColor: ui.shadow,
     shadowOpacity: 0.35,
     shadowRadius: s(14),
     shadowOffset: { width: 0, height: s(5) },
     elevation: 5,
   },
-  /** The gradient face, inset by the stroke it sits inside. */
+  /**
+   * The gradient face, inset by the stroke it sits inside.
+   *
+   * `overflow: 'hidden'` is what keeps the sheen and the tap burst inside the
+   * corners, and its absence is a bug that only shows on Android: a radius
+   * masks this view's own background on both platforms, but only iOS extends
+   * that mask to absolutely positioned children. The sheen is a square-cornered
+   * white wash across the top half, so unclipped it hangs over both top corners
+   * as a pale square — brightest at the top edge and gone by the middle, which
+   * is exactly what it looked like. `ControlButton` sets this on both of its
+   * views; this one was the copy that missed it.
+   */
   buttonFace: {
     flex: 1,
     borderRadius: s(14) - HAIRLINE,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   // Half the face, not a gradient stop — Android and iOS disagreed about a
   // three-stop `locations` list and washed the whole surface. See

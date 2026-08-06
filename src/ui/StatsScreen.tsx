@@ -97,8 +97,16 @@ export const StatsScreen = memo(function StatsScreen({ onBack }: { onBack: () =>
       <View style={styles.grid}>
         <StatTile value={String(streak)} label="Day streak" />
         <StatTile value={String(coins)} label="Coins" />
-        <StatTile value={String(totals.perfect)} label="Three-star levels" />
-        <StatTile value={String(totals.blocks)} label="Milestones cleared" />
+        <StatTile value={String(totals.perfect)} label="3 star levels" />
+        {/*
+          "Bonuses earned", not "Milestones cleared". The number is
+          `paidBlocks.length` — every ten levels pays a coin bonus on the stars
+          earned in that block — and "milestone" is a word for the thing that
+          pays rather than for the payment, so it left the tile naming an
+          achievement the player has no other name for. What they saw was coins
+          arriving every ten levels, so that is what it says.
+        */}
+        <StatTile value={String(totals.blocks)} label="Bonuses earned" />
       </View>
 
       <Text style={section.title}>By difficulty</Text>
@@ -116,7 +124,18 @@ export const StatsScreen = memo(function StatsScreen({ onBack }: { onBack: () =>
         <StatRow label="Levels solved" value={String(totals.solved)} />
         <StatRow label="Stars earned" value={`${totals.stars} / ${totals.solved * 3}`} />
         <StatRow label="Stars per level" value={perLevel.toFixed(1)} />
-        <StatRow label="Pours in best runs" value={String(totals.pours)} divider={false} />
+        {/*
+          "Pours in best runs" was read as a lifetime total and it is not one:
+          it sums `progress.best`, which holds one number per level — the
+          fewest pours that level has ever been finished in. Beat a level forty
+          times and only the best of them is in here.
+
+          A real lifetime figure would have to be counted and stored, which is
+          the one thing this screen refuses to do: every number on it is
+          derived from the progress record, and a counter kept alongside is a
+          second thing that can fall out of step with it.
+        */}
+        <StatRow label="Pours at your best" value={String(totals.pours)} divider={false} />
       </Panel>
     </ScrollPage>
   );
@@ -163,7 +182,7 @@ const ModeCard = memo(function ModeCard({
 
       <View style={styles.modeStats}>
         <ModeStat value={totals.stars} label="Stars" align="first" />
-        <ModeStat value={totals.perfect} label="Three-star" />
+        <ModeStat value={totals.perfect} label="3 star" />
         <ModeStat value={totals.pours} label="Pours" align="last" />
       </View>
     </Panel>
