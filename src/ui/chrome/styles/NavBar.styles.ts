@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-import { apothecary, GRADIENT_BORDER_FILL } from '@/theme/apothecary';
+import { apothecary, HAIRLINE } from '@/theme/apothecary';
 import { alpha, ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
 import { s } from '@/theme/scale';
@@ -18,8 +18,6 @@ export const NAV_BAR_HEIGHT = s(80);
 
 export const styles = StyleSheet.create({
   bar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     // The strip behind the bar stays full-width and opaque — that part is load
     // bearing, content scrolls under it. The bar itself is clamped: its buttons
     // are `flex: 1`, so at 950dp the six destinations sit a hand's width apart
@@ -28,20 +26,27 @@ export const styles = StyleSheet.create({
     width: '100%',
     maxWidth: s(420),
     borderRadius: s(22),
-    paddingVertical: s(13),
-    paddingHorizontal: s(8),
-    borderWidth: 1,
-    borderColor: apothecary.line,
-    // Android insets the background by the border width, leaving a ring of
-    // the screen showing between the stroke and the gradient. See
-    // `GRADIENT_BORDER_FILL`.
-    backgroundColor: GRADIENT_BORDER_FILL,
+    // Stroke as a padded background — see `HAIRLINE`. The bar's own padding
+    // moved to `barFace` with it; a view cannot be both the stroke and the
+    // padding box.
+    padding: HAIRLINE,
+    backgroundColor: ui.edge,
     overflow: 'hidden',
     shadowColor: ui.shadow,
     shadowOpacity: 0.4,
     shadowRadius: s(24),
     shadowOffset: { width: 0, height: s(10) },
     elevation: 10,
+  },
+  // No `flex: 1` — `bar` is only the stroke around this and has no height of
+  // its own, so a flexed face would collapse. The padding here is the bar.
+  barFace: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderRadius: s(22) - HAIRLINE,
+    paddingVertical: s(13) - HAIRLINE,
+    paddingHorizontal: s(8) - HAIRLINE,
+    overflow: 'hidden',
   },
   gloss: {
     position: 'absolute',

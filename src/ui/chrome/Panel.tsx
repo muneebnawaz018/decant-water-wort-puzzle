@@ -2,7 +2,7 @@ import { memo, type ReactNode } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { apothecary, SPACE } from '@/theme/apothecary';
+import { apothecary, HAIRLINE, SPACE } from '@/theme/apothecary';
 import { styles } from './styles/Panel.styles';
 
 interface PanelProps {
@@ -38,7 +38,7 @@ export const Panel = memo(function Panel({
     <View style={[styles.shadow, { borderRadius: radius }, style]}>
       <LinearGradient
         colors={[apothecary.surfaceTop, apothecary.surface]}
-        style={[styles.fill, { borderRadius: radius }, contentStyle]}
+        style={[styles.fill, { borderRadius: radius - HAIRLINE }, contentStyle]}
       >
         <View
           style={[styles.topHighlight, { borderRadius: radius }]}

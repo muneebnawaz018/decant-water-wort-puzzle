@@ -1,25 +1,21 @@
 import { StyleSheet } from 'react-native';
 
-import { apothecary, GRADIENT_BORDER_FILL } from '@/theme/apothecary';
+import { HAIRLINE } from '@/theme/apothecary';
 import { ui } from '@/theme/colors';
 import { s } from '@/theme/scale';
 export const styles = StyleSheet.create({
+  // The stroke lives here, as a padded background rather than a `borderWidth`
+  // on the gradient below — see `HAIRLINE`.
   shadow: {
+    backgroundColor: ui.edge,
+    padding: HAIRLINE,
     shadowColor: ui.shadow,
     shadowOpacity: 0.32,
     shadowRadius: s(20),
     shadowOffset: { width: 0, height: s(8) },
     elevation: 8,
   },
-  fill: {
-    borderWidth: 1,
-    borderColor: apothecary.line,
-    // Android insets the background by the border width, leaving a ring of
-    // the screen showing between the stroke and the gradient. See
-    // `GRADIENT_BORDER_FILL`.
-    backgroundColor: GRADIENT_BORDER_FILL,
-    overflow: 'hidden',
-  },
+  fill: { overflow: 'hidden' },
   // Spec's `inset 0 1px 0 rgba(255,255,255,.1)`.
   topHighlight: {
     position: 'absolute',

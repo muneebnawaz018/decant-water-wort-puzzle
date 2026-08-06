@@ -26,7 +26,7 @@ describe('confirmDifficultyChange', () => {
     confirmDifficultyChange('fiendish');
 
     expect(mode()).toBe('classic');
-    expect(modal()?.title).toBe('Switch to Fiendish?');
+    expect(modal()?.title).toBe('Switch to Hard?');
     expect(modal()?.cancelLabel).toBe('Stay');
   });
 

@@ -7,9 +7,19 @@ export const DEFAULT_DIFFICULTY: Difficulty = 'classic';
 
 export interface DifficultyInfo {
   id: Difficulty;
+  /**
+   * What the player is shown. Plain Easy / Medium / Hard, per Settings §4.9.
+   *
+   * The ids stay `gentle` / `classic` / `fiendish` and cannot change — they key
+   * the saved progress and feed `DIFFICULTY_SALT`, so renaming one repoints
+   * every board in that mode. The flavour names were the display name too, and
+   * a tab row reading Gentle / Classic / Fiendish does not say which is harder;
+   * a player has to guess whether Classic sits above or below Gentle. There was
+   * also a second name for the same thing — Settings' segmented control already
+   * showed Easy / Medium / Hard — so the two rows named the same three modes
+   * differently on adjacent screens.
+   */
   title: string;
-  /** Settings §4.9 labels the same modes Easy / Medium / Hard. */
-  shortLabel: string;
   detail: string;
   /** Accent the Stages tabs retint to (spec §4.3). */
   accent: string;
@@ -18,22 +28,19 @@ export interface DifficultyInfo {
 export const DIFFICULTY_INFO: Record<Difficulty, DifficultyInfo> = {
   gentle: {
     id: 'gentle',
-    title: 'Gentle',
-    shortLabel: 'Easy',
+    title: 'Easy',
     detail: 'An extra spare tube and a lighter shuffle',
     accent: ui.accent,
   },
   classic: {
     id: 'classic',
-    title: 'Classic',
-    shortLabel: 'Medium',
+    title: 'Medium',
     detail: 'The curve the game is tuned around',
     accent: colours.mango,
   },
   fiendish: {
     id: 'fiendish',
-    title: 'Fiendish',
-    shortLabel: 'Hard',
+    title: 'Hard',
     detail: 'One more colour, one less place to put it',
     accent: colours.rose,
   },

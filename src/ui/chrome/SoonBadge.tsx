@@ -11,7 +11,11 @@ import { styles } from './styles/SoonBadge.styles';
  * who spends into it has been charged for nothing. Marking the gap is honest
  * and costs one component.
  */
-export const SoonBadge = memo(function SoonBadge({ label = 'Soon' }: { label?: string }) {
+export const SoonBadge = memo(function SoonBadge({
+  label = 'Coming soon',
+}: {
+  label?: string;
+}) {
   return (
     <View style={styles.badge}>
       <Text style={styles.text}>{label}</Text>

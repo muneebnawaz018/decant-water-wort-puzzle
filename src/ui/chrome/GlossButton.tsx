@@ -8,11 +8,17 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { apothecary } from '@/theme/apothecary';
-import { ui } from '@/theme/colors';
+import { gradients, ui } from '@/theme/colors';
+import { usePressBounce } from '../hooks/usePressBounce';
+import { useTapBurst } from '../hooks/useTapBurst';
 import { useTapHandler } from '../hooks/useTapHandler';
 import { styles } from './styles/GlossButton.styles';
 
 type Variant = 'primary' | 'neutral' | 'ghost';
+
+/** Where the lit face's middle stop sits — it holds the colour longer than half. */
+const PRIMARY_STOPS = [0, 0.55, 1] as const;
+const FLAT_STOPS = [0, 1] as const;
 
 /**
  * `regular` is the full face — Home's Play button and the board's controls.
@@ -27,8 +33,15 @@ interface GlossButtonProps {
   variant?: Variant;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
-  /** Rendered left of the label — an icon, usually. */
-  leading?: ReactNode;
+  /**
+   * Rendered *after* the label — an icon, usually.
+   *
+   * On the right on purpose, and app-wide. A leading icon pushes the label off
+   * the button's centre, so a row of buttons has its text at a different offset
+   * in each one depending on whether it carries a glyph. Trailing, the label
+   * stays where a label with no icon would be.
+   */
+  trailing?: ReactNode;
   /** Tighter padding. See `Size`. */
   size?: Size;
 }
@@ -47,24 +60,38 @@ export const GlossButton = memo(function GlossButton({
   variant = 'neutral',
   disabled = false,
   style,
-  leading,
+  trailing,
   size = 'regular',
 }: GlossButtonProps) {
   const press = useSharedValue(0);
   const handlePress = useTapHandler(onPress);
+  const bounce = usePressBounce();
+  const burst = useTapBurst(variant === 'primary' ? 'dark' : 'light');
 
   const onPressIn = useCallback(() => {
     press.value = withTiming(1, { duration: 90 });
-  }, [press]);
+    bounce.onPressIn();
+    // Fired on press *in*, not on the handler. A burst that waits for the tap
+    // to complete arrives after the finger has already lifted.
+    burst.fire();
+  }, [press, bounce, burst]);
   const onPressOut = useCallback(() => {
     press.value = withTiming(0, { duration: 120 });
-  }, [press]);
+    bounce.onPressOut();
+  }, [press, bounce]);
 
-  const animated = useAnimatedStyle(() => ({
-    transform: [{ translateY: press.value * 2 }],
+  // The button drops 2px; its icon also pulls in, which is what makes the
+  // press feel like it landed on something rather than merely moved it.
+  const iconScale = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 - press.value * 0.12 }],
   }));
 
   const primary = variant === 'primary';
+  const face = primary
+    ? disabled
+      ? ui.buttonFaceOff
+      : ui.buttonFace
+    : ([apothecary.surfaceTop, apothecary.surface] as const);
 
   if (variant === 'ghost') {
     return (
@@ -81,14 +108,15 @@ export const GlossButton = memo(function GlossButton({
             styles.ghost,
             size === 'dialog' && styles.dialogGhost,
             size === 'compact' && styles.compactGhost,
-            animated,
+            bounce.style,
             disabled && styles.disabled,
           ]}
         >
-          {leading}
+          {burst.node}
           <Text style={[styles.ghostLabel, size === 'compact' && styles.smallGhostLabel]}>
             {label}
           </Text>
+          <Animated.View style={iconScale}>{trailing}</Animated.View>
         </Animated.View>
       </Pressable>
     );
@@ -107,35 +135,83 @@ export const GlossButton = memo(function GlossButton({
       <Animated.View
         style={[
           primary ? styles.primaryShadow : styles.shadow,
-          animated,
-          disabled && styles.disabled,
+          bounce.style,
+          // The lit variant drops to the panel surface instead of fading. See
+          // `ui.buttonFaceOff`.
+          disabled && (primary ? styles.unlit : styles.disabled),
         ]}
       >
-        <LinearGradient
-          colors={primary ? ui.buttonFace : [apothecary.surfaceTop, apothecary.surface]}
-          locations={primary ? [0, 0.55, 1] : [0, 1]}
+        <View
           style={[
             styles.face,
-            primary ? styles.primaryFace : styles.neutralFace,
+            primary ? styles.primaryStroke : styles.neutralStroke,
             size === 'dialog' && styles.dialogFace,
             size === 'compact' && styles.compactFace,
           ]}
         >
-          {/* Spec's `inset 0 2px 0 rgba(255,255,255,.5)` top gloss. */}
-          <View style={[styles.gloss, { height: primary ? 2 : 1 }]} pointerEvents="none" />
-          <View style={styles.content}>
-            {leading}
-            <Text
-              style={[
-                primary ? styles.primaryLabel : styles.label,
-                size === 'dialog' && styles.dialogLabel,
-                size === 'compact' && styles.compactLabel,
-              ]}
-            >
-              {label}
-            </Text>
-          </View>
-        </LinearGradient>
+          <LinearGradient
+            colors={face}
+            /*
+              Derived from the ramp, never stated beside it.
+
+              These were two independent expressions — a three-stop list keyed
+              on `primary`, and a colour list keyed on `primary` *and*
+              `disabled`. A disabled primary takes the two-colour panel ramp, so
+              it got three locations for two colours and expo warned on every
+              render. Reading the length is the only form that cannot drift.
+            */
+            locations={face.length === 3 ? PRIMARY_STOPS : FLAT_STOPS}
+            style={[
+              styles.fill,
+              primary ? styles.primaryFill : styles.neutralFill,
+              size === 'dialog' && styles.dialogFill,
+              size === 'compact' && styles.compactFill,
+            ]}
+          >
+            {/* Spec's `inset 0 2px 0 rgba(255,255,255,.5)` top gloss. */}
+            <View
+              style={[styles.gloss, { height: primary ? 2 : 1 }]}
+              pointerEvents="none"
+            />
+            {/*
+              The shine. A second gradient over the face's own, ending in a
+              hard edge partway down — that terminator is what reads as
+              polished; a soft fade just looks lighter at the top.
+
+              The neutral variant takes the same sweep at a sixth of the
+              strength. Given the primary's 42% white a dark panel goes milky —
+              fog on the glass rather than a polished edge — but with none at
+              all it is the one flat surface among lit ones.
+
+              The hard edge comes from the layer's *height*, not from
+              `locations`. Android was washing the whole face instead of the
+              top half, which turned a gold button tan and left its dark label
+              looking grey — the two platforms disagreeing about a stop list is
+              not worth diagnosing when half a box is unambiguous.
+            */}
+            <LinearGradient
+              colors={primary && !disabled ? gradients.sheen : gradients.sheenSoft}
+              style={styles.sheen}
+              pointerEvents="none"
+            />
+            {burst.node}
+            <View style={styles.content}>
+              <Text
+                style={[
+                  primary ? styles.primaryLabel : styles.label,
+                  size === 'dialog' && styles.dialogLabel,
+                  size === 'compact' && styles.compactLabel,
+                ]}
+              >
+                {label}
+              </Text>
+              {/* The icon springs with the press, the label does not — a
+                  scaling word reads as a rendering glitch, a scaling glyph
+                  reads as a button. */}
+              <Animated.View style={iconScale}>{trailing}</Animated.View>
+            </View>
+          </LinearGradient>
+        </View>
       </Animated.View>
     </Pressable>
   );

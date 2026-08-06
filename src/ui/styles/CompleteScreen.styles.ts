@@ -1,11 +1,27 @@
 import { StyleSheet } from 'react-native';
 
 import { apothecary, SPACE } from '@/theme/apothecary';
+import { alpha, ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
 import { s } from '@/theme/scale';
-import { NAV_BAR_HEIGHT } from '../chrome/styles/NavBar.styles';
+
 export const styles = StyleSheet.create({
-  root: { flex: 1 },
+  /**
+   * A dimmed board with a card on it, not a screen of its own.
+   *
+   * The win used to be a full page: a title floating in space, two buttons at
+   * the bottom and a lot of ground between them. Every game in the genre does
+   * the same thing instead — darken the ground and put the result on a card
+   * over it — and the reason is that it reads as *this level finished* rather
+   * than as somewhere new you have been taken.
+   */
+  root: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+
+  // Fills the screen behind the card. `resizeMode="cover"` then decides how the
+  // animation's own square canvas sits in it.
+  lottie: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  fill: { flex: 1 },
 
   burst: {
     position: 'absolute',
@@ -16,37 +32,59 @@ export const styles = StyleSheet.create({
   },
   spark: { position: 'absolute', width: s(7), height: s(7), borderRadius: s(2) },
 
-  content: {
-    flex: 1,
+  // Clamped the same way the modal is: a card held at phone width on a tablet
+  // sits in the middle of a large screen with type that has grown around it.
+  cardSlot: { width: '100%', maxWidth: s(340), paddingHorizontal: SPACE.screen },
+  card: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: SPACE.screen,
-    // The nav bar floats over this screen now, and this screen does not
-    // scroll — so the clearance has to come out of the centred column itself
-    // or Replay and Next sit under the bar.
-    paddingBottom: NAV_BAR_HEIGHT,
+    paddingTop: s(22),
+    paddingBottom: s(20),
+    paddingHorizontal: s(20),
   },
+
+  /**
+   * Straddling the card's top edge rather than sitting inside it.
+   *
+   * This is the one flourish the layout gets, and it earns its place: the stars
+   * are the reward, so they break the frame instead of queuing inside it.
+   */
+  /**
+   * Inside the card, above the title.
+   *
+   * They were hung over the top edge first, podium style, the way the genre
+   * usually does it. The card clips to its own radius — that is what keeps the
+   * gloss inside the corners — so the row came back sawn in half, and moving it
+   * outside the `Panel` to dodge that made the stars float free of the card
+   * they belong to. In the flow they read as part of the result.
+   */
+  stars: { flexDirection: 'row', gap: s(10), marginBottom: s(10) },
+  starSlot: { width: s(54), height: s(54) },
+  // The middle star still sits a little higher and larger — a podium, kept now
+  // that the row is inline.
+  starMiddle: { transform: [{ translateY: -s(4) }, { scale: 1.1 }] },
+
   title: {
     fontFamily: POPPINS.bold,
-    fontSize: s(32),
+    fontSize: s(24),
     color: apothecary.gold,
     textAlign: 'center',
   },
-  stars: { flexDirection: 'row', gap: s(14), marginTop: s(16), marginBottom: s(6) },
-  starSlot: { width: s(46), height: s(46) },
   moves: {
-    fontFamily: POPPINS.semibold,
-    fontSize: s(14),
+    fontFamily: POPPINS.medium,
+    fontSize: s(13),
     color: apothecary.inkMuted,
+    marginTop: s(4),
   },
 
   reward: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: s(8),
-    paddingHorizontal: s(16),
-    paddingVertical: s(9),
-    marginTop: s(14),
+    paddingHorizontal: s(18),
+    paddingVertical: s(10),
+    marginTop: s(16),
+    borderRadius: s(14),
+    backgroundColor: alpha('gold', 0.14),
   },
   coin: {
     width: s(18),
@@ -56,16 +94,27 @@ export const styles = StyleSheet.create({
   },
   rewardText: {
     fontFamily: POPPINS.semibold,
-    fontSize: s(15),
+    fontSize: s(16),
     color: apothecary.goldLight,
   },
 
-  // Stretched across the content width and split evenly, so the two read as a
-  // pair. Sized to their labels they came out lopsided — "Level 2" is longer
-  // than "Replay", and the wider button looked like the only real one.
-  buttons: { flexDirection: 'row', gap: s(12), marginTop: s(30), alignSelf: 'stretch' },
-  button: { flex: 1 },
-  // Full width under the pair, so the three read as one stack rather than as
-  // two buttons and a stray third.
-  homeRow: { alignSelf: 'stretch', marginTop: s(12) },
+  /**
+   * One action, then two ways out.
+   *
+   * The old screen gave Replay and the next level equal weight, side by side in
+   * the same colour. They are not equal: the next level is what almost everyone
+   * wants, and replaying a board you have just solved is a minority choice. So
+   * the next level takes the full width as the only primary button, and Replay
+   * drops to a ghost beside Home.
+   */
+  next: { alignSelf: 'stretch', marginTop: s(22) },
+  secondary: { flexDirection: 'row', gap: s(10), alignSelf: 'stretch', marginTop: s(10) },
+  secondaryButton: { flex: 1 },
+
+  divider: {
+    height: 1,
+    alignSelf: 'stretch',
+    marginTop: s(18),
+    backgroundColor: ui.divider,
+  },
 });

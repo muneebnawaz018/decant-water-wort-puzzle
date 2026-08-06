@@ -19,7 +19,7 @@ const VERSION = 'Decant · v0.1.0';
 
 const DIFFICULTY_OPTIONS = DIFFICULTIES.map((id) => ({
   id: id as string,
-  label: DIFFICULTY_INFO[id].shortLabel,
+  label: DIFFICULTY_INFO[id].title,
 }));
 
 export const SettingsScreen = memo(function SettingsScreen({
@@ -44,6 +44,14 @@ export const SettingsScreen = memo(function SettingsScreen({
             onChange={setDifficulty}
           />
         </SettingRow>
+        {/*
+          Marked, for the same reason the shop's skins are: the renderer paints
+          from the palette and nothing reads an owned theme, so a picker here
+          would change the label and not the board.
+        */}
+        <SettingRow icon="palette" label="Theme">
+          <SoonBadge />
+        </SettingRow>
         <SettingRow icon="eye" label="Colourblind marks" divider={false}>
           <Toggle setting="colourblind" label="Colourblind marks" />
         </SettingRow>
@@ -65,8 +73,13 @@ export const SettingsScreen = memo(function SettingsScreen({
         <SettingRow icon="tap" label="Sound on tap">
           <SoonBadge />
         </SettingRow>
-        <SettingRow icon="vibrate" label="Vibration">
-          <Toggle setting="haptics" label="Vibration" />
+        {/*
+          "In game", not "Vibration" — the switch only covers the board now, so
+          a plain label would promise the menus buzz too and read as broken when
+          they do not.
+        */}
+        <SettingRow icon="vibrate" label="Vibration in game">
+          <Toggle setting="haptics" label="Vibration in game" />
         </SettingRow>
         <SettingRow icon="bell" label="Daily reminder" divider={false}>
           <Toggle setting="dailyReminder" label="Daily reminder" />
@@ -76,16 +89,17 @@ export const SettingsScreen = memo(function SettingsScreen({
       <SettingGroup title="More">
         <SettingRow icon="book" label="How to play" onPress={howToPlay} />
         {/*
-          Both of these need something the app does not have yet: a store
-          listing to send a rating to, and a purchase SDK to restore from.
-          Marked for the same reason as the audio rows — and with no `onPress`,
-          so neither is tappable and neither fires a tick that promises an
-          action.
+          Needs a store listing to send a rating to, so it is marked and has no
+          `onPress` — not tappable, and no tick promising an action.
+
+          "Restore purchases" sat here too and is gone rather than marked. There
+          is nothing to restore: the game sells no real-money items, and the
+          shop's coins are device-local. It was a row promising a feature that
+          does not exist even in plan, which is different from one that is
+          merely unfinished. If IAP ever ships, both stores require it and it
+          comes back then.
         */}
         <SettingRow icon="star" label="Rate us">
-          <SoonBadge />
-        </SettingRow>
-        <SettingRow icon="restart" label="Restore purchases">
           <SoonBadge />
         </SettingRow>
         <SettingRow

@@ -221,24 +221,28 @@ const ModeTab = memo(function ModeTab({ id, active }: { id: Difficulty; active: 
         accessibilityRole="tab"
         accessibilityState={{ selected: true }}
       >
-        <LinearGradient
-          colors={[apothecary.goldLight, apothecary.gold]}
-          style={[styles.tab, styles.tabActive]}
-        >
-          <Text style={styles.tabTextActive}>{info.title}</Text>
-        </LinearGradient>
+        <View style={[styles.tab, styles.tabActive]}>
+          <LinearGradient
+            colors={[apothecary.goldLight, apothecary.gold]}
+            style={styles.tabFace}
+          >
+            <Text style={styles.tabTextActive}>{info.title}</Text>
+          </LinearGradient>
+        </View>
       </Pressable>
     );
   }
 
   return (
     <Pressable style={styles.tabPress} onPress={onPress} accessibilityRole="tab">
-      <LinearGradient
-        colors={[apothecary.surfaceTop, apothecary.surface]}
-        style={styles.tab}
-      >
-        <Text style={styles.tabText}>{info.title}</Text>
-      </LinearGradient>
+      <View style={styles.tab}>
+        <LinearGradient
+          colors={[apothecary.surfaceTop, apothecary.surface]}
+          style={styles.tabFace}
+        >
+          <Text style={styles.tabText}>{info.title}</Text>
+        </LinearGradient>
+      </View>
     </Pressable>
   );
 });
@@ -271,22 +275,24 @@ const StageTile = memo(function StageTile({
         accessibilityRole="button"
         accessibilityLabel={`Level ${stage.level}${stage.locked ? ', locked' : ''}`}
       >
-        <LinearGradient
-          colors={[apothecary.surfaceTop, apothecary.surface]}
-          style={[styles.tile, stage.locked && styles.tileLocked]}
-        >
-          {stage.current && !stage.locked ? <CurrentRing accent={accent} /> : null}
+        <View style={[styles.tile, stage.locked && styles.tileLocked]}>
+          <LinearGradient
+            colors={[apothecary.surfaceTop, apothecary.surface]}
+            style={styles.tileFace}
+          >
+            {stage.current && !stage.locked ? <CurrentRing accent={accent} /> : null}
 
-          {stage.locked ? (
-            <Icon name="lock" size={s(16)} color={apothecary.inkMuted} />
-          ) : null}
+            {stage.locked ? (
+              <Icon name="lock" size={s(16)} color={apothecary.inkMuted} />
+            ) : null}
 
-          <Text style={[styles.tileNumber, stage.locked && styles.tileNumberLocked]}>
-            {stage.level}
-          </Text>
+            <Text style={[styles.tileNumber, stage.locked && styles.tileNumberLocked]}>
+              {stage.level}
+            </Text>
 
-          {stage.locked ? null : <Stars filled={stage.stars} size={s(13)} />}
-        </LinearGradient>
+            {stage.locked ? null : <Stars filled={stage.stars} size={s(13)} />}
+          </LinearGradient>
+        </View>
       </Pressable>
     </Animated.View>
   );

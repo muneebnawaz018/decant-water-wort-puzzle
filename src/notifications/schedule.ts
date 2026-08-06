@@ -39,6 +39,16 @@ const STREAK_WORTH_WARNING = 3;
 const IDLE_NUDGES_MS = [24 * HOUR_MS, 72 * HOUR_MS];
 
 /**
+ * How far past its moment a come-back nudge is still worth sending.
+ *
+ * The two nudges are spaced to feel like separate thoughts. A first one shoved
+ * far enough forward by quiet hours stops reading as "it has been a day" and
+ * starts crowding the second, which is the burst the spacing existed to avoid.
+ * Half a day is the point where it is no longer the message that was written.
+ */
+const IDLE_STALE_MS = 12 * HOUR_MS;
+
+/**
  * Waking hours, local time. Nothing fires outside them.
  *
  * The anchors here drift: the reward opens 24 hours after a claim and players
@@ -47,11 +57,22 @@ const IDLE_NUDGES_MS = [24 * HOUR_MS, 72 * HOUR_MS];
  * vials are ready gets its notifications turned off permanently, which is the
  * one failure this feature cannot recover from.
  *
- * Delaying a nudge costs nothing. The reward is claimable the moment the timer
- * is up either way; only the announcement waits.
+ * Delaying a nudge costs nothing on its own. The reward is claimable the moment
+ * the timer is up either way; only the announcement waits.
+ *
+ * But the delay is not free either, which is why the window is as wide as it
+ * is rather than a polite 9-to-9. A shift eats into the streak window the
+ * reminder is trying to protect: a claim at 23:00 has its reward announced 34
+ * hours later against a 48-hour deadline. Every hour the window gives back is
+ * an hour the player keeps. 8am to 11pm is the widest that is still defensible
+ * as "awake", and it caps the worst shift at nine hours instead of eleven.
+ *
+ * The real backstop for that case is the streak warning, which is anchored 44
+ * hours out and lands in the evening — comfortably inside waking hours for
+ * exactly the late-night claims that push `ready` around.
  */
-const WAKING_START_HOUR = 9;
-const WAKING_END_HOUR = 22;
+const WAKING_START_HOUR = 8;
+const WAKING_END_HOUR = 23;
 
 /**
  * Reminders landing closer together than this collapse to one.
@@ -64,6 +85,16 @@ const MERGE_WINDOW_MS = 3 * HOUR_MS;
 
 type ReminderKind = 'ready' | 'streak' | 'idle';
 
+/**
+ * Which reminder wins when two land close enough to collapse.
+ *
+ * By consequence, not by time. The streak warning is the only one with a
+ * deadline behind it — miss it and something the player built is gone, where
+ * missing a nudge costs them nothing. Resolving a clash by whichever came
+ * first is how "your 7-day streak is about to end" gets replaced by "no rush".
+ */
+const PRIORITY: Record<ReminderKind, number> = { streak: 0, ready: 1, idle: 2 };
+
 export interface Reminder {
   kind: ReminderKind;
   /** When to fire, in ms since the epoch. */
@@ -73,10 +104,16 @@ export interface Reminder {
   /**
    * A deadline the reminder is pointless past, if it has one.
    *
-   * The streak warning does: shifted out of the small hours it can land after
-   * the streak it is warning about has already lapsed, and "your streak is
-   * about to end" delivered to someone whose streak ended overnight is worse
-   * than silence.
+   * Two kinds have one, for the same underlying reason: the waking-hours shift
+   * moves a reminder forwards, and far enough forward it is no longer the
+   * message that was written. The streak warning can land after the streak it
+   * warns about has lapsed — "about to end", to someone whose streak ended
+   * overnight. A come-back nudge can drift until it crowds the next one.
+   *
+   * This is enforced when the schedule is built, so it covers the shift and
+   * nothing else. Android may still deliver late from a standby bucket or an
+   * OEM battery manager, and a local notification has no TTL to express that
+   * with — the OS delivers when it decides to.
    */
   expiresAt?: number;
 }
@@ -107,18 +144,27 @@ function intoWakingHours(at: number): number {
   return date.getTime();
 }
 
-/** Drops any reminder landing on top of an earlier, more specific one. */
+/**
+ * Drops any reminder landing on top of one that matters more.
+ *
+ * Walked in priority order rather than in time order, so the survivor of a
+ * clash is the one with the most behind it. Time only breaks ties within a
+ * kind. The result is sorted back into firing order.
+ */
 function merge(reminders: Reminder[]): Reminder[] {
-  const kept: Reminder[] = [];
+  const byImportance = [...reminders].sort(
+    (a, b) => PRIORITY[a.kind] - PRIORITY[b.kind] || a.at - b.at
+  );
 
-  for (const reminder of [...reminders].sort((a, b) => a.at - b.at)) {
+  const kept: Reminder[] = [];
+  for (const reminder of byImportance) {
     const clash = kept.some(
       (existing) => Math.abs(existing.at - reminder.at) < MERGE_WINDOW_MS
     );
     if (!clash) kept.push(reminder);
   }
 
-  return kept;
+  return kept.sort((a, b) => a.at - b.at);
 }
 
 /** The reward and streak reminders, anchored to the last claim. */
@@ -160,9 +206,12 @@ function idleReminders(state: ReminderState): Reminder[] {
     { title: 'Still sorting?', body: 'Your shelf is where you left it. No rush.' },
   ];
 
+  const played = state.lastPlayedAt;
+
   return IDLE_NUDGES_MS.map((after, index) => ({
     kind: 'idle' as const,
-    at: state.lastPlayedAt! + after,
+    at: played + after,
+    expiresAt: played + after + IDLE_STALE_MS,
     title: copy[index]!.title,
     body: copy[index]!.body,
   }));

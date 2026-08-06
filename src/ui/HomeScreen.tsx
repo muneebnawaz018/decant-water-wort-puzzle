@@ -125,7 +125,7 @@ export const HomeScreen = memo(function HomeScreen({
                 </View>
 
                 <View style={styles.goChip}>
-                  <Icon name="play" size={s(12)} color={ui.accentBright} filled />
+                  <Icon name="play" size={s(12)} color={ui.accentBright} />
                 </View>
               </Panel>
             </Pressable>
@@ -185,7 +185,7 @@ const RewardChip = memo(function RewardChip({
     <Pressable style={styles.chipPress} onPress={handlePress} accessibilityRole="button">
       <Panel contentStyle={styles.chip} radius={16}>
         <LinearGradient colors={tint} style={styles.chipIcon}>
-          <Icon name={icon} size={s(18)} color={colours.white} filled={icon === 'play'} />
+          <Icon name={icon} size={s(18)} color={colours.white} />
         </LinearGradient>
         <View style={styles.chipText}>
           <Text style={styles.chipTitle} numberOfLines={1}>

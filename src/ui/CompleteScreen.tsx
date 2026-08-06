@@ -4,6 +4,7 @@ import Animated, {
   cancelAnimation,
   Easing,
   FadeIn,
+  ZoomIn,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -14,9 +15,11 @@ import Animated, {
 import { coinsFor } from '@/game/stars';
 import { useGameStore } from '@/state/gameStore';
 import { apothecary } from '@/theme/apothecary';
-import { alpha, colours } from '@/theme/colors';
+import { colours, ui } from '@/theme/colors';
 import { s } from '@/theme/scale';
 import { fract, plural } from '@/utils';
+import LottieView from 'lottie-react-native';
+
 import { GlossButton } from './chrome/GlossButton';
 import { Panel } from './chrome/Panel';
 import { useScreenPadding } from './hooks/useScreenPadding';
@@ -28,6 +31,19 @@ interface CompleteScreenProps {
   onReplay: () => void;
   onNext: () => void;
 }
+
+/**
+ * The win burst.
+ *
+ * Required at module scope rather than inline, so Metro resolves it once and
+ * the same parsed source is handed to every mount of this screen.
+ *
+ * `assets/lottie/win.json` is a placeholder — three gold dots. Replace the file
+ * and nothing here changes; see the README beside it for what to check on a
+ * downloaded animation before it ships.
+ */
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const WIN_BURST = require('../../assets/lottie/win.json');
 
 /** Spec §6: stars pop in ~230ms apart, reward after them. */
 const STAR_DELAY = 230;
@@ -54,7 +70,6 @@ export const CompleteScreen = memo(function CompleteScreen({
   const padding = useScreenPadding();
   const level = useGameStore((state) => state.level);
   const moves = useGameStore((state) => state.history.length);
-  const par = useGameStore((state) => state.par);
   const stars = useGameStore((state) => state.earned);
 
   const reward = coinsFor(stars);
@@ -62,58 +77,124 @@ export const CompleteScreen = memo(function CompleteScreen({
 
   return (
     <View style={[styles.root, padding.frame]}>
+      {/*
+        The scrim is what makes this read as a result rather than as somewhere
+        new. It darkens the ground the card sits on, so the card is lit and
+        everything else recedes.
+
+        Note what is behind it: the backdrop, not the board. Screens mount one
+        at a time here (see `Root`), so the solved position is already gone by
+        the time this draws. Keeping the board alive underneath would mean
+        stacking two screens and holding its Skia surface for the length of a
+        win animation, which is the cost the one-at-a-time rule exists to
+        avoid.
+      */}
+      <Animated.View
+        style={[styles.scrim, { backgroundColor: ui.scrim }]}
+        entering={FadeIn.duration(260)}
+        pointerEvents="none"
+      />
+
+      {/*
+        The Lottie burst plays behind the card, once.
+
+        `loop={false}` is the rule for every animation in this folder: a looping
+        Lottie on a mounted screen redraws forever, which is the cost this
+        project already paid once on Home's rack.
+
+        The wrapper carries `pointerEvents`, because `LottieView` does not take
+        it — and it covers the card, so without it the buttons underneath are
+        unreachable.
+      */}
+      <View style={styles.lottie} pointerEvents="none">
+        <LottieView
+          source={WIN_BURST}
+          autoPlay
+          loop={false}
+          resizeMode="cover"
+          style={styles.fill}
+        />
+      </View>
+
+      {/*
+        The hand-rolled burst stays for now, on top of the Lottie.
+
+        `win.json` is a placeholder and the sparks are not — dropping them today
+        would trade a finished effect for three gold dots. Delete `Confetti`,
+        `Spark` and their constants once a real animation is in place; two
+        bursts is one too many.
+      */}
       <Confetti />
 
-      <View style={styles.content}>
-        <ShimmerTitle />
+      <Animated.View
+        style={styles.cardSlot}
+        entering={ZoomIn.springify().damping(14).mass(0.6)}
+      >
+        <Panel contentStyle={styles.card}>
+          <View style={styles.stars}>
+            {[0, 1, 2].map((index) => (
+              <CompleteStar key={index} index={index} earned={index < stars} />
+            ))}
+          </View>
 
-        <View style={styles.stars}>
-          {[0, 1, 2].map((index) => (
-            <CompleteStar key={index} index={index} earned={index < stars} />
-          ))}
-        </View>
+          <ShimmerTitle />
 
-        <Animated.Text style={styles.moves} entering={FadeIn.duration(600).delay(900)}>
-          Solved in {plural(moves, 'move')} · par {par}
-        </Animated.Text>
+          <Text style={styles.moves}>
+            {/* Par drives the rating but is not shown. It is golf jargon, and a
+                number the player cannot verify reads as a score they failed to
+                hit rather than one they beat — the stars already say how it
+                went. */}
+            Solved in {plural(moves, 'move')}
+          </Text>
 
-        <Animated.View entering={FadeIn.duration(500).delay(rewardDelay)}>
-          <Panel contentStyle={styles.reward} radius={16}>
+          <Animated.View
+            style={styles.reward}
+            entering={FadeIn.duration(500).delay(rewardDelay)}
+          >
             <View style={styles.coin} />
             <Text style={styles.rewardText}>+{reward}</Text>
-          </Panel>
-        </Animated.View>
+          </Animated.View>
 
-        <Animated.View
-          style={styles.buttons}
-          entering={FadeIn.duration(600).delay(rewardDelay + 250)}
-        >
-          <GlossButton
-            label="Replay"
-            variant="primary"
-            onPress={onReplay}
-            style={styles.button}
-          />
-          <GlossButton
-            label={`Level ${level + 1}`}
-            variant="primary"
-            onPress={onNext}
-            style={styles.button}
-          />
-        </Animated.View>
+          <View style={styles.divider} />
 
-        {/*
-          Home reads as part of the screen rather than as an icon parked in a
-          corner. It arrives last of the three, because it is the one thing
-          here nobody is in a hurry to press.
-        */}
-        <Animated.View
-          style={styles.homeRow}
-          entering={FadeIn.duration(600).delay(rewardDelay + 400)}
-        >
-          <GlossButton label="Home" variant="ghost" onPress={onHome} />
-        </Animated.View>
-      </View>
+          <Animated.View
+            style={styles.next}
+            entering={FadeIn.duration(500).delay(rewardDelay + 200)}
+          >
+            <GlossButton
+              label={`Level ${level + 1}`}
+              variant="primary"
+              size="dialog"
+              trailing={<Icon name="play" size={s(15)} color={ui.onGold} />}
+              onPress={onNext}
+            />
+          </Animated.View>
+
+          <Animated.View
+            style={styles.secondary}
+            entering={FadeIn.duration(500).delay(rewardDelay + 320)}
+          >
+            {/* "Again", not "Replay" — one word, and it says what the button
+                does without borrowing a media-player verb. */}
+            <GlossButton
+              label="Again"
+              variant="ghost"
+              size="dialog"
+              trailing={<Icon name="restart" size={s(15)} color={apothecary.goldLight} />}
+              onPress={onReplay}
+              style={styles.secondaryButton}
+            />
+            <GlossButton
+              label="Home"
+              variant="ghost"
+              size="dialog"
+              trailing={<Icon name="home" size={s(15)} color={apothecary.goldLight} />}
+              onPress={onHome}
+              style={styles.secondaryButton}
+            />
+          </Animated.View>
+        </Panel>
+      </Animated.View>
     </View>
   );
 });
@@ -174,15 +255,15 @@ const CompleteStar = memo(function CompleteStar({
 
   if (!earned) {
     return (
-      <View style={styles.starSlot}>
-        <Icon name="star" size={s(46)} color={alpha('white', 0.14)} filled />
+      <View style={[styles.starSlot, index === 1 && styles.starMiddle]}>
+        <Icon name="star" size={s(54)} color={ui.ghostStar} />
       </View>
     );
   }
 
   return (
-    <Animated.View style={[styles.starSlot, style]}>
-      <Icon name="star" size={s(46)} color={apothecary.gold} filled />
+    <Animated.View style={[styles.starSlot, index === 1 && styles.starMiddle, style]}>
+      <Icon name="star" size={s(54)} color={apothecary.gold} />
     </Animated.View>
   );
 });

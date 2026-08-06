@@ -40,20 +40,22 @@ export const CoinPill = memo(function CoinPill() {
 
   return (
     <Animated.View style={animated}>
-      <LinearGradient
-        colors={[apothecary.surfaceTop, apothecary.surface]}
-        style={styles.pill}
-      >
-        <View style={styles.coin}>
-          <LinearGradient
-            colors={gradients.coin}
-            locations={[0, 0.62, 1]}
-            start={{ x: 0.34, y: 0.3 }}
-            style={StyleSheet.absoluteFill}
-          />
-        </View>
-        <Text style={styles.value}>{coins}</Text>
-      </LinearGradient>
+      <View style={styles.pill}>
+        <LinearGradient
+          colors={[apothecary.surfaceTop, apothecary.surface]}
+          style={styles.pillFace}
+        >
+          <View style={styles.coin}>
+            <LinearGradient
+              colors={gradients.coin}
+              locations={[0, 0.62, 1]}
+              start={{ x: 0.34, y: 0.3 }}
+              style={StyleSheet.absoluteFill}
+            />
+          </View>
+          <Text style={styles.value}>{coins}</Text>
+        </LinearGradient>
+      </View>
     </Animated.View>
   );
 });

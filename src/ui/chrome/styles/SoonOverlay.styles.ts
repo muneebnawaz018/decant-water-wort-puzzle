@@ -18,16 +18,27 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: alpha('nightDeep', 0.5),
   },
+  /** Fixed height rather than vertical padding — see `SoonBadge`. */
   pill: {
     flexDirection: 'row',
+    height: s(26),
     alignItems: 'center',
+    justifyContent: 'center',
     gap: s(6),
     paddingHorizontal: s(10),
-    paddingVertical: s(5),
     borderRadius: s(12),
     borderWidth: 1,
     borderColor: alpha('gold', 0.5),
     backgroundColor: alpha('nightDeep', 0.9),
   },
-  text: { ...text.eyebrow, fontSize: s(10), color: apothecary.goldLight },
+  /** Same line-box fix as `SoonBadge` — see the comment there. */
+  text: {
+    ...text.eyebrow,
+    fontSize: s(10),
+    lineHeight: s(13),
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+    color: apothecary.goldLight,
+    marginLeft: s(0.9),
+  },
 });

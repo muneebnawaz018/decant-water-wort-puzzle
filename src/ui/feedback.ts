@@ -1,7 +1,27 @@
 import * as Haptics from 'expo-haptics';
+import { Platform } from 'react-native';
 
 import type { TapOutcome } from '@/state/gameStore';
 import { currentSettings } from '@/state/settingsStore';
+
+/**
+ * A tick, at a strength each platform can actually deliver.
+ *
+ * `selectionAsync` is the right call on iOS — the Taptic Engine renders it as a
+ * crisp click. On Android it maps to `EFFECT_TICK`, which on a lot of hardware
+ * is below the threshold of noticing with the phone in your hand, and the
+ * feature reads as broken rather than as subtle. `impactAsync(Light)` is the
+ * quietest Android effect that is reliably felt; on iOS the same call is
+ * heavier than a selection should be, which is why this is split rather than
+ * settled on one call for both.
+ */
+function tick(): void {
+  if (Platform.OS === 'android') {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    return;
+  }
+  void Haptics.selectionAsync();
+}
 
 /**
  * Haptics for a tap outcome, doc §7. Settings are read at call time rather
@@ -17,11 +37,16 @@ export function feedbackFor(outcome: TapOutcome): void {
   if (!currentSettings().haptics) return;
 
   switch (outcome.kind) {
+    // A pour is the one moment the player is waiting to feel, so Android takes
+    // the step up that its tick needed — Medium against iOS's Light, which
+    // lands about the same in the hand.
     case 'poured':
-      Haptics.impactAsync(
+      void Haptics.impactAsync(
         outcome.solved
           ? Haptics.ImpactFeedbackStyle.Heavy
-          : Haptics.ImpactFeedbackStyle.Light
+          : Platform.OS === 'android'
+            ? Haptics.ImpactFeedbackStyle.Medium
+            : Haptics.ImpactFeedbackStyle.Light
       );
       break;
     // Picking a vial up and putting it back down are both things the player
@@ -29,20 +54,33 @@ export function feedbackFor(outcome: TapOutcome): void {
     // held — passes without a buzz.
     case 'selected':
     case 'deselected':
-      Haptics.selectionAsync();
+      tick();
       break;
     case 'illegal':
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       break;
     default:
       break;
   }
 }
 
-/** A light tick for chrome taps — buttons, switches, tiles. */
-export function feedbackTap(): void {
+/**
+ * A tick for the board's own controls — undo, redo, hint, spare vial.
+ *
+ * Deliberately **not** every button in the app. It was, and that is what made
+ * the setting feel broken: a buzz on every menu tap, every tab, every settings
+ * row is constant background noise, and constant feedback carries no
+ * information — after the fourth identical buzz on the way to the board, the
+ * one that means "your pour landed" is just another one.
+ *
+ * So vibration is now a thing that happens while you are playing. The board
+ * taps, the board's controls, and nothing else. Navigation, settings and the
+ * shop are silent, and a player who wants to feel the game does not have to
+ * feel the menus to get it.
+ */
+export function feedbackControl(): void {
   if (!currentSettings().haptics) return;
-  Haptics.selectionAsync();
+  tick();
 }
 
 /**
@@ -55,5 +93,5 @@ export function feedbackTap(): void {
  */
 export function feedbackWarn(): void {
   if (!currentSettings().haptics) return;
-  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+  void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 }

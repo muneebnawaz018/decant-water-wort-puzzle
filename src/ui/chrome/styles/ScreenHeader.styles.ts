@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-import { apothecary, GRADIENT_BORDER_FILL, SPACE } from '@/theme/apothecary';
+import { HAIRLINE, SPACE } from '@/theme/apothecary';
 import { ui } from '@/theme/colors';
 import { s } from '@/theme/scale';
 import { text } from '@/theme/typography';
@@ -35,25 +35,37 @@ export const styles = StyleSheet.create({
   filler: { flex: 1 },
   trailing: { minWidth: 0 },
 
+  /**
+   * The stroke, drawn as a padded background rather than as `borderWidth`.
+   *
+   * See `HAIRLINE` in `@/theme/apothecary` for why. Short version: on Android a
+   * `LinearGradient` inside a bordered view lands a pixel short of the stroke
+   * and leaves a sliver of a third colour at the corners.
+   */
   button: {
     width: s(42),
     height: s(42),
     borderRadius: s(14),
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: apothecary.line,
-    // Android insets a view's background by its border width; iOS paints under
-    // it. On a `LinearGradient` that leaves a 1dp ring inside the border with
-    // the screen showing through it — visible as a gap at every corner, on
-    // Android only. A solid fill behind the gradient closes it. See
-    // `GRADIENT_BORDER_FILL` for the whole story.
-    backgroundColor: GRADIENT_BORDER_FILL,
+    padding: HAIRLINE,
+    backgroundColor: ui.edge,
     shadowColor: ui.shadow,
     shadowOpacity: 0.35,
     shadowRadius: s(14),
     shadowOffset: { width: 0, height: s(5) },
     elevation: 5,
   },
-  dimmed: { opacity: 0.42 },
+  /** The gradient face, inset by the stroke it sits inside. */
+  buttonFace: {
+    flex: 1,
+    borderRadius: s(14) - HAIRLINE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Half the face, not a gradient stop — Android and iOS disagreed about a
+  // three-stop `locations` list and washed the whole surface. See
+  // `GlossButton.styles.ts`.
+  sheen: { position: 'absolute', top: 0, left: 0, right: 0, height: '50%' },
+  // Shadow off with it: Android does not fade `elevation` with `opacity`, so a
+  // dimmed button kept a full-strength glow. See `GlossButton.styles.ts`.
+  dimmed: { opacity: 0.42, elevation: 0, shadowOpacity: 0 },
 });

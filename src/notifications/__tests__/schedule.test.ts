@@ -31,7 +31,7 @@ describe('reward reminders', () => {
   it('fires when the reward opens, not at a fixed hour', () => {
     const claim = at(14);
     const [ready] = remindersFor(state({ lastClaimAt: claim, streak: 1 }), claim);
-    // A 2pm claim must not be answered at 9am with hours still on the clock.
+    // A 2pm claim must not be answered at 8am with hours still on the clock.
     expect(ready!.at).toBe(claim + 24 * HOURS);
   });
 
@@ -85,6 +85,34 @@ describe('come-back nudges', () => {
     expect(kinds({ lastPlayedAt: null }, at(12))).toEqual([]);
   });
 
+  it('drops a nudge shifted too far past its own moment', () => {
+    // Every nudge stays within half a day of when it was meant to land, or it
+    // is not sent. "It has been a day" arriving most of a day late is a
+    // different message, and it crowds the second nudge the spacing exists to
+    // keep apart.
+    for (let hour = 0; hour < 24; hour++) {
+      const played = at(hour);
+      for (const nudge of remindersFor(state({ lastPlayedAt: played }), played)) {
+        expect(nudge.expiresAt).toBeDefined();
+        expect(nudge.at).toBeLessThan(nudge.expiresAt!);
+      }
+    }
+  });
+
+  it('never displaces a streak warning it lands near', () => {
+    // The nudge is two hours ahead of the warning, so resolving the clash by
+    // whichever comes first would keep "no rush" and drop "your streak is
+    // about to end". A missed nudge costs nothing; a missed warning costs the
+    // thing the player has been building.
+    const claim = at(16, 1);
+    const reminders = remindersFor(
+      state({ lastClaimAt: claim, streak: 7, lastPlayedAt: at(10, 2) }),
+      claim
+    );
+
+    expect(reminders.map((r) => r.kind)).toContain('streak');
+  });
+
   it('gives way to the reward reminder when they land together', () => {
     // Claimed and stopped playing within the same session, so both anchors are
     // 24 hours out. On a lock screen they say the same thing.
@@ -106,7 +134,7 @@ describe('waking hours', () => {
     const claim = at(3);
     const [ready] = remindersFor(state({ lastClaimAt: claim, streak: 1 }), claim);
 
-    expect(hourOf(ready!.at)).toBe(9);
+    expect(hourOf(ready!.at)).toBe(8);
     expect(ready!.at).toBeGreaterThan(claim);
   });
 
@@ -114,8 +142,8 @@ describe('waking hours', () => {
     const claim = at(23, 1);
     const [ready] = remindersFor(state({ lastClaimAt: claim, streak: 1 }), claim);
 
-    expect(hourOf(ready!.at)).toBe(9);
-    // Forward, never back: pulling it to the previous 9pm would announce the
+    expect(hourOf(ready!.at)).toBe(8);
+    // Forward, never back: pulling it to the previous 11pm would announce the
     // reward before it opened.
     expect(ready!.at).toBeGreaterThan(claim + 24 * HOURS);
   });
@@ -135,13 +163,13 @@ describe('waking hours', () => {
       );
 
       for (const reminder of reminders) {
-        expect(hourOf(reminder.at)).toBeGreaterThanOrEqual(9);
-        expect(hourOf(reminder.at)).toBeLessThan(22);
+        expect(hourOf(reminder.at)).toBeGreaterThanOrEqual(8);
+        expect(hourOf(reminder.at)).toBeLessThan(23);
       }
     }
   });
 
-  it('does not stack everything onto the same nine in the morning', () => {
+  it('does not stack everything onto the same morning', () => {
     // Several anchors shifted into the same window would otherwise arrive as
     // a burst of notifications at once.
     const anchor = at(2);

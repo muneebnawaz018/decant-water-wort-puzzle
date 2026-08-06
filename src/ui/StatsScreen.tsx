@@ -78,7 +78,7 @@ function sumTotals(record: ProgressByDifficulty): ModeTotals {
  *
  * Levels and stars are shown per mode rather than as one figure. Modes keep
  * their own unlocks and their own place, so a combined total answers a question
- * nobody asked — "how far am I in Fiendish" is the question, and a single
+ * nobody asked — "how far am I on Hard" is the question, and a single
  * number cannot answer it.
  */
 export const StatsScreen = memo(function StatsScreen({ onBack }: { onBack: () => void }) {

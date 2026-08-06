@@ -8,7 +8,9 @@ import type { PieceSymbol } from '@/theme/apothecary';
  * Colourblind marks, doc §9 and spec §9.
  *
  * One distinct glyph per liquid colour, so colour is never the only signal.
- * Drawn on a 24×24 grid and scaled, the same convention the icon set uses.
+ * Drawn on a 24×24 grid and scaled. These stayed hand-authored when the icons
+ * moved to Material Symbols: a colourblind mark's job is to be unlike the other
+ * marks on the board, which is a constraint no general icon set is drawn for.
  *
  * Filled shapes, not outlines: an outline on a saturated fill is hard to read
  * at segment size, and these have to be legible at a glance while the player

@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-import { apothecary, GRADIENT_BORDER_FILL, SPACE } from '@/theme/apothecary';
+import { apothecary, HAIRLINE, SPACE } from '@/theme/apothecary';
 import { ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
 import { columnsFor, s, WINDOW_WIDTH } from '@/theme/scale';
@@ -42,19 +42,23 @@ export const styles = StyleSheet.create({
   },
   tabPress: { flex: 1 },
   tab: {
-    paddingVertical: s(11),
     borderRadius: s(14),
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: apothecary.line,
-    // Android insets the background by the border width, leaving a ring of
-    // the screen showing between the stroke and the gradient. See
-    // `GRADIENT_BORDER_FILL`.
-    backgroundColor: GRADIENT_BORDER_FILL,
+    // Stroke as a padded background — see `HAIRLINE`.
+    padding: HAIRLINE,
+    backgroundColor: ui.edge,
   },
-  // Same style, a gold gradient instead of the panel one, so it needs its own
-  // border fill — the panel fill would ring a gold tab in purple.
-  tabActive: { borderColor: ui.buttonGloss, backgroundColor: apothecary.gold },
+  // No `flex: 1` here. The tab above it has no height of its own — it is only
+  // the stroke around this — so a flexed face resolves to zero and takes the
+  // label with it. Its padding is what gives the tab its height.
+  tabFace: {
+    paddingVertical: s(11) - HAIRLINE,
+    borderRadius: s(14) - HAIRLINE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  // The active tab's stroke is its own gold, not the panel edge.
+  tabActive: { backgroundColor: apothecary.goldLight },
   tabText: {
     fontFamily: POPPINS.semibold,
     fontSize: s(13),
@@ -97,20 +101,22 @@ export const styles = StyleSheet.create({
     // four columns had it while the tile itself gets the extra width.
     aspectRatio: 1.25,
     borderRadius: s(22),
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: s(6),
-    borderWidth: 1,
-    borderColor: apothecary.line,
-    // Android insets the background by the border width, leaving a ring of
-    // the screen showing between the stroke and the gradient. See
-    // `GRADIENT_BORDER_FILL`.
-    backgroundColor: GRADIENT_BORDER_FILL,
+    // Stroke as a padded background — see `HAIRLINE`.
+    padding: HAIRLINE,
+    backgroundColor: ui.edge,
     shadowColor: ui.shadow,
     shadowOpacity: 0.3,
     shadowRadius: s(6),
     shadowOffset: { width: 0, height: s(4) },
     elevation: 4,
+  },
+  tileFace: {
+    flex: 1,
+    borderRadius: s(22) - HAIRLINE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: s(6),
+    overflow: 'hidden',
   },
   tileLocked: { opacity: 0.55 },
   tileNumber: {

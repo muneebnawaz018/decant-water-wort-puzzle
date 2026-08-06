@@ -1,7 +1,8 @@
 import * as Haptics from 'expo-haptics';
+import { Platform } from 'react-native';
 
 import { useSettingsStore } from '@/state/settingsStore';
-import { feedbackFor, feedbackTap, feedbackWarn } from '../feedback';
+import { feedbackControl, feedbackFor, feedbackWarn } from '../feedback';
 
 /**
  * Neither simulator has a vibration motor, so the buzz itself cannot be
@@ -13,7 +14,7 @@ jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn(),
   selectionAsync: jest.fn(),
   notificationAsync: jest.fn(),
-  ImpactFeedbackStyle: { Light: 'light', Heavy: 'heavy' },
+  ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
   NotificationFeedbackType: { Warning: 'warning' },
 }));
 
@@ -39,9 +40,9 @@ beforeEach(() => {
 });
 
 describe('board taps', () => {
-  it('taps light for a pour and heavy for the one that solves the level', () => {
+  it('taps for a pour and heavier for the one that solves the level', () => {
     feedbackFor(pour());
-    expect(impact).toHaveBeenCalledWith('light');
+    expect(impact).toHaveBeenCalledWith(Platform.OS === 'android' ? 'medium' : 'light');
 
     feedbackFor(pour(true));
     expect(impact).toHaveBeenLastCalledWith('heavy');
@@ -50,7 +51,11 @@ describe('board taps', () => {
   it('ticks for picking a vial up and for putting it back down', () => {
     feedbackFor({ kind: 'selected', tube: 0 });
     feedbackFor({ kind: 'deselected', tube: 0 });
-    expect(selection).toHaveBeenCalledTimes(2);
+    // Not `selectionAsync` specifically: the tick is `impactAsync(Light)` on
+    // Android, where the selection effect is too faint to feel. What matters
+    // is that both taps answer, and that neither is a warning.
+    expect(calls()).toBe(2);
+    expect(notification).not.toHaveBeenCalled();
   });
 
   it('warns on a pour the board will not take', () => {
@@ -66,10 +71,10 @@ describe('board taps', () => {
   });
 });
 
-describe('chrome', () => {
-  it('ticks for a button', () => {
-    feedbackTap();
-    expect(selection).toHaveBeenCalledTimes(1);
+describe('the board controls', () => {
+  it('ticks for undo, redo, hint and the spare vial', () => {
+    feedbackControl();
+    expect(calls()).toBe(1);
   });
 
   it('answers a refusal differently from a success', () => {
@@ -87,7 +92,7 @@ describe('the setting', () => {
     feedbackFor(pour(true));
     feedbackFor({ kind: 'selected', tube: 0 });
     feedbackFor({ kind: 'illegal', tube: 1 });
-    feedbackTap();
+    feedbackControl();
     feedbackWarn();
 
     expect(calls()).toBe(0);
@@ -95,11 +100,11 @@ describe('the setting', () => {
 
   it('is read at call time, so a toggle takes effect without a remount', () => {
     useSettingsStore.getState().set('haptics', false);
-    feedbackTap();
+    feedbackControl();
     expect(calls()).toBe(0);
 
     useSettingsStore.getState().set('haptics', true);
-    feedbackTap();
-    expect(selection).toHaveBeenCalledTimes(1);
+    feedbackControl();
+    expect(calls()).toBe(1);
   });
 });

@@ -109,6 +109,32 @@ export function fade(name: ColourName): string {
 }
 
 /**
+ * One palette colour composited over another, flattened to an opaque hex.
+ *
+ * The chrome's stroke is `alpha('white', 0.1)`, which is a *border* everywhere
+ * it appears — and a border paints over the view's own background, so it
+ * resolves against the panel. Drawn instead as the background of a padded
+ * wrapper (see `HAIRLINE`, which is how the strokes have to be built on
+ * Android) the same colour resolves against the ground behind the card, and
+ * comes out visibly darker. Flattening against the face it is meant to edge
+ * keeps the two forms identical.
+ *
+ * Computed rather than written out, so moving `panel` moves the stroke with it.
+ */
+function blend(over: ColourName, base: ColourName, opacity: number): string {
+  const parse = (hex: string): [number, number, number] => {
+    const v = parseInt(hex.slice(1), 16);
+    return [(v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff];
+  };
+  const [r1, g1, b1] = parse(raw[over]);
+  const [r0, g0, b0] = parse(raw[base]);
+  const t = opacity < 0 ? 0 : opacity > 1 ? 1 : opacity;
+  const mix = (a: number, b: number): number => Math.round(b + (a - b) * t);
+  const hex = (n: number): string => n.toString(16).padStart(2, '0');
+  return `#${hex(mix(r1, r0))}${hex(mix(g1, g0))}${hex(mix(b1, b0))}`;
+}
+
+/**
  * A palette colour lightened towards white by `amount` (0 keeps it, 1 is
  * white). Opaque, unlike `alpha` — a tint has to hold its own against whatever
  * sits behind it, and a translucent one picks up the backdrop's purple.
@@ -175,6 +201,14 @@ export const ui = {
   panelTop: raw.panelTop,
   /** Hairline border, and the 1px gloss along a panel's top edge. */
   line: alpha('white', 0.1),
+  /**
+   * `line`, flattened against the panel it edges.
+   *
+   * For a stroke built as a padded background instead of a `borderWidth` — see
+   * `HAIRLINE`. Translucent there, it would resolve against the ground behind
+   * the card and come out darker than the same stroke on iOS.
+   */
+  edge: blend('white', 'panel', 0.1),
   /** Divider between rows inside a panel. */
   divider: alpha('white', 0.07),
   /** Recessed wells: progress tracks, segmented controls, icon squares. */
@@ -198,10 +232,66 @@ export const ui = {
   meniscus: alpha('white', 0.45),
 
   // Buttons
-  buttonFace: [raw.greenLight, raw.green, raw.greenDeep] as const,
-  buttonEdge: alpha('white', 0.4),
+  /**
+   * The primary face is gold, not green.
+   *
+   * Green was the spec's action colour and it never belonged to this app: the
+   * chrome, the wordmark, the coins, the active nav pill and the star ratings
+   * are all gold, so the one control the player is meant to press was the only
+   * element on screen that was not. Two accent colours on a dark purple ground
+   * read as two different apps.
+   *
+   * Green survives where it means a *state* rather than an action — switches
+   * that are on, progress that is filled — which is `accent`, below, and is
+   * deliberately a separate token from this one.
+   */
+  buttonFace: [raw.goldLight, raw.gold, raw.goldBronze] as const,
+  buttonEdge: alpha('goldPale', 0.55),
+  /** `buttonEdge` as an opaque stroke over the gold face — see `edge`. */
+  buttonEdgeOpaque: blend('goldPale', 'gold', 0.55),
   buttonGloss: alpha('white', 0.5),
-  buttonTextShadow: alpha('greenShadow', 0.3),
+  /** Dark ink on a light face, so the shadow lifts the glyph rather than blurs it. */
+  buttonTextShadow: alpha('goldPale', 0.45),
+  /**
+   * The face of a button that cannot be pressed, stated rather than derived.
+   *
+   * Dimming with `opacity` was the obvious way and it does not survive two
+   * platforms: the result depends on what is behind the button, on whether the
+   * shadow fades with it — Android composites `elevation` separately — and on
+   * how each renderer blends a translucent gradient. Daily's countdown came out
+   * gold on Android and brown on iOS from one style.
+   *
+   * Opaque colours have none of those degrees of freedom. This is the gold ramp
+   * mixed most of the way to the ground, which is what the 42% version was
+   * trying to be.
+   */
+  /**
+   * A primary button that cannot be pressed drops to the panel surface.
+   *
+   * Not the gold ramp faded, and not the gold ramp darkened — both were tried.
+   * Fading depends on what is behind the button, on whether the platform fades
+   * the shadow with it (Android does not), and on how each renderer blends a
+   * translucent gradient, so Daily's countdown came out gold on Android and
+   * brown on iOS. Darkening the ramp to opaque colours fixed the disagreement
+   * and produced mud on both.
+   *
+   * A card surface has neither problem. It is opaque, it is already the app's
+   * language for "this is a surface, not an action", and an inert control that
+   * looks like a card is unambiguous in a way a dim gold button is not.
+   */
+  buttonFaceOff: [raw.panelTop, raw.panel] as const,
+  /** Its label — the same muted ink every inactive thing in the app uses. */
+  buttonLabelOff: raw.inkMuted,
+  /**
+   * The coloured glow a lit button casts, rather than the neutral drop shadow
+   * every card gets.
+   *
+   * This is what "glossy" actually is on a dark ground: a black shadow under a
+   * gold button only darkens the purple beneath it, so the button sits in a
+   * hole. A gold one spills light instead, and the button reads as the source
+   * of it.
+   */
+  buttonGlow: raw.gold,
   ghost: alpha('white', 0.1),
 
   // Accent
@@ -215,6 +305,8 @@ export const ui = {
   goldLight: raw.goldLight,
   goldDark: raw.goldDark,
   goldEdge: alpha('gold', 0.55),
+  /** `goldEdge` as an opaque stroke — see `edge`. */
+  goldEdgeOpaque: blend('gold', 'panel', 0.55),
   goldGloss: alpha('white', 0.5),
 
   // Overlays
@@ -234,6 +326,22 @@ export const ui = {
 export const gradients = {
   panel: [raw.panelTop, raw.panel] as const,
   gold: [raw.goldLight, raw.gold] as const,
+  /**
+   * The specular sweep across a pressed-metal face.
+   *
+   * Two stops of white over the button's own gradient, cut off at 55% so the
+   * shine has an edge rather than fading to nothing — a hard terminator is what
+   * makes a surface read as polished instead of merely lighter at the top.
+   */
+  sheen: [alpha('white', 0.42), alpha('white', 0.06), alpha('white', 0)] as const,
+  /**
+   * The same sweep for a dark surface.
+   *
+   * A lit gold face can carry 42% white; a purple panel cannot — at that
+   * strength it goes milky and reads as fog on the glass rather than as a
+   * polished edge. Same hard terminator, a sixth of the light.
+   */
+  sheenSoft: [alpha('white', 0.16), alpha('white', 0.03), alpha('white', 0)] as const,
   goldShelf: [raw.goldLight, raw.goldDark] as const,
   coin: [raw.goldPale, raw.gold, raw.goldDark] as const,
   wordmark: [raw.goldPale, raw.goldSheen, raw.goldBronze] as const,

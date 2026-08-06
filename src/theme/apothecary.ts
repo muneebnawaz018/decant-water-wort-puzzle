@@ -150,22 +150,28 @@ export const apothecary: Theme = {
 };
 
 /**
- * Solid fill to put behind a `LinearGradient` that also carries a border.
+ * Width of the chrome's stroke — and the rule for how to draw one.
  *
- * **Android insets a view's background by its border width. iOS paints the
- * background under the border.** With a gradient that difference shows: the
- * gradient stops at the inner edge of the stroke and a 1dp ring of whatever is
- * behind the card shows through, which on this dark purple ground reads as a
- * gap between the border and the fill at all four corners. It is not a rounding
- * error and it does not go away at higher densities.
+ * **Never put `borderWidth` on a `LinearGradient`.** On Android the gradient is
+ * drawn as a child sized to the padding box and lands a pixel short of the
+ * stroke, leaving a one-pixel sliver of whatever is behind it. Against this
+ * dark ground that reads as a gap between the border and the fill, worst at the
+ * corners where the curve exposes more of it. iOS paints the background under
+ * the border and shows nothing.
  *
- * Every gradient in the chrome runs `panelTop → panel`, so the bottom stop
- * fills that ring near-invisibly. It costs one extra solid fill on iOS, where
- * the gradient covers it entirely.
+ * Filling that sliver with a solid colour was tried and does not work: the
+ * sliver is still a third colour between two others, so on a `panelTop → panel`
+ * gradient it stays visible at the top corners however it is tinted.
  *
- * Anything that pairs `borderWidth` with a `LinearGradient` needs this.
+ * The portable form is a stroke made of padding: the outer view takes
+ * `backgroundColor: line` and `padding: HAIRLINE`, the gradient sits inside at
+ * `borderRadius - HAIRLINE`. Any rounding error then exposes the stroke colour
+ * itself, which is invisible by construction.
+ *
+ * 1dp, not `StyleSheet.hairlineWidth` — the design calls for a visible edge,
+ * and a hairline disappears on a 3x screen.
  */
-export const GRADIENT_BORDER_FILL = ui.panel;
+export const HAIRLINE = 1;
 
 /** Layered background, spec §3: warm lamp above, magenta wash below. */
 export const BACKDROP = {

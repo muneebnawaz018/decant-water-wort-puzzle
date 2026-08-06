@@ -11,6 +11,7 @@ import { apothecary } from '@/theme/apothecary';
 import { Icon, type IconName } from '../Icon';
 import { Panel } from './Panel';
 import { useTapHandler } from '../hooks/useTapHandler';
+import { useTapScale } from '../hooks/useTapScale';
 import { s } from '@/theme/scale';
 import { section } from './styles/section.styles';
 import { KNOB_TRAVEL, styles } from './styles/SettingRow.styles';
@@ -54,13 +55,30 @@ export const SettingRow = memo(function SettingRow({
   // wrapped handler is only reachable through the `Pressable` below, which is
   // only rendered when there is something to press.
   const handlePress = useTapHandler(onPress ?? noop);
+  const tap = useTapScale();
 
   const body = (
     <View style={[styles.row, divider && styles.divider]}>
-      <View style={styles.rowIcon}>
+      <Animated.View style={[styles.rowIcon, tap.style]}>
         <Icon name={icon} size={s(18)} color={apothecary.goldLight} />
-      </View>
-      <Text style={styles.rowLabel}>{label}</Text>
+      </Animated.View>
+      {/*
+        One line, always.
+        
+        A row is a fixed-height thing with an icon on the left and a control on
+        the right; the moment its label wraps, the row grows and both of those
+        stop sitting on the same line as the text they belong to. On the
+        narrowest phone this app supports, "Watch a short ad" fits and
+        "+50 coins — watch a short ad" did not, which is why the payout moved
+        to a chip rather than the label being allowed two lines.
+
+        Truncating is the right failure here: a label that no longer fits is a
+        wording problem to fix, and an ellipsis says so plainly instead of
+        quietly reflowing the row.
+      */}
+      <Text style={styles.rowLabel} numberOfLines={1}>
+        {label}
+      </Text>
       {children}
       {onPress ? <Text style={styles.chevron}>›</Text> : null}
     </View>
@@ -69,7 +87,12 @@ export const SettingRow = memo(function SettingRow({
   if (!onPress) return body;
 
   return (
-    <Pressable onPress={handlePress} accessibilityRole="button">
+    <Pressable
+      onPress={handlePress}
+      onPressIn={tap.onPressIn}
+      onPressOut={tap.onPressOut}
+      accessibilityRole="button"
+    >
       {body}
     </Pressable>
   );
