@@ -19,7 +19,6 @@ import { s } from '@/theme/scale';
 import { fract, plural } from '@/utils';
 import { GlossButton } from './chrome/GlossButton';
 import { Panel } from './chrome/Panel';
-import { ChromeIconButton } from './chrome/ScreenHeader';
 import { useScreenPadding } from './hooks/useScreenPadding';
 import { Icon } from './Icon';
 import { styles } from './styles/CompleteScreen.styles';
@@ -65,10 +64,6 @@ export const CompleteScreen = memo(function CompleteScreen({
     <View style={[styles.root, padding.frame]}>
       <Confetti />
 
-      <View style={styles.homeButton}>
-        <ChromeIconButton icon="home" onPress={onHome} label="Home" />
-      </View>
-
       <View style={styles.content}>
         <ShimmerTitle />
 
@@ -105,6 +100,18 @@ export const CompleteScreen = memo(function CompleteScreen({
             onPress={onNext}
             style={styles.button}
           />
+        </Animated.View>
+
+        {/*
+          Home reads as part of the screen rather than as an icon parked in a
+          corner. It arrives last of the three, because it is the one thing
+          here nobody is in a hurry to press.
+        */}
+        <Animated.View
+          style={styles.homeRow}
+          entering={FadeIn.duration(600).delay(rewardDelay + 400)}
+        >
+          <GlossButton label="Home" variant="ghost" onPress={onHome} />
         </Animated.View>
       </View>
     </View>

@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-import { apothecary } from '@/theme/apothecary';
+import { apothecary, SPACE } from '@/theme/apothecary';
 import { colours, ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
 import { s } from '@/theme/scale';
@@ -15,14 +15,13 @@ import { text } from '@/theme/typography';
 export const KNOB_TRAVEL = s(46) - s(21) - s(3) * 2;
 
 export const styles = StyleSheet.create({
-  group: { marginBottom: s(16) },
-  groupTitle: { ...text.eyebrow, marginBottom: s(8), marginLeft: s(4) },
+  group: { marginBottom: SPACE.section },
 
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: s(12),
-    paddingHorizontal: s(15),
+    paddingHorizontal: SPACE.panel,
     paddingVertical: s(13),
   },
   divider: { borderBottomWidth: 1, borderBottomColor: ui.divider },

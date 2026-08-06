@@ -19,7 +19,7 @@ import { ChromeIconButton, ScreenHeader } from './chrome/ScreenHeader';
 import { confirmDifficultyChange } from './confirmDifficulty';
 import { useScreenPadding } from './hooks/useScreenPadding';
 import { useTapHandler } from './hooks/useTapHandler';
-import { Icon } from './Icon';
+import { Icon, Stars } from './Icon';
 import { COLUMNS, styles } from './styles/StagesScreen.styles';
 
 interface StagesScreenProps {
@@ -27,8 +27,18 @@ interface StagesScreenProps {
   onPick: () => void;
 }
 
-/** Levels per page. Doc §5 generates on demand, so pages are windows. */
-export const PAGE_SIZE = 50;
+/**
+ * Levels per page. Doc §5 generates on demand, so pages are windows.
+ *
+ * 30 rather than 50: at three columns a 50-level page is 17 rows of scrolling
+ * to reach the frontier, and it divides into ten-level milestone blocks as
+ * five, which nothing on screen reflects. 30 is ten rows and exactly three
+ * blocks.
+ *
+ * Home reads this too — its "block" progress bar is one page — so the two
+ * cannot disagree about where a block starts.
+ */
+export const PAGE_SIZE = 30;
 
 interface Stage {
   level: number;
@@ -92,8 +102,6 @@ export const StagesScreen = memo(function StagesScreen({
     return list;
   }, [page, furthest, progress.stars]);
 
-  const pageLocked = page > lastOpenPage;
-
   const select = useCallback(
     (stage: Stage) => {
       if (stage.locked) return;
@@ -116,9 +124,17 @@ export const StagesScreen = memo(function StagesScreen({
   );
 
   const previous = useCallback(() => setPage((p) => Math.max(0, p - 1)), []);
-  // One page past the frontier stays reachable so the next block is visible.
+  /**
+   * The frontier's page is the last one, full stop.
+   *
+   * It used to allow one page past it, on the theory that seeing the next block
+   * gives the player something to aim at. What it actually shows is fifty
+   * padlocks — no colour, no level names, nothing to want — and the page label
+   * reads "51–100" as though that block were open. A shelf you can walk to and
+   * not touch is worse than one that is not there.
+   */
   const forward = useCallback(
-    () => setPage((p) => Math.min(lastOpenPage + 1, p + 1)),
+    () => setPage((p) => Math.min(lastOpenPage, p + 1)),
     [lastOpenPage]
   );
 
@@ -136,7 +152,12 @@ export const StagesScreen = memo(function StagesScreen({
       </View>
 
       <View style={styles.pager}>
-        <ChromeIconButton icon="back" onPress={previous} label="Previous page" />
+        <ChromeIconButton
+          icon="back"
+          onPress={previous}
+          label="Previous page"
+          dimmed={page === 0}
+        />
         <Text style={styles.pageLabel}>
           {from}–{to}
         </Text>
@@ -144,7 +165,7 @@ export const StagesScreen = memo(function StagesScreen({
           icon="next"
           onPress={forward}
           label="Next page"
-          dimmed={page > lastOpenPage}
+          dimmed={page >= lastOpenPage}
         />
       </View>
 
@@ -158,18 +179,27 @@ export const StagesScreen = memo(function StagesScreen({
         columnWrapperStyle={styles.row}
         contentContainerStyle={[styles.grid, padding.scrollTailWithNav]}
         showsVerticalScrollIndicator={false}
-        // A page is 50 tiles; only the visible window is ever mounted.
-        initialNumToRender={20}
-        windowSize={5}
-        removeClippedSubviews
+        /*
+          A page is 30 tiles — ten rows — so the whole thing is rendered.
+
+          `removeClippedSubviews` was here and is gone. On Android it detaches
+          rows from the native view hierarchy by their computed offset, and
+          inside an absolutely positioned parent (which is what
+          `ScreenTransition` now is) those offsets are wrong: rows came back
+          attached in the wrong place, so the top of the grid drew over itself.
+          iOS ignores the prop almost entirely, which is why the screen was fine
+          there and only there.
+
+          It buys nothing at this size anyway. It exists for lists of hundreds
+          of rows, and this one is ten.
+        */
+        initialNumToRender={12}
       />
 
-      {pageLocked ? (
-        <Animated.View style={styles.lockNotice} entering={FadeIn.duration(260)}>
-          <Icon name="lock" size={s(16)} color={apothecary.inkMuted} />
-          <Text style={styles.lockText}>Finish the block before this one</Text>
-        </Animated.View>
-      ) : null}
+      {/*
+        No "finish the block before this one" notice any more: the next page
+        cannot be reached, so nothing needs explaining away.
+      */}
     </View>
   );
 });
@@ -255,13 +285,7 @@ const StageTile = memo(function StageTile({
             {stage.level}
           </Text>
 
-          {stage.locked ? null : (
-            <View style={styles.stars}>
-              {[0, 1, 2].map((i) => (
-                <View key={i} style={[styles.star, i < stage.stars && styles.starFilled]} />
-              ))}
-            </View>
-          )}
+          {stage.locked ? null : <Stars filled={stage.stars} size={s(13)} />}
         </LinearGradient>
       </Pressable>
     </Animated.View>

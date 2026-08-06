@@ -54,10 +54,72 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-dev-client',
-    'expo-audio',
+    [
+      'expo-audio',
+      {
+        // The plugin defaults to asking for microphone and background audio,
+        // because most apps using it record or play behind a lock screen. This
+        // one does neither: it plays short pour sounds while it is on screen.
+        //
+        // Left at the defaults, a puzzle game ships asking for RECORD_AUDIO and
+        // NSMicrophoneUsageDescription, which is a store-review question with
+        // no good answer and a permission prompt players are right to refuse.
+        microphonePermission: false,
+        recordAudioAndroid: false,
+        enableBackgroundRecording: false,
+        enableBackgroundPlayback: false,
+      },
+    ],
     'expo-asset',
     'expo-font',
     'expo-system-ui',
+    [
+      // Release-build size. Both of these default to **off** in the Expo
+      // Android template, so a release build without this block ships an
+      // unminified dex and every resource the project has ever had.
+      //
+      // They live here rather than in `android/gradle.properties` because
+      // `expo prebuild` regenerates that file — an edit there survives until
+      // the next config change and then quietly disappears, which is the worst
+      // possible failure mode for a build setting.
+      'expo-build-properties',
+      {
+        android: {
+          /**
+           * R8. Shrinks and obfuscates the dex — the debug APK carries eight
+           * dex files totalling ~55MB, and most of that is code no release
+           * build reaches.
+           *
+           * The risk R8 carries is that it strips what only reflection finds,
+           * and that fails at runtime rather than at build time. Every native
+           * module here ships its own consumer ProGuard rules, so the
+           * framework is covered; what is not covered by anyone is this app's
+           * own code, and none of it uses reflection. **A release build still
+           * has to be played through before it is trusted.**
+           */
+          enableMinifyInReleaseBuilds: true,
+
+          /**
+           * Drops resources nothing references. Safe here in a way it often is
+           * not: resources are only reached by name when code does
+           * `getIdentifier()`, and this app draws its own icons as Skia paths
+           * and has no bitmap art beyond the launcher icons and the splash.
+           */
+          enableShrinkResourcesInReleaseBuilds: true,
+        },
+      },
+    ],
+    [
+      'expo-notifications',
+      {
+        // The small monochrome glyph Android draws in the status bar. It
+        // reuses the adaptive icon's foreground rather than shipping a fifth
+        // mark to keep in sync.
+        icon: './assets/android-icon-monochrome.png',
+        color: colours.gold,
+        defaultChannel: 'daily-reward',
+      },
+    ],
     [
       'expo-splash-screen',
       {

@@ -14,6 +14,13 @@ import { styles } from './styles/GlossButton.styles';
 
 type Variant = 'primary' | 'neutral' | 'ghost';
 
+/**
+ * `regular` is the full face — Home's Play button and the board's controls.
+ * `dialog` is for buttons inside a card, where the full size would outweigh
+ * everything around it. `compact` is the smallest, for pills in a list row.
+ */
+type Size = 'regular' | 'dialog' | 'compact';
+
 interface GlossButtonProps {
   label: string;
   onPress: () => void;
@@ -22,8 +29,8 @@ interface GlossButtonProps {
   style?: StyleProp<ViewStyle>;
   /** Rendered left of the label — an icon, usually. */
   leading?: ReactNode;
-  /** Tighter padding, for buttons sitting inside a card. */
-  compact?: boolean;
+  /** Tighter padding. See `Size`. */
+  size?: Size;
 }
 
 /**
@@ -41,7 +48,7 @@ export const GlossButton = memo(function GlossButton({
   disabled = false,
   style,
   leading,
-  compact = false,
+  size = 'regular',
 }: GlossButtonProps) {
   const press = useSharedValue(0);
   const handlePress = useTapHandler(onPress);
@@ -69,9 +76,19 @@ export const GlossButton = memo(function GlossButton({
         accessibilityRole="button"
         style={style}
       >
-        <Animated.View style={[styles.ghost, animated, disabled && styles.disabled]}>
+        <Animated.View
+          style={[
+            styles.ghost,
+            size === 'dialog' && styles.dialogGhost,
+            size === 'compact' && styles.compactGhost,
+            animated,
+            disabled && styles.disabled,
+          ]}
+        >
           {leading}
-          <Text style={styles.ghostLabel}>{label}</Text>
+          <Text style={[styles.ghostLabel, size === 'compact' && styles.smallGhostLabel]}>
+            {label}
+          </Text>
         </Animated.View>
       </Pressable>
     );
@@ -100,7 +117,8 @@ export const GlossButton = memo(function GlossButton({
           style={[
             styles.face,
             primary ? styles.primaryFace : styles.neutralFace,
-            compact && styles.compactFace,
+            size === 'dialog' && styles.dialogFace,
+            size === 'compact' && styles.compactFace,
           ]}
         >
           {/* Spec's `inset 0 2px 0 rgba(255,255,255,.5)` top gloss. */}
@@ -110,7 +128,8 @@ export const GlossButton = memo(function GlossButton({
             <Text
               style={[
                 primary ? styles.primaryLabel : styles.label,
-                compact && styles.compactLabel,
+                size === 'dialog' && styles.dialogLabel,
+                size === 'compact' && styles.compactLabel,
               ]}
             >
               {label}

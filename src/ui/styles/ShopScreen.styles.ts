@@ -9,9 +9,7 @@ import { text } from '@/theme/typography';
 const GAP = s(12);
 
 export const styles = StyleSheet.create({
-  groupTitle: { ...text.eyebrow, marginBottom: s(8), marginLeft: s(4) },
-
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP, marginBottom: s(16) },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP, marginBottom: SPACE.section },
   // `'48%'` on a phone, a real width on a tablet. Two-across held at any size,
   // an iPad got 490dp cards carrying a 66dp swatch strip — a skin preview
   // stretched into a letterbox, which is the one part of the card worth
@@ -23,7 +21,7 @@ export const styles = StyleSheet.create({
     columns: 2,
     phoneWidth: '48%',
   }),
-  tile: { padding: s(12), alignItems: 'center' },
+  tile: { padding: SPACE.tile, alignItems: 'center' },
   preview: {
     flexDirection: 'row',
     alignSelf: 'stretch',
@@ -31,7 +29,9 @@ export const styles = StyleSheet.create({
     gap: s(5),
     padding: s(8),
     borderRadius: s(12),
-    marginBottom: s(10),
+    // The tile's own inset, so the swatches, the name and the button are all
+    // one distance apart and one distance from the card's edges.
+    marginBottom: SPACE.tile,
     overflow: 'hidden',
     backgroundColor: ui.well,
   },
@@ -43,14 +43,16 @@ export const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
   },
   tileName: { ...text.cardTitle, fontSize: s(13) },
-  buy: { alignSelf: 'stretch', marginTop: s(9) },
+  // Matches the tile's own padding, so the button sits the same distance from
+  // the card's bottom edge as it does from the name above it.
+  buy: { alignSelf: 'stretch', marginTop: SPACE.tile },
 
   extra: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: s(12),
-    paddingHorizontal: s(15),
-    paddingVertical: s(11),
+    paddingHorizontal: SPACE.panel,
+    paddingVertical: s(13),
   },
   extraDivider: { borderBottomWidth: 1, borderBottomColor: ui.divider },
   extraLabel: { ...text.rowLabel, flex: 1 },

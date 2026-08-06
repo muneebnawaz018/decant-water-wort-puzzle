@@ -10,6 +10,7 @@ import { ScrollPage } from './chrome/ScrollPage';
 import { SoonBadge } from './chrome/SoonBadge';
 import { SoonOverlay } from './chrome/SoonOverlay';
 import { SettingGroup } from './chrome/SettingRow';
+import { section } from './chrome/styles/section.styles';
 import { styles } from './styles/ShopScreen.styles';
 
 /**
@@ -19,36 +20,49 @@ import { styles } from './styles/ShopScreen.styles';
  *
  * Marked "Soon" until the board actually renders one. A shop that takes coins
  * for something invisible is worse than a shop that says it is not ready.
+ *
+ * Priced as a ladder rather than a flat rate, and priced against what the game
+ * actually pays. A level averages about 49 coins and a block of ten with its
+ * milestone bonus is 535 to 632, so an engaged player earns roughly 630 a day.
+ * The first skin is then two or three days away, the last a few weeks — which
+ * is the point of a currency. At the old flat 200 a skin cost four levels and
+ * the whole shop was affordable several times over by level 100, so coins
+ * meant nothing and the coin-pack IAP had nothing to sell.
+ *
+ * These will want revisiting when the shop holds more than four things. Three
+ * or four sinks cannot absorb an economy on their own.
  */
 const SKINS = [
   {
     id: 'skin.ocean',
     name: 'Ocean glass',
+    price: 1500,
     swatch: [colours.aqua, colours.teal, colours.blueberry],
   },
   {
     id: 'skin.sunset',
     name: 'Sunset glass',
+    price: 2500,
     swatch: [colours.coral, colours.mango, colours.tangerine],
   },
   {
     id: 'skin.berry',
     name: 'Berry glass',
+    price: 4000,
     swatch: [colours.plum, colours.rose, colours.grape],
   },
   {
     id: 'skin.meadow',
     name: 'Meadow glass',
+    price: 6000,
     swatch: [colours.lime, colours.teal, colours.aqua],
   },
 ] as const;
 
-const SKIN_PRICE = 200;
-
 export const ShopScreen = memo(function ShopScreen({ onBack }: { onBack: () => void }) {
   return (
     <ScrollPage title="Shop" onBack={onBack} trailing={<CoinPill />}>
-      <Text style={styles.groupTitle}>Vial skins</Text>
+      <Text style={section.title}>Vial skins</Text>
       <View style={styles.grid}>
         {SKINS.map((skin) => (
           <SkinTile key={skin.id} {...skin} />
@@ -57,7 +71,7 @@ export const ShopScreen = memo(function ShopScreen({ onBack }: { onBack: () => v
 
       <SettingGroup title="Extras">
         <ExtraRow label="Remove ads forever" price="$2.99" />
-        <ExtraRow label="Coin pack · 1000" price="$1.99" last />
+        <ExtraRow label="Coin pack · 8,000" price="$1.99" last />
       </SettingGroup>
     </ScrollPage>
   );
@@ -65,13 +79,15 @@ export const ShopScreen = memo(function ShopScreen({ onBack }: { onBack: () => v
 
 const SkinTile = memo(function SkinTile({
   name,
+  price,
   swatch,
 }: {
   name: string;
+  price: number;
   swatch: readonly string[];
 }) {
   // Nothing reads `owned` yet — the renderer paints from the palette, not from
-  // a skin — so a purchase here would take 200 coins and change nothing on
+  // a skin — so a purchase here would take the coins and change nothing on
   // screen. Until the board honours a skin, this previews and does not sell.
   const preview = useCallback(() => {
     overlay.toast(`${name} arrives in a later update`);
@@ -94,10 +110,10 @@ const SkinTile = memo(function SkinTile({
         </View>
         <Text style={styles.tileName}>{name}</Text>
         <GlossButton
-          label={`${SKIN_PRICE} coins`}
+          label={`${price.toLocaleString()} coins`}
           variant="ghost"
           onPress={preview}
-          compact
+          size="compact"
           style={styles.buy}
         />
       </Panel>
@@ -127,7 +143,7 @@ const ExtraRow = memo(function ExtraRow({
         label={price}
         variant="ghost"
         onPress={buy}
-        compact
+        size="compact"
         style={styles.extraBuy}
       />
     </View>

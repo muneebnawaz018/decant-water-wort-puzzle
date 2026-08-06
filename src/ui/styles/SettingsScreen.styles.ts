@@ -6,9 +6,9 @@ import { s } from '@/theme/scale';
 export const styles = StyleSheet.create({
   version: {
     fontFamily: POPPINS.regular,
-    fontSize: s(11),
+    fontSize: s(12.5),
     textAlign: 'center',
     color: apothecary.inkMuted,
-    marginTop: s(12),
+    marginTop: s(10),
   },
 });

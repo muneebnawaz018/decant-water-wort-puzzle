@@ -3,9 +3,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { s } from '@/theme/scale';
 import { NAV_BAR_HEIGHT } from '../chrome/styles/NavBar.styles';
+import { NAV_FADE } from '../styles/Root.styles';
 
-/** Breathing room under the last card so it clears the home indicator. */
-const SCROLL_TAIL = s(30);
+/**
+ * Breathing room under the last card so it clears the home indicator.
+ *
+ * At least the nav bar's fade band: content that stops short of it is still
+ * inside the dissolve and renders half transparent. The `max` says which
+ * constraint is doing the work — raise the fade and the tail follows it.
+ */
+const SCROLL_TAIL = Math.max(s(30), NAV_FADE);
 
 export interface ScreenPadding {
   /** For a screen root that owns its own header. */

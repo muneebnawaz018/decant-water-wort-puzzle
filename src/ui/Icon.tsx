@@ -2,6 +2,7 @@ import { Canvas, Group, Path, Skia } from '@shopify/react-native-skia';
 import { memo, useMemo } from 'react';
 
 import { apothecary } from '@/theme/apothecary';
+import { ui } from '@/theme/colors';
 
 /**
  * Feather-style 24×24 outlines. Drawn with Skia rather than shipped as image
@@ -107,6 +108,54 @@ export const Icon = memo(function Icon({
           strokeJoin="round"
         />
       </Group>
+    </Canvas>
+  );
+});
+
+/** Gap between stars, as a fraction of one star's size. */
+const STAR_GAP = 0.22;
+
+/**
+ * A three-star rating, drawn as stars rather than as dots.
+ *
+ * One canvas for all three, not three `Icon`s. A stage page holds 50 tiles and
+ * every canvas is a native surface — 150 of them to draw six shapes each is the
+ * kind of cost this project has already paid once, on Home's rack.
+ *
+ * Earned stars are filled gold; the rest are the same shape at low opacity, so
+ * the row keeps its width and a player can see what is still on the table.
+ */
+export const Stars = memo(function Stars({
+  filled,
+  size,
+  total = 3,
+}: {
+  /** How many are earned, 0 to `total`. */
+  filled: number;
+  /** One star's box. The row is wider by the gaps. */
+  size: number;
+  total?: number;
+}) {
+  const path = iconPath('star');
+  const gap = size * STAR_GAP;
+  const width = size * total + gap * (total - 1);
+
+  const canvasStyle = useMemo(() => ({ width, height: size }), [width, size]);
+  const scale = useMemo(() => size / 24, [size]);
+
+  if (!path) return null;
+
+  return (
+    <Canvas style={canvasStyle}>
+      {Array.from({ length: total }, (_, i) => (
+        <Group key={i} transform={[{ translateX: i * (size + gap) }, { scale }]}>
+          <Path
+            path={path}
+            color={i < filled ? apothecary.gold : ui.emptyStar}
+            style="fill"
+          />
+        </Group>
+      ))}
     </Canvas>
   );
 });

@@ -1,2 +1,2 @@
 export { fract, percentWidth } from './number';
-export { plural } from './text';
+export { countdown, plural } from './text';

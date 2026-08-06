@@ -149,6 +149,24 @@ export const apothecary: Theme = {
   ],
 };
 
+/**
+ * Solid fill to put behind a `LinearGradient` that also carries a border.
+ *
+ * **Android insets a view's background by its border width. iOS paints the
+ * background under the border.** With a gradient that difference shows: the
+ * gradient stops at the inner edge of the stroke and a 1dp ring of whatever is
+ * behind the card shows through, which on this dark purple ground reads as a
+ * gap between the border and the fill at all four corners. It is not a rounding
+ * error and it does not go away at higher densities.
+ *
+ * Every gradient in the chrome runs `panelTop → panel`, so the bottom stop
+ * fills that ring near-invisibly. It costs one extra solid fill on iOS, where
+ * the gradient covers it entirely.
+ *
+ * Anything that pairs `borderWidth` with a `LinearGradient` needs this.
+ */
+export const GRADIENT_BORDER_FILL = ui.panel;
+
 /** Layered background, spec §3: warm lamp above, magenta wash below. */
 export const BACKDROP = {
   lamp: ui.lamp,
@@ -168,6 +186,31 @@ export const SPACE = {
   /** Screen side padding, and the gap between stacked blocks. */
   screen: s(24),
   block: s(24),
+
+  /**
+   * The gap under a finished section — a grid, a panel, a reward track —
+   * before the next one starts.
+   *
+   * Named because it was not being shared. Shop and Settings both used 16,
+   * Stats used 14 and Daily used 14 above its track and 16 below it. Nobody
+   * sees a two-point difference on one screen; what they see is that the app
+   * does not quite line up, without being able to say why.
+   */
+  section: s(16),
+
+  /**
+   * Inset for content inside a full-width panel — settings rows, the stats
+   * progress card, Daily's streak header.
+   */
+  panel: s(16),
+
+  /**
+   * Inset inside a grid tile. Tighter than `panel` on purpose: a tile is half
+   * the width, so the same inset would eat a proportionally larger share of it
+   * and leave the content cramped.
+   */
+  tile: s(12),
+
   cardRadius: s(20),
   buttonRadius: s(16),
   /** Vial glass: square shoulders, round base. */

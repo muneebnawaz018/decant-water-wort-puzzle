@@ -19,7 +19,10 @@ const loadScaleFor = (width: number, height: number): typeof import('../scale') 
   return require('../scale');
 };
 
-const IPHONE_15 = [393, 852] as const;
+// Measured off the simulators, not quoted from a spec sheet.
+const IPHONE_17 = [402, 874] as const;
+// The narrowest phone still worth holding the line on: if `s()` ever stopped
+// being the identity, the smallest screen is where it would hurt first.
 const IPHONE_SE = [375, 667] as const;
 const PIXEL_8 = [412, 915] as const;
 const IPAD_MINI = [744, 1133] as const;
@@ -34,7 +37,7 @@ describe('scale', () => {
     // The point of the whole module. A tablet regression costs a listing on a
     // form factor nobody has installed yet; a phone regression costs the app.
     it.each([
-      ['iPhone 15', IPHONE_15],
+      ['iPhone 17 Pro', IPHONE_17],
       ['iPhone SE', IPHONE_SE],
       ['Pixel 8', PIXEL_8],
     ])('returns its input unchanged on %s', (_name, [width, height]) => {
@@ -103,7 +106,7 @@ describe('scale', () => {
 
   describe('columnsFor', () => {
     it('returns the phone fallback untouched below the threshold', () => {
-      const { columnsFor } = loadScaleFor(...IPHONE_15);
+      const { columnsFor } = loadScaleFor(...IPHONE_17);
 
       expect(columnsFor(345, 76, 14, 4)).toBe(4);
     });
@@ -131,7 +134,7 @@ describe('the splash vial is not scaled', () => {
    * exactly where nobody would look for it.
    */
   it('keeps the shared numbers free of any device dependency', () => {
-    const onPhone = loadScaleFor(...IPHONE_15);
+    const onPhone = loadScaleFor(...IPHONE_17);
     const onTablet = loadScaleFor(...IPAD_PRO);
 
     // Both loads see the same module, since `splash.ts` imports nothing.

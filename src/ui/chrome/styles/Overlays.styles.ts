@@ -31,8 +31,21 @@ export const styles = StyleSheet.create({
     textAlign: 'center',
   },
   body: { ...text.body, marginBottom: s(20), textAlign: 'center' },
+  /**
+   * Two buttons share the width; one does not take it all.
+   *
+   * `alignSelf: 'stretch'` with `flex: 1` is right for a pair — Cancel and
+   * Confirm each get half, and the row reads as a choice. Applied to a lone
+   * button it stretches a single "Close" across the full 300dp card, which is
+   * how a dismissal ends up looking like the most important thing on screen.
+   * A dialog with nothing to decide should not shout.
+   */
   buttons: { flexDirection: 'row', gap: s(10), alignSelf: 'stretch' },
   button: { flex: 1 },
+
+  /** One button: sized to its label, floor of 140dp so it stays easy to hit. */
+  buttonsSingle: { flexDirection: 'row', alignSelf: 'center' },
+  buttonSingle: { minWidth: s(140) },
 
   toast: {
     position: 'absolute',

@@ -7,6 +7,8 @@ import { gradients } from '@/theme/colors';
 import { s } from '@/theme/scale';
 
 import { useGameStore } from '@/state/gameStore';
+import { useOverlayStore } from '@/state/overlayStore';
+import { useAndroidBack } from './hooks/useAndroidBack';
 import { Backdrop } from './chrome/Backdrop';
 import { NavBar, type NavDestination } from './chrome/NavBar';
 import { Overlays } from './chrome/Overlays';
@@ -15,6 +17,7 @@ import { DailyScreen } from './DailyScreen';
 import { usePoppins } from './fonts';
 import { hideNativeSplash } from './nativeSplash';
 import { GameScreen } from './GameScreen';
+import { useNotifications } from './hooks/useNotifications';
 import { HomeScreen } from './HomeScreen';
 import { ScreenTransition } from './ScreenTransition';
 import { SettingsScreen } from './SettingsScreen';
@@ -29,12 +32,18 @@ type Screen = 'splash' | 'home' | 'game' | 'complete' | NavDestination;
 /**
  * Where the bottom bar is shown.
  *
- * Everywhere except the three screens that own the whole display: the splash,
- * the board — where a stray tap on a nav item mid-pour would be a lost move —
- * and the win screen, which has its own two buttons and a home icon.
+ * Everywhere except the two screens that own the whole display: the splash, and
+ * the board — where a stray tap on a nav item mid-pour would be a lost move.
+ *
+ * The win screen used to be excluded too, on the grounds that it has its own
+ * two buttons and a home icon. In practice it is the most common place to want
+ * to go somewhere else — you have just been paid coins, so the shop and the
+ * daily track are exactly what is on your mind — and hiding the bar there made
+ * it the one screen you had to back out of first.
  */
 const WITH_NAV: ReadonlySet<Screen> = new Set<Screen>([
   'home',
+  'complete',
   'stages',
   'settings',
   'daily',
@@ -66,6 +75,7 @@ export function Root() {
   const insets = useSafeAreaInsets();
   const [screen, setScreen] = useState<Screen>('splash');
   const fontsReady = usePoppins();
+  useNotifications();
   const handedOff = useRef(false);
 
   // The native splash stays up until there is a real frame to replace it with.
@@ -83,6 +93,36 @@ export function Root() {
   const showStages = useCallback(() => setScreen('stages'), []);
   const showComplete = useCallback(() => setScreen('complete'), []);
   const navigate = useCallback((destination: NavDestination) => setScreen(destination), []);
+
+  /**
+   * Android's back press, screen by screen.
+   *
+   * An open modal takes it first — dismissing the thing in front of you is what
+   * back means everywhere else on the platform, and a dialog that survives it
+   * feels stuck. The splash swallows it rather than letting a press during the
+   * two-second intro close the app.
+   *
+   * Every screen below home returns home, which is what its own back button
+   * does, so the two cannot disagree. The board is deliberately the same as its
+   * exit control: back leaves to the level list, and the level in progress is
+   * already saved after every pour, so nothing is lost by it.
+   */
+  const handleBack = useCallback(() => {
+    if (useOverlayStore.getState().modal !== null) {
+      useOverlayStore.getState().closeModal();
+      return true;
+    }
+    if (screen === 'home') return false;
+    if (screen === 'splash') return true;
+    if (screen === 'game') {
+      setScreen('stages');
+      return true;
+    }
+    setScreen('home');
+    return true;
+  }, [screen]);
+
+  useAndroidBack(handleBack);
 
   const replay = useCallback(() => {
     useGameStore.getState().restart();

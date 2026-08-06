@@ -69,12 +69,20 @@ const ModalHost = memo(function ModalHost() {
         <Panel radius={22} contentStyle={styles.card}>
           <Text style={styles.title}>{modal.title}</Text>
           <Text style={styles.body}>{modal.body}</Text>
-          <View style={styles.buttons}>
+          {/*
+            `dialog` size on both. The full primary face is ~60dp tall — that
+            belongs to Home's Play button, the one thing on that screen you are
+            meant to press, and a dialog inheriting it made its own dismissal
+            the largest element on screen. `compact` was the overcorrection, at
+            34dp.
+          */}
+          <View style={showCancel ? styles.buttons : styles.buttonsSingle}>
             {showCancel ? (
               <GlossButton
                 label={modal.cancelLabel ?? 'Cancel'}
                 variant="ghost"
                 onPress={closeModal}
+                size="dialog"
                 style={styles.button}
               />
             ) : null}
@@ -82,7 +90,8 @@ const ModalHost = memo(function ModalHost() {
               label={modal.confirmLabel ?? 'OK'}
               variant="primary"
               onPress={confirm}
-              style={styles.button}
+              size="dialog"
+              style={showCancel ? styles.button : styles.buttonSingle}
             />
           </View>
         </Panel>

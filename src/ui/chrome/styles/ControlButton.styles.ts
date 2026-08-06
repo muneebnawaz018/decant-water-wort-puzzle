@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-import { apothecary } from '@/theme/apothecary';
+import { apothecary, GRADIENT_BORDER_FILL } from '@/theme/apothecary';
 import { ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
 import { s } from '@/theme/scale';
@@ -15,6 +15,10 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: apothecary.line,
+    // Android insets the background by the border width, leaving a ring of
+    // the screen showing between the stroke and the gradient. See
+    // `GRADIENT_BORDER_FILL`.
+    backgroundColor: GRADIENT_BORDER_FILL,
     overflow: 'hidden',
     shadowColor: ui.shadow,
     shadowOpacity: 0.35,

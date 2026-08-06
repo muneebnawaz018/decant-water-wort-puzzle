@@ -1,7 +1,8 @@
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback } from 'react';
 import { Text, View } from 'react-native';
 
-import { DAILY_REWARDS, isNextDay, today, useEconomyStore } from '@/state/economyStore';
+import { DAILY_REWARDS, useEconomyStore } from '@/state/economyStore';
+import { syncReminders } from '@/notifications/dailyReminder';
 import { overlay } from '@/state/overlayStore';
 import { colours } from '@/theme/colors';
 import { s } from '@/theme/scale';
@@ -9,8 +10,21 @@ import { GlossButton } from './chrome/GlossButton';
 import { Panel } from './chrome/Panel';
 import { ScrollPage } from './chrome/ScrollPage';
 import { SettingRow } from './chrome/SettingRow';
+import { countdown } from '@/utils';
+import { useClaimTimer } from './hooks/useClaimTimer';
 import { Icon } from './Icon';
-import { styles } from './styles/DailyScreen.styles';
+import { DAY_COLUMNS, styles } from './styles/DailyScreen.styles';
+
+/**
+ * Empty slots needed to fill the reward track's last row.
+ *
+ * Computed once at module scope: the reward count and the column count are
+ * both constants, so this cannot change while the app is running.
+ */
+const ORPHAN_SLOTS = Array.from(
+  { length: (DAY_COLUMNS - (DAILY_REWARDS.length % DAY_COLUMNS)) % DAY_COLUMNS },
+  (_, index) => index
+);
 
 interface DailyScreenProps {
   onBack: () => void;
@@ -23,27 +37,22 @@ export const DailyScreen = memo(function DailyScreen({
   onPlayBonus,
 }: DailyScreenProps) {
   const streak = useEconomyStore((state) => state.streak);
-  const lastClaim = useEconomyStore((state) => state.lastClaim);
+  const { reward, remaining, dayIndex } = useClaimTimer();
+  const waiting = reward === null;
 
-  const date = useMemo(() => today(new Date()), []);
-  // Read through `getState`, but only after subscribing to `lastClaim` and
-  // `streak` above — the selector form would pin the function identity and
-  // never re-render when a claim lands.
-  const reward = useEconomyStore.getState().claimable(date);
-  const claimed = reward === null;
-
-  // Which day of the week's track today is. A broken streak restarts at day
-  // one, so this is not simply `streak`.
-  const todayIndex = claimed
+  // The tile the track is sitting on. While the timer runs that is the one
+  // just claimed, not the one coming next.
+  const currentIndex = waiting
     ? (streak - 1 + DAILY_REWARDS.length) % DAILY_REWARDS.length
-    : isNextDay(lastClaim ?? '', date)
-      ? streak % DAILY_REWARDS.length
-      : 0;
+    : dayIndex;
 
   const claim = useCallback(() => {
-    const paid = useEconomyStore.getState().claimDaily(date);
+    const paid = useEconomyStore.getState().claimDaily(Date.now());
     if (paid > 0) overlay.toast(`+${paid} coins claimed`);
-  }, [date]);
+    // The reminder is anchored to the claim, so a new claim moves it. Fire and
+    // forget: nothing on screen waits for the OS to accept a schedule.
+    void syncReminders();
+  }, []);
 
   return (
     <ScrollPage title="Daily rewards" onBack={onBack}>
@@ -53,7 +62,11 @@ export const DailyScreen = memo(function DailyScreen({
           <Text style={styles.streakTitle}>
             {streak === 1 ? '1-day streak' : `${streak}-day streak`}
           </Text>
-          <Text style={styles.streakDetail}>Come back daily for bigger rewards</Text>
+          <Text style={styles.streakDetail}>
+            {waiting
+              ? `Next reward in ${countdown(remaining)}`
+              : 'Come back daily for bigger rewards'}
+          </Text>
         </View>
       </Panel>
 
@@ -64,21 +77,32 @@ export const DailyScreen = memo(function DailyScreen({
             day={index + 1}
             amount={amount}
             state={
-              index < todayIndex || (claimed && index === todayIndex)
+              index < currentIndex || (waiting && index === currentIndex)
                 ? 'claimed'
-                : index === todayIndex
+                : index === currentIndex
                   ? 'today'
                   : 'future'
             }
           />
         ))}
+
+        {/*
+          Seven days across four columns leaves the last row one short. The
+          slot has to be occupied rather than left empty: `space-between` would
+          push the three real tiles apart, and stretching them was the bug this
+          replaces. An empty view keeps day 7 under day 3, where the week reads
+          as a grid rather than as two unrelated rows.
+        */}
+        {ORPHAN_SLOTS.map((slot) => (
+          <View key={`pad-${slot}`} style={styles.daySlot} />
+        ))}
       </View>
 
       <GlossButton
-        label={claimed ? 'Claimed today' : `Claim ${reward} coins`}
+        label={waiting ? countdown(remaining) : `Claim ${reward} coins`}
         variant="primary"
         onPress={claim}
-        disabled={claimed}
+        disabled={waiting}
       />
 
       <View style={styles.spacer} />

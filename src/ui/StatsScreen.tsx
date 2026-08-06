@@ -4,89 +4,209 @@ import { Text, View } from 'react-native';
 import { DIFFICULTIES, DIFFICULTY_INFO, type Difficulty } from '@/game/difficulty';
 import { useEconomyStore } from '@/state/economyStore';
 import { useGameStore } from '@/state/gameStore';
-import type { Progress } from '@/state/progress';
+import type { Progress, ProgressByDifficulty } from '@/state/progress';
 import { percentWidth } from '@/utils';
 import { Panel } from './chrome/Panel';
 import { ScrollPage } from './chrome/ScrollPage';
+import { section } from './chrome/styles/section.styles';
 import { styles } from './styles/StatsScreen.styles';
+
+/** What one mode's record adds up to. */
+interface ModeTotals {
+  /** Levels finished at least once. */
+  solved: number;
+  /** Highest level unlocked — the frontier, whether or not it is beaten. */
+  reached: number;
+  stars: number;
+  /** Levels beaten at three stars. */
+  perfect: number;
+  /** Pours across every best run, so replaying badly cannot inflate it. */
+  pours: number;
+  blocks: number;
+}
+
+function totalsFor(progress: Progress): ModeTotals {
+  let stars = 0;
+  let perfect = 0;
+  for (const value of Object.values(progress.stars)) {
+    stars += value;
+    if (value === 3) perfect += 1;
+  }
+
+  let pours = 0;
+  for (const moves of Object.values(progress.best)) pours += moves;
+
+  return {
+    solved: Object.keys(progress.best).length,
+    reached: progress.furthestLevel,
+    stars,
+    perfect,
+    pours,
+    blocks: progress.paidBlocks.length,
+  };
+}
+
+function sumTotals(record: ProgressByDifficulty): ModeTotals {
+  const total: ModeTotals = {
+    solved: 0,
+    reached: 0,
+    stars: 0,
+    perfect: 0,
+    pours: 0,
+    blocks: 0,
+  };
+  for (const difficulty of DIFFICULTIES) {
+    const mode = totalsFor(record[difficulty]!);
+    total.solved += mode.solved;
+    total.reached += mode.reached;
+    total.stars += mode.stars;
+    total.perfect += mode.perfect;
+    total.pours += mode.pours;
+    total.blocks += mode.blocks;
+  }
+  return total;
+}
 
 /**
  * Read-only dashboard (spec §4.8).
  *
  * Every number is derived from the progress record rather than tracked
- * separately — a second counter is a second thing to get out of step.
+ * separately — a second counter is a second thing to get out of step. That is
+ * also the ceiling on what this screen can say: there is no play-time, no
+ * session count and no move log, because none of them are stored, and adding a
+ * counter to feed a stat is exactly the trade the rule above refuses.
+ *
+ * Levels and stars are shown per mode rather than as one figure. Modes keep
+ * their own unlocks and their own place, so a combined total answers a question
+ * nobody asked — "how far am I in Fiendish" is the question, and a single
+ * number cannot answer it.
  */
 export const StatsScreen = memo(function StatsScreen({ onBack }: { onBack: () => void }) {
   const record = useGameStore((state) => state.record);
   const streak = useEconomyStore((state) => state.streak);
   const coins = useEconomyStore((state) => state.coins);
 
-  const totals = useMemo(() => {
-    let solved = 0;
-    let stars = 0;
-    for (const difficulty of DIFFICULTIES) {
-      const progress = record[difficulty]!;
-      solved += Object.keys(progress.best).length;
-      for (const value of Object.values(progress.stars)) stars += value;
-    }
-    return { solved, stars };
-  }, [record]);
+  const totals = useMemo(() => sumTotals(record), [record]);
+
+  // Guarded rather than left to divide by zero: a fresh install has solved
+  // nothing, and `NaN` is what the screen would print.
+  const perLevel = totals.solved === 0 ? 0 : totals.stars / totals.solved;
 
   return (
     <ScrollPage title="Your progress" onBack={onBack}>
       <View style={styles.grid}>
-        <StatTile value={String(totals.solved)} label="Levels solved" />
-        <StatTile value={String(totals.stars)} label="Stars earned" />
         <StatTile value={String(streak)} label="Day streak" />
         <StatTile value={String(coins)} label="Coins" />
+        <StatTile value={String(totals.perfect)} label="Three-star levels" />
+        <StatTile value={String(totals.blocks)} label="Milestones cleared" />
       </View>
 
-      <Panel contentStyle={styles.progressCard}>
-        {DIFFICULTIES.map((difficulty, index) => (
-          <ModeProgress
-            key={difficulty}
-            difficulty={difficulty}
-            progress={record[difficulty]!}
-            first={index === 0}
-          />
-        ))}
+      <Text style={section.title}>By difficulty</Text>
+      {DIFFICULTIES.map((difficulty, index) => (
+        <ModeCard
+          key={difficulty}
+          difficulty={difficulty}
+          progress={record[difficulty]!}
+          last={index === DIFFICULTIES.length - 1}
+        />
+      ))}
+
+      <Text style={section.title}>Lifetime</Text>
+      <Panel contentStyle={styles.lifetime}>
+        <StatRow label="Levels solved" value={String(totals.solved)} />
+        <StatRow label="Stars earned" value={`${totals.stars} / ${totals.solved * 3}`} />
+        <StatRow label="Stars per level" value={perLevel.toFixed(1)} />
+        <StatRow label="Pours in best runs" value={String(totals.pours)} divider={false} />
       </Panel>
     </ScrollPage>
   );
 });
 
-const ModeProgress = memo(function ModeProgress({
+const ModeCard = memo(function ModeCard({
   difficulty,
   progress,
-  first,
+  last,
 }: {
   difficulty: Difficulty;
   progress: Progress;
-  first: boolean;
+  /** The card that closes the group, and so carries the section gap. */
+  last: boolean;
 }) {
-  const solved = Object.keys(progress.best).length;
-  const reached = progress.furthestLevel;
+  const info = DIFFICULTY_INFO[difficulty];
+  const totals = totalsFor(progress);
 
   return (
-    <View style={first ? undefined : styles.progressSpacing}>
-      <View style={styles.progressRow}>
-        <Text style={styles.progressName}>{DIFFICULTY_INFO[difficulty].title}</Text>
-        <Text style={styles.progressValue}>
-          {solved} / {reached}
+    <Panel
+      style={last ? styles.modeCardLast : styles.modeCardBox}
+      contentStyle={styles.modeCard}
+    >
+      <View style={styles.modeHead}>
+        <View style={[styles.modeDot, { backgroundColor: info.accent }]} />
+        <Text style={styles.modeName}>{info.title}</Text>
+        <Text style={styles.modeCount}>
+          {totals.solved} / {totals.reached}
         </Text>
       </View>
+
       <View style={styles.bar}>
         <View
           style={[
             styles.barFill,
             {
               // `percentWidth` guards the zero total that would render `NaN%`.
-              width: percentWidth(solved, reached),
-              backgroundColor: DIFFICULTY_INFO[difficulty].accent,
+              width: percentWidth(totals.solved, totals.reached),
+              backgroundColor: info.accent,
             },
           ]}
         />
       </View>
+
+      <View style={styles.modeStats}>
+        <ModeStat value={totals.stars} label="Stars" align="first" />
+        <ModeStat value={totals.perfect} label="Three-star" />
+        <ModeStat value={totals.pours} label="Pours" align="last" />
+      </View>
+    </Panel>
+  );
+});
+
+const ModeStat = memo(function ModeStat({
+  value,
+  label,
+  align,
+}: {
+  value: number;
+  label: string;
+  /** Edge stats hug the card's sides; the middle one is left to centre. */
+  align?: 'first' | 'last';
+}) {
+  return (
+    <View
+      style={[
+        styles.modeStat,
+        align === 'first' && styles.modeStatFirst,
+        align === 'last' && styles.modeStatLast,
+      ]}
+    >
+      <Text style={styles.modeStatValue}>{value}</Text>
+      <Text style={styles.modeStatLabel}>{label}</Text>
+    </View>
+  );
+});
+
+const StatRow = memo(function StatRow({
+  label,
+  value,
+  divider = true,
+}: {
+  label: string;
+  value: string;
+  divider?: boolean;
+}) {
+  return (
+    <View style={[styles.row, divider && styles.rowDivider]}>
+      <Text style={styles.rowLabel}>{label}</Text>
+      <Text style={styles.rowValue}>{value}</Text>
     </View>
   );
 });

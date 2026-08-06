@@ -1,7 +1,12 @@
 import { memo, useCallback } from 'react';
-import { Text } from 'react-native';
+import { Linking, Text } from 'react-native';
 
 import { DIFFICULTIES, DIFFICULTY_INFO, isDifficulty } from '@/game/difficulty';
+import {
+  clearReminders,
+  requestPermission,
+  syncReminders,
+} from '@/notifications/dailyReminder';
 import { overlay } from '@/state/overlayStore';
 import { useSettingsStore, type ToggleKey } from '@/state/settingsStore';
 import { ScrollPage } from './chrome/ScrollPage';
@@ -113,6 +118,12 @@ const Toggle = memo(function Toggle({
 
   const onChange = useCallback(() => {
     const store = useSettingsStore.getState();
+
+    if (setting === 'dailyReminder') {
+      void toggleDailyReminder();
+      return;
+    }
+
     store.toggle(setting);
     if (setting === 'sound' && !useSettingsStore.getState().sound) {
       store.set('music', false);
@@ -138,4 +149,40 @@ function privacy(): void {
     confirmLabel: 'Close',
     cancelLabel: null,
   });
+}
+
+/**
+ * The daily reminder, which has an operating system in the way.
+ *
+ * Switching it on is a request, not a change: the OS decides. So the setting
+ * is only written once permission is actually held, and a refusal leaves the
+ * row where it was rather than showing "on" against a system that is blocking
+ * it — a state the player cannot diagnose from inside the app.
+ *
+ * Both platforms show their dialog once and answer from the stored decision
+ * afterwards, so a second tap cannot re-prompt. When that happens the only
+ * honest thing is to say where the switch actually lives.
+ */
+async function toggleDailyReminder(): Promise<void> {
+  const store = useSettingsStore.getState();
+
+  if (store.dailyReminder) {
+    store.set('dailyReminder', false);
+    await clearReminders();
+    return;
+  }
+
+  if (!(await requestPermission())) {
+    overlay.modal({
+      title: 'Notifications are off',
+      body: 'Decant needs permission to remind you. Turn notifications on for Decant in your device settings.',
+      confirmLabel: 'Open settings',
+      cancelLabel: 'Not now',
+      onConfirm: () => void Linking.openSettings(),
+    });
+    return;
+  }
+
+  store.set('dailyReminder', true);
+  await syncReminders();
 }

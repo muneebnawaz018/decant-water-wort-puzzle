@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-import { apothecary } from '@/theme/apothecary';
+import { apothecary, GRADIENT_BORDER_FILL } from '@/theme/apothecary';
 import { ui } from '@/theme/colors';
 import { s } from '@/theme/scale';
 export const styles = StyleSheet.create({
@@ -14,6 +14,10 @@ export const styles = StyleSheet.create({
   fill: {
     borderWidth: 1,
     borderColor: apothecary.line,
+    // Android insets the background by the border width, leaving a ring of
+    // the screen showing between the stroke and the gradient. See
+    // `GRADIENT_BORDER_FILL`.
+    backgroundColor: GRADIENT_BORDER_FILL,
     overflow: 'hidden',
   },
   // Spec's `inset 0 1px 0 rgba(255,255,255,.1)`.

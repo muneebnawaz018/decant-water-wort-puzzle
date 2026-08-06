@@ -1,17 +1,23 @@
 import { create } from 'zustand';
 
 import type { Colour, PourMove, WaterState } from '@/core/types';
+import { optimalMoves } from '@/core/solver';
 import { applyPour, canPour, isSolved } from '@/core/waterCore';
 import type { Difficulty } from '@/game/difficulty';
-import { coinsFor, starsFor } from '@/game/stars';
+import { coinsFor, milestoneBonus, starsFor } from '@/game/stars';
 import { generateLevel } from '@/game/waterGenerator';
 import { useEconomyStore } from './economyStore';
+import { overlay } from './overlayStore';
 import {
   loadProgress,
   progressFor,
+  markBlockPaid,
+  progressFor as _progressFor,
   recordCompletion,
   saveProgress,
   setCurrentLevel,
+  starsInBlock,
+  unpaidBlockFor,
   type Progress,
   type ProgressByDifficulty,
 } from './progress';
@@ -105,6 +111,68 @@ export const useGameStore = create<GameState>((set, get) => {
    * cannot lose the move that caused it — the reason the save is here and not
    * behind an AppState listener, which never runs when the process is killed.
    */
+  /**
+   * Replaces `par` with the exact fewest pours that finish the level.
+   *
+   * Deferred rather than computed on load. `par` is only read when a level is
+   * solved, which is many seconds of play away, and the search is the one
+   * thing here that can take a visible moment on a phone — spending it while
+   * the board is appearing would be paying at the only time it is felt.
+   *
+   * Until it lands, `par` holds `moveLowerBound`, so a rating is always
+   * available. That value is what the stars were graded against before this
+   * existed, and it is wrong in the same direction as before: a bound sits at
+   * or below the optimum, so the bar is too strict, never too generous.
+   *
+   * The board it measures is the generated one, not the one on screen. A spare
+   * vial makes the level easier to finish but is not a different puzzle, and
+   * par has to mean the same thing whether or not one was taken.
+   */
+  const refinePar = (level: number, mode: Difficulty, board: WaterState): void => {
+    setTimeout(() => {
+      // The player may have moved on while this was queued.
+      if (get().level !== level || get().difficulty !== mode) return;
+
+      const exact = optimalMoves(board);
+      // Null means the node cap was hit. Keep the bound: a level nobody can
+      // three-star is better than one where everybody does.
+      if (exact === null) return;
+      if (get().level !== level || get().difficulty !== mode) return;
+
+      set({ par: exact });
+    }, 0);
+  };
+
+  /**
+   * Pays for a finished level, and for the block of ten it may have completed.
+   *
+   * Returns the record to store, which is the point of doing it here: the
+   * milestone has to be marked paid in the same write that records the level,
+   * or a crash between the two hands the bonus out twice.
+   *
+   * Coins land the moment the board is solved rather than on the Complete
+   * screen, so a player who backs out during the win animation keeps them.
+   */
+  const payFor = (
+    record: ProgressByDifficulty,
+    mode: Difficulty,
+    level: number,
+    stars: number
+  ): ProgressByDifficulty => {
+    useEconomyStore.getState().add(coinsFor(stars));
+
+    const progress = _progressFor(record, mode);
+    const block = unpaidBlockFor(progress, level);
+    if (block === null) return record;
+
+    const bonus = milestoneBonus(block, starsInBlock(progress, block));
+    if (bonus <= 0) return record;
+
+    useEconomyStore.getState().add(bonus);
+    overlay.toast(`Block ${block} complete · +${bonus} coins`);
+    return markBlockPaid(record, mode, block);
+  };
+
   const persistSession = (): void => {
     const { difficulty: mode, level, history, extraTaken } = get();
     saveSession({
@@ -114,6 +182,11 @@ export const useGameStore = create<GameState>((set, get) => {
       extraTaken,
     });
   };
+
+  // The level restored at launch gets the same treatment as one loaded by hand.
+  // Safe to schedule before the store exists: everything inside reads through
+  // `get()`, and none of it runs until the timer fires.
+  refinePar(startLevel, difficulty, first.state);
 
   return {
     level: startLevel,
@@ -155,6 +228,7 @@ export const useGameStore = create<GameState>((set, get) => {
         extraTaken: false,
         record: next,
       });
+      refinePar(level, mode, generated.state);
     },
 
     setDifficulty: (difficulty) => {
@@ -182,6 +256,7 @@ export const useGameStore = create<GameState>((set, get) => {
         locked: false,
         extraTaken: false,
       });
+      refinePar(level, difficulty, generated.state);
     },
 
     tapTube: (index) => {
@@ -231,7 +306,7 @@ export const useGameStore = create<GameState>((set, get) => {
       const stars = nowSolved ? starsFor(moves, get().par) : 0;
 
       set((current) => {
-        const next = nowSolved
+        let next = nowSolved
           ? recordCompletion(
               current.record,
               current.difficulty,
@@ -241,10 +316,8 @@ export const useGameStore = create<GameState>((set, get) => {
             )
           : current.record;
         if (nowSolved) {
+          next = payFor(next, current.difficulty, current.level, stars);
           saveProgress(next);
-          // Paid here rather than on the Complete screen, so a player who
-          // backs out before the animation finishes still keeps the coins.
-          useEconomyStore.getState().add(coinsFor(stars));
         }
 
         return {
@@ -315,7 +388,7 @@ export const useGameStore = create<GameState>((set, get) => {
       const stars = nowSolved ? starsFor(moves, get().par) : 0;
 
       set((current) => {
-        const next = nowSolved
+        let next = nowSolved
           ? recordCompletion(
               current.record,
               current.difficulty,
@@ -325,8 +398,8 @@ export const useGameStore = create<GameState>((set, get) => {
             )
           : current.record;
         if (nowSolved) {
+          next = payFor(next, current.difficulty, current.level, stars);
           saveProgress(next);
-          useEconomyStore.getState().add(coinsFor(stars));
         }
 
         return {

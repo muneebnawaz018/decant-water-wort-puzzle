@@ -1,12 +1,12 @@
 import { StyleSheet } from 'react-native';
 
-import { apothecary } from '@/theme/apothecary';
+import { apothecary, GRADIENT_BORDER_FILL } from '@/theme/apothecary';
 import { alpha, ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
 import { s } from '@/theme/scale';
 
 /**
- * The bar's own height, without safe-area inset: 13 + 13 padding, a 30 icon
+ * The bar's own height, without safe-area inset: 13 + 13 padding, a 36 icon
  * slot, a 6 gap and a 10 label. Screens reserve this much space at the bottom
  * so their last card does not hide under it.
  *
@@ -14,7 +14,7 @@ import { s } from '@/theme/scale';
  * scaled paddings below and a screen's bottom tail cannot drift from the bar it
  * is clearing.
  */
-export const NAV_BAR_HEIGHT = s(74);
+export const NAV_BAR_HEIGHT = s(80);
 
 export const styles = StyleSheet.create({
   bar: {
@@ -32,6 +32,10 @@ export const styles = StyleSheet.create({
     paddingHorizontal: s(8),
     borderWidth: 1,
     borderColor: apothecary.line,
+    // Android insets the background by the border width, leaving a ring of
+    // the screen showing between the stroke and the gradient. See
+    // `GRADIENT_BORDER_FILL`.
+    backgroundColor: GRADIENT_BORDER_FILL,
     overflow: 'hidden',
     shadowColor: ui.shadow,
     shadowOpacity: 0.4,
@@ -52,8 +56,15 @@ export const styles = StyleSheet.create({
   // alone is easy to miss, and the pill reads as "you are here" at a glance.
   iconSlot: {
     width: s(44),
-    height: s(30),
-    borderRadius: s(10),
+    height: s(36),
+    borderRadius: s(12),
+    // Android dropped this radius and drew a hard rectangle while iOS rounded
+    // it. The bar sets `elevation`, which promotes it to a hardware layer, and
+    // a descendant's rounded background loses its outline inside one unless the
+    // view clips itself. `overflow` makes the clip the view's own business
+    // rather than its parent's, which is the portable form; on iOS it changes
+    // nothing, because the radius already applied there.
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -12,6 +12,7 @@ import { Icon, type IconName } from '../Icon';
 import { Panel } from './Panel';
 import { useTapHandler } from '../hooks/useTapHandler';
 import { s } from '@/theme/scale';
+import { section } from './styles/section.styles';
 import { KNOB_TRAVEL, styles } from './styles/SettingRow.styles';
 
 /** A titled group of rows, as used by Settings, Shop and Daily (spec §4.9). */
@@ -24,7 +25,7 @@ export const SettingGroup = memo(function SettingGroup({
 }) {
   return (
     <View style={styles.group}>
-      <Text style={styles.groupTitle}>{title}</Text>
+      <Text style={section.title}>{title}</Text>
       <Panel>{children}</Panel>
     </View>
   );

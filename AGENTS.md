@@ -85,7 +85,8 @@ pre-shaped and memoised so the style objects keep their identity.
 # native builds — required, Expo Go cannot load Skia or MMKV
 npm run prebuild        # generate android/ and ios/
 npm run prebuild:clean  # regenerate from scratch after a plugin/config change
-npm run ios             # expo run:ios     — build + install + launch
+npm run ios             # expo run:ios     — build + install + launch, iPhone 17 Pro
+npm run ios:pad         # the same, on iPad Pro 11-inch — the tablet layout
 npm run android         # expo run:android
 npm start               # expo start --dev-client — Metro for an installed build
 
@@ -165,6 +166,7 @@ live in that project if it's ever wanted.
 | `expo-haptics`                   | Haptic on every pour, heavier on tube completion (doc §7)                                                |
 | `expo-asset`                     | Bundles fonts/audio into the native build                                                                |
 | `expo-status-bar`                | Status bar styling over the parchment background                                                         |
+| `expo-build-properties`          | Turns on R8 and resource shrinking for Android release builds; both default off                          |
 | `babel-plugin-module-resolver`   | Resolves the `@/*` → `src/*` alias at build time                                                         |
 | `jest-expo` / `ts-jest`          | Test preset for RN + TS                                                                                  |
 | `markdownlint-cli2`              | `npm run lint:md`                                                                                        |
@@ -507,13 +509,180 @@ Shop, Stats, Settings, plus the global modal and toast. `IconButton` was
 deleted with the parchment theme — `ChromeIconButton` (square, chrome) and
 `ControlButton` (round, board) replace it.
 
-Star rating is in `src/game/stars.ts`. Par is the solver's move lower bound,
-already computed while generating the level — not a hand-authored number and
-not the prototype's `colours * 2`, which assumes capacity 4. A finished level
-always pays at least one star, because there is no fail state.
+Star rating is in `src/game/stars.ts`. Par is the **true fewest pours** that
+finish the board — `optimalMoves` in `src/core/solver.ts`, IDA* over the
+generator's own output. A finished level always pays at least one star, because
+there is no fail state.
+
+Par used to be `moveLowerBound` and that was a real bug. A lower bound is not a
+target: checked against an exhaustive search it sat below the actual optimum on
+22 of levels 1–40 and on 25% of levels 501–900, so three stars was unreachable
+on those however well the level was played.
+
+The fix is affordable because `moveLowerBound` is an admissible heuristic, so
+IDA* prunes hard on it — most boards close in a few dozen nodes. Over all 800
+boards in levels 501–900 across classic and fiendish, which is the worst the
+game can produce at 12 colours and one spare: median 1ms, p95 11ms, worst 133ms,
+none hitting the 2M node cap.
+
+It still runs **off the level-load path**. `refinePar` in `gameStore` defers it
+a tick, because par is not read until a level is solved and Hermes on a phone is
+several times slower than the machine those numbers came from. Until it lands
+`par` holds the bound, so a rating is always available and is wrong only in the
+old direction — too strict, never too generous. A result arriving after the
+player has moved on is discarded, and a board that exhausts the node cap keeps
+the bound.
+
+Par measures the **generated** board, not the one on screen. Taking the spare
+vial makes a level easier to finish but does not make it a different puzzle —
+and it is the escape hatch (doc §10's rewarded slot), so tightening the target
+the moment a player reaches for help would punish them for using it.
+
+**Stars are rated on efficiency, `par / moves`, not on a fixed move target.**
+Three stars at 85% or better, two at 50% or better, one for anything that
+finishes. A ratio scales with the board, which a flat allowance cannot: a
+40-move puzzle has more places to lose a move than a 7-move one.
+
+One override: three stars within one move of par regardless of ratio.
+Percentages compress on small numbers — five moves on a four-move board is 80%
+— so without it the levels people learn on would be the strictest in the game.
+
+With par exact, `moves <= par` would mean literally optimal play, which asks
+the player to solve the board in their head before touching it. The cushion is
+not there to cover exploration — an undone pour leaves no trace, since `moves`
+is `history.length` and undo drops the move from it — it is there so playing
+well is enough without playing perfectly.
+
+One star has no lower limit, deliberately. Five hundred pours on a fifteen-move
+board is still a win, because there is no fail state.
+
+For calibration: the non-optimising solver, a stand-in for competent play that
+is not trying to be clever, finishes at 1.20x the optimum (median over 141
+boards across all three modes), 1.50x at p90, 1.94x worst. Under these bands
+that sample scores 60 three-star, 81 two-star, no one-star. A looser 25%
+three-star band was tried first and moved 36 of those runs up to three stars;
+85% was chosen instead, so three stars stays worth something.
 
 Coins are paid the moment the board is solved, not on the Complete screen: a
 player who backs out during the win animation still keeps them.
+
+### Milestone bonuses
+
+Every ten levels pays a bonus on the stars earned in that block —
+`milestoneBonus` in `src/game/stars.ts`. Driven by stars rather than by levels
+finished, so a block cleared carefully pays more than one scraped through, and
+the same rule that gives a completed level at least one star means a completed
+block always pays something.
+
+**The rate tapers.** Six coins a star in the first block, falling by one every
+two blocks to a floor of two — up to 180 for levels 1-10, up to 60 from block
+nine onward. Two things had to be balanced: the bonus has to be worth noticing
+early, when a player has nothing saved and the levels are short, and it has to
+stay a _bonus_ later rather than becoming the main income, or the economy ends
+up paying for elapsed time instead of for playing well. At the floor it is
+worth roughly one extra level on top of the ten levels' own payouts.
+
+`paidBlocks` on the progress record is what stops a replay claiming a bonus
+twice. It has to be stored: whether a block is _complete_ can be read off
+`stars`, but whether it has been _paid_ cannot. The mark and the level's own
+record go into one write, so a crash between them cannot pay twice.
+
+A block is paid on whichever level completes it, not on the highest-numbered
+one — levels can be replayed and revisited in any order.
+
+Storage moved `progress.v2` → `v3` for the new field. Levels and stars carry
+across and `paidBlocks` starts empty, so an existing player is paid for blocks
+they have already finished. The alternative is marking them paid for a bonus
+that did not exist when they earned it.
+
+### The daily reminder
+
+`src/notifications/`, and it is a **local** notification end to end — the OS
+holds the schedule and delivers it. No server, no Firebase, no APNs, no push
+token, no network. Everything it needs to know is `lastClaimAt`, which is
+already on the device. The docs draw that line explicitly: push needs FCM/APNs
+credentials and a project id, local needs none of it.
+
+`schedule.ts` is pure and free of `expo-notifications`, the same rule
+`src/core` follows for React — the arithmetic decides whether a player is
+nudged at the right moment, and it should be testable without a native module.
+`dailyReminder.ts` is the thin adapter around it.
+
+**An absolute date trigger, not "daily at nine".** The reward runs on a rolling
+twenty-four hours from the moment of the claim, so a fixed hour would fire with
+hours still on the clock. An instant also has no opinion about timezones or
+daylight saving, which a recurring hour/minute trigger does.
+
+Two per cycle: the reward at +24h, and — only from a three-day streak, since
+below that there is nothing invested to lose — a warning at +44h, four hours
+before the window shuts. Anything already due is dropped rather than fired
+late; the reward is on screen where it can be seen.
+
+Cancel-then-reschedule on every claim rather than diffing. There are at most
+two, and tracking identifiers across a process death is more state to get wrong
+than the work it saves. iOS caps pending notifications at 64.
+
+Three things about permission, all of them the difference between working and
+silently not:
+
+- **The Android channel is created before the prompt.** On Android 13+ the
+  permission dialog does not appear at all if no channel exists.
+- **Permission is asked at the toggle, not at launch.** That is the moment the
+  player has said they want it; a prompt on first run with no context is the
+  one people deny reflexively. A refusal leaves the row off rather than showing
+  "on" against a blocked OS, and offers `Linking.openSettings()` — neither
+  platform will show its dialog twice.
+- **`reconcilePermission` runs on foreground.** Permission can be withdrawn in
+  system settings while the app is closed, and it also re-syncs the schedule,
+  which covers the case of a reminder that has already fired leaving the queue
+  empty.
+
+`POST_NOTIFICATIONS` and `RECEIVE_BOOT_COMPLETED` arrive from
+expo-notifications' own manifest at merge time, so they are not in
+`android/app/src/main/AndroidManifest.xml` and should not be added there.
+`RECEIVE_BOOT_COMPLETED` is what re-registers the schedule after a reboot. iOS
+needs no `Info.plist` entry — local notification permission is runtime only.
+
+**expo-audio's plugin is configured, not defaulted.** Left alone it adds
+`RECORD_AUDIO`, `NSMicrophoneUsageDescription`, and two background-audio
+foreground services, because most apps using it record or play behind a lock
+screen. This one does neither. A puzzle game shipping a microphone permission
+is a store-review question with no good answer.
+
+### The daily reward
+
+`economyStore`, key `economy.v2`. **A rolling twenty-four hours from the moment
+you claim**, not a calendar day — claim at 9am and the next one opens at 9am
+tomorrow, wherever the clock happens to be.
+
+Calendar days were the first version and they misbehave at both ends: claim at
+11pm and you can claim again an hour later, but claim at 9am and then open the
+app at 8am the next day and the streak breaks on a technicality. A timer has
+neither problem.
+
+Device time, per spec — there is no server to ask, and the game is offline
+first. That means the clock can be wound forward to farm rewards, which is
+accepted rather than defended against: the reward is coins, the coins buy
+cosmetics, and a player cheating themselves out of a daily habit is not worth
+the complexity of a trusted time source. Winding _backwards_ is handled, since
+it is as likely to be a timezone change as an exploit — elapsed time is floored
+at zero, so the timer pauses rather than skips.
+
+The streak has a **48-hour window**, twice the interval. Claim inside it and the
+track continues; miss it entirely and it restarts at day one. Without the grace
+a player who claims at 9am one day and 10am the next has already lapsed, which
+is the same technicality in a different shape.
+
+`timeUntilClaim` drives a live countdown through `useClaimTimer`, which ticks
+once a second only while something is actually counting down, and re-reads the
+clock on `AppState` foreground — timers do not run in the background, so a
+screen left open overnight would otherwise show a stale countdown over a dead
+button.
+
+Storage moved v1 → v2 for the shape change, and this one **is** migrated rather
+than dropped: the old record's calendar date becomes that day's midnight, which
+only ever brings the next claim forward, and coins carry across. Losing a
+balance to a scheduling fix is not a trade worth making even pre-release.
 
 Two new stores: `economyStore` (coins, daily streak, owned cosmetics) and
 `overlayStore` (modal and toast, so any handler can raise one without threading
@@ -597,6 +766,73 @@ playback hooks back in, beside the matching haptic.
 The store still carries `sound`, `music`, `musicTrack` and `tapSound`. They are
 kept rather than removed because dropping them means a storage migration for a
 feature that is coming back.
+
+## Tablets
+
+The app ships on iPad (`supportsTablet: true`) and on Android tablets, and the
+chrome scales to them. **`src/theme/scale.ts` is the only file that knows a
+tablet is wider than a phone.** Everything else calls `s()`.
+
+`s()` returns its input **unchanged** on phones — exactly `1`, not "about 1". A
+phone build renders the styles this project already shipped, and the test that
+pins that across three phone sizes is the most valuable one in the file. Above a
+600dp shortest side — Android's own `sw600dp`, just under the smallest iPad — it
+multiplies by the width over a 390pt baseline, capped at 1.45. The cap matters:
+a 1024pt iPad is 2.6x the baseline and scaling type by that turns a settings row
+into a billboard. Past a point a bigger screen should show a more comfortable
+UI, not a proportionally huge one.
+
+**The window is read once, at module scope.** The alternative is a hook, which
+would make every `Foo.styles.ts` a function of width and rebuild the styles on
+each render — and they are `StyleSheet.create` singletons precisely so their
+identity is stable. The app is portrait-only, so no rotation can invalidate the
+reading. iPad Split View can, and does not: the board re-measures, the chrome
+keeps its launch scale until relaunch. Accepted, and the reason `npm run ios:pad`
+exists — you cannot check the tablet layout by resizing a phone simulator.
+
+Three things are deliberately outside it:
+
+- **The board.** `src/render/layout.ts` already derives tube width, gap and
+  radius from the box it is handed, so it scales on its own and a second
+  multiplier would double-count. It also stays pure and React-free, which is why
+  `GameScreen` passes it a scaled `hitTest` slop rather than the module reading
+  one — a fixed 12dp halo around a tube twice the size is a tighter target than
+  phone players get.
+- **The splash vial.** `assets/splash-icon.png` is drawn by the OS at a fixed dp
+  size on every device, so scaling the React vial would break the handoff the
+  two splashes were built around — on tablets only, which is exactly where
+  nobody would look for it. The glass in `SplashScreen.styles.ts` sits under a
+  fenced comment saying so, and a test pins `splash.ts` as device-independent.
+- **1dp hairlines and `borderWidth: 1`.** A scaled hairline lands between
+  physical pixels and renders as a grey smear.
+
+**Grids derive their column count; they do not hold one.** `columnsFor` and
+`gridTile` in `src/theme/grid.ts`. The stage grid was a hardcoded `COLUMNS = 4`,
+which on an iPad made 230dp squares each holding one level number — the grid
+grew and its content did not, so a screen whose whole job is showing many levels
+at once showed sixteen.
+
+Two bugs came out of that, and both were only visible on a device:
+
+1. **An explicit width has to come with an explicit `flexGrow: 0`.** At two
+   columns an even tile count always fills its rows, so a growing tile never has
+   room to grow into. At three it does — the shop's four skins put one card
+   alone on the last row and `flexGrow: 1` stretched it to the full width.
+2. **`FlatList` has no notion of an incomplete row.** A 50-tile stage page never
+   divides evenly, and `flex: 1` tiles split whatever width the short last row
+   has. This was already shipping on phones: at four columns, levels 49 and 50
+   rendered double-width. `StagesScreen` pads the last row with spacer items.
+
+`useScreenPadding` also returns `sides` now, from `insets.left`/`right`. Those
+are zero in portrait on a phone, which is why the omission went unnoticed; they
+are not zero on iPad.
+
+Verified on an iPad Pro 11-inch (M4) across Home, Stages, Board, Shop, Stats,
+Settings and Daily, then rebuilt on iPhone to confirm the phone was untouched.
+
+**Landscape is not supported.** `orientation` is `'portrait'`, so an iPad
+letterboxes rather than rotates. Apple accepts that; making it real is separate
+work and would need the board layout to handle a wide, short box.
 
 ## Look
 
@@ -766,3 +1002,40 @@ Two constraints there:
 - `colors.ts` must stay free of React Native imports. It is loaded outside the
   app runtime here, so a native import in it breaks `expo prebuild` and every
   EAS build with it.
+
+### Release size, via `expo-build-properties`
+
+Two Android release settings default to **off** in the Expo template, and a
+release build without them ships an unminified dex and every resource the
+project has ever had:
+
+- `enableMinifyInReleaseBuilds` — R8. The debug APK carries eight dex files
+  totalling ~55MB, most of it code no release build reaches.
+- `enableShrinkResourcesInReleaseBuilds` — drops unreferenced resources. Safe
+  here in a way it often is not: resources are reached by name only through
+  `getIdentifier()`, and this app draws its icons as Skia paths and has no
+  bitmap art beyond the launcher icons and the splash.
+
+They are set through the plugin in `app.config.ts`, **not** by editing
+`android/gradle.properties`. Prebuild regenerates that file, so an edit there
+survives until the next config change and then disappears — the worst possible
+failure mode for a build setting, because nothing tells you it is gone.
+
+R8's risk is that it strips what only reflection reaches, and that fails at
+runtime rather than at build time. Every native module here ships consumer
+ProGuard rules and `android/app/proguard-rules.pro` adds Reanimated's, so the
+framework is covered; this app's own code uses no reflection. **Play a release
+build through a level before trusting it** — a green build proves nothing about
+R8.
+
+### What the debug APK's size means: nothing
+
+98MB, and almost none of it ships. `lib/arm64-v8a` alone is 71MB unstripped —
+`libreactnative.so` 22MB, `librnskia.so` 17MB — plus a 4.7MB
+`libbarhopper_v3.so`, which is ML Kit's barcode scanner, pulled in by
+`expo-dev-client` for QR scanning and absent from release entirely. Release
+strips the symbols, R8 shrinks the dex, and Play serves one ABI split out of the
+AAB rather than all four.
+
+Check a release build with `ls -lh android/app/build/outputs/`, never a debug
+one.

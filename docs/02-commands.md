@@ -10,7 +10,8 @@ Expo SDK 57, RN 0.86, prebuild workflow. If you last did this on RN 0.6x, read
 ```bash
 npm run prebuild        # generate android/ and ios/ — already done once, re-run after config changes
 npm run android         # expo run:android — build, install, launch
-npm run ios             # expo run:ios
+npm run ios             # expo run:ios on iPhone 17 Pro
+npm run ios:pad         # expo run:ios on iPad Pro 11-inch (M4)
 npm start               # expo start --dev-client — Metro only, for an installed build
 
 npm test                # jest
@@ -23,14 +24,23 @@ npm run doctor          # expo-doctor, keep at 20/20
 Rebuild natively only when native deps or `app.json` change. JS edits hot-reload
 over Metro.
 
-Target a specific simulator or device:
+Both iOS scripts name their simulator, because `expo run:ios` otherwise installs
+onto whichever simulator happens to be booted — which is how a run meant for a
+phone ended up on the tablet that was still open from the last one.
+
+Target something else:
 
 ```bash
-npx expo run:ios --device "iPhone 16"
+npx expo run:ios --device "iPhone 17 Pro"
 npx expo run:android --device emulator-5554
 adb devices                      # list attached Android devices
 xcrun simctl list devices        # list iOS simulators
 ```
+
+The tablet layout has to be checked on a real tablet simulator, not by resizing
+a phone one. `src/theme/scale.ts` reads the window **once at module scope**, so
+a running app does not re-scale — `npm run ios:pad` launches the iPad the layout
+was verified on.
 
 ---
 
@@ -90,20 +100,39 @@ survive — a config plugin or `app.json` entry is the durable place.
 ## 4. Android
 
 ```bash
+npm run android                  # debug build, install, launch
+npm run android:apk              # release APK — sideloadable
+npm run android:aab              # release .aab — the format Play takes
+npm run android:prod             # both
+npm run android:clean            # drop build output
+```
+
+**These are slow.** A first release build is 10-15 minutes; the incremental one
+after a JS-only change is a few minutes, because Gradle still re-runs the Hermes
+bundle and re-links every native module. Nothing is wrong when it sits on
+`> :app:` for minutes at a time — start it and go and do something else.
+
+Artefacts land in `android/app/build/outputs/`. The APK's size on disk is not
+what the store reports: Play splits an AAB per ABI and density and serves one
+slice, so a device downloads a fraction of the bundle.
+
+Under the raw Gradle tasks if you want them:
+
+```bash
 cd android
-./gradlew clean                  # drop build output
+./gradlew assembleRelease        # what android:apk runs
+./gradlew bundleRelease          # what android:aab runs
 ./gradlew cleanBuildCache
 ./gradlew --refresh-dependencies
 rm -rf $HOME/.gradle/caches/     # heavy, forces a full re-download
-
-./gradlew assembleDebug          # debug APK
-./gradlew assembleRelease        # release APK — needs a keystore
-./gradlew bundleRelease          # .aab for Play
 ```
 
-Release builds should go through EAS Build rather than local Gradle. The store
-pipeline is the reason this project exists, and local release builds need
-keystore handling that EAS does for you.
+**A local release build is not a shippable one.** `android/app/build.gradle`
+points the `release` build type at `signingConfigs.debug` — the RN template's
+default, and it is there so a release build runs at all without a keystore. It
+means the output is signed with the debug key: fine for measuring size and for
+sideloading, rejected by Play. Real releases go through EAS Build, which holds
+the upload keystore. The store pipeline is the reason this project chose Expo.
 
 Requires JDK 17 and the Android SDK on `PATH`.
 
@@ -135,7 +164,7 @@ Requires Xcode and CocoaPods.
 | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `npx react-native start --reset-cache`             | `npx expo start --dev-client --clear`                                                                      |
 | `npx react-native run-android`                     | `npx expo run:android`                                                                                     |
-| `npx react-native run-ios --simulator "iPhone 14"` | `npx expo run:ios --device "iPhone 16"`                                                                    |
+| `npx react-native run-ios --simulator "iPhone 14"` | `npx expo run:ios --device "iPhone 17 Pro"`                                                                |
 | `arch -x86_64 pod install`                         | Drop it. CocoaPods runs native on Apple Silicon; forcing Rosetta breaks Hermes and Skia builds             |
 | `react-native bundle --entry-file index.js`        | `npx expo export:embed`. Entry here is `index.ts`, and Gradle/Xcode bundle automatically on release builds |
 | Commenting out `scripts/find-node.sh`              | Set `NODE_BINARY` in `ios/.xcode.env.local`. Never edit `node_modules`                                     |

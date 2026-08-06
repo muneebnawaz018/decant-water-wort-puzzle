@@ -3,8 +3,15 @@ import { StyleSheet } from 'react-native';
 import { apothecary, SPACE } from '@/theme/apothecary';
 import { s } from '@/theme/scale';
 
-/** How far above the bar the fade starts. */
-const NAV_FADE = s(40);
+/**
+ * How far above the bar the fade starts.
+ *
+ * Exported because a screen's scroll tail has to clear it, not just the bar.
+ * Cleared only to the bar's top edge, the last thing on the page ends up inside
+ * the dissolve — Settings' version line came out half faded into the ground,
+ * which reads as a rendering fault rather than as a gradient.
+ */
+export const NAV_FADE = s(40);
 
 export const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: apothecary.bg2 },

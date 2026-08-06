@@ -24,8 +24,20 @@ export const ScreenHeader = memo(function ScreenHeader({
   return (
     <View style={styles.head}>
       <ChromeIconButton icon="back" onPress={onBack} label="Back" />
-      <Text style={styles.title}>{title}</Text>
+      <View style={styles.filler} />
       <View style={styles.trailing}>{trailing}</View>
+      {/*
+        The title is out of flow and spans the whole header, so it lies over
+        both buttons. `pointerEvents` has to be on a `View` for that to be
+        harmless: on Android a `Text` swallows the touch regardless of the
+        prop, which left the back arrow dead on every Android device while iOS
+        behaved. A wrapper is the portable form.
+      */}
+      <View style={styles.titleSlot} pointerEvents="none">
+        <Text style={styles.title} numberOfLines={1}>
+          {title}
+        </Text>
+      </View>
     </View>
   );
 });

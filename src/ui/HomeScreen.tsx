@@ -4,20 +4,19 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { DIFFICULTY_INFO } from '@/game/difficulty';
-import { useEconomyStore, today } from '@/state/economyStore';
 import { useGameStore } from '@/state/gameStore';
 import { overlay } from '@/state/overlayStore';
-import { useSettingsStore } from '@/state/settingsStore';
 import { apothecary } from '@/theme/apothecary';
 import { colours, gradients, ui } from '@/theme/colors';
 import { s } from '@/theme/scale';
-import { percentWidth } from '@/utils';
+import { countdown, percentWidth } from '@/utils';
 import { CoinPill } from './chrome/CoinPill';
 import { GlossButton } from './chrome/GlossButton';
 import { HeroRack } from './chrome/HeroRack';
 import { type NavDestination } from './chrome/NavBar';
 import { Panel } from './chrome/Panel';
 import { useScreenPadding } from './hooks/useScreenPadding';
+import { useClaimTimer } from './hooks/useClaimTimer';
 import { useTapHandler } from './hooks/useTapHandler';
 import { Icon } from './Icon';
 import { PAGE_SIZE } from './StagesScreen';
@@ -39,37 +38,35 @@ export const HomeScreen = memo(function HomeScreen({
   const level = useGameStore((state) => state.level);
   const difficulty = useGameStore((state) => state.difficulty);
   const record = useGameStore((state) => state.record);
-  const sound = useSettingsStore((state) => state.sound);
-  const music = useSettingsStore((state) => state.music);
-  // Subscribing to `lastClaim`, not to `claimable` itself: the selector would
-  // return the same function forever, so claiming a reward elsewhere would
-  // never re-render this chip.
-  const lastClaim = useEconomyStore((state) => state.lastClaim);
 
   const progress = record[difficulty]!;
   const cleared = Math.max(0, progress.furthestLevel - 1);
   const blockStart = Math.floor((level - 1) / PAGE_SIZE) * PAGE_SIZE;
   const blockDone = Math.min(PAGE_SIZE, Math.max(0, cleared - blockStart));
 
-  const dailyReady = lastClaim !== today(new Date());
+  // `useClaimTimer` subscribes to `lastClaimAt`, so claiming elsewhere
+  // re-renders this chip. Selecting `claimable` instead would pin a stable
+  // function identity and leave it reading "Ready to claim" forever.
+  const { reward, remaining } = useClaimTimer();
 
   const play = useTapHandler(onPlay);
   const openDaily = useCallback(() => onNavigate('daily'), [onNavigate]);
   const openStages = useCallback(() => onNavigate('stages'), [onNavigate]);
-  // Spec §7, kept exactly: with master sound off the icon is dead and offers to
-  // turn it back on; with sound on it cycles the music track.
+  /**
+   * Says the music is not here yet, and does nothing else.
+   *
+   * Spec §7 gives this button real behaviour — cycle the track and toast its
+   * name, or offer to turn master sound back on when it is off — and that is
+   * what it did. But there is no audio in the build, and Settings marks all
+   * three sound rows "Soon" for exactly that reason. A button that announces
+   * "Now playing · Amberlight" over silence is the same broken promise those
+   * badges exist to avoid, just louder for being on the first screen.
+   *
+   * Restore the §7 logic when there are sound files to play. It is in the git
+   * history at this line.
+   */
   const musicPress = useCallback(() => {
-    const settings = useSettingsStore.getState();
-    if (!settings.sound) {
-      overlay.modal({
-        title: 'Sound is off',
-        body: 'Turn sound back on to play music while you sort.',
-        confirmLabel: 'Turn on',
-        onConfirm: () => useSettingsStore.getState().set('sound', true),
-      });
-      return;
-    }
-    overlay.toast(`Now playing · ${settings.cycleMusic()}`);
+    overlay.toast('Music arrives in a later update');
   }, []);
   const onMusicPress = useTapHandler(musicPress);
 
@@ -77,17 +74,15 @@ export const HomeScreen = memo(function HomeScreen({
     <View style={[styles.root, padding.frame]}>
       <View style={styles.topbar}>
         <CoinPill />
+        {/* Dimmed and showing the muted glyph: the same "not yet" the Settings
+            badges say, in the vocabulary this corner of the screen has. */}
         <Pressable
-          style={[styles.iconButton, !sound && styles.iconButtonOff]}
+          style={[styles.iconButton, styles.iconButtonOff]}
           onPress={onMusicPress}
           accessibilityRole="button"
-          accessibilityLabel={sound ? 'Change music track' : 'Sound is off'}
+          accessibilityLabel="Music, coming soon"
         >
-          <Icon
-            name={sound && music ? 'sound' : 'mute'}
-            size={s(20)}
-            color={apothecary.goldLight}
-          />
+          <Icon name="mute" size={s(20)} color={apothecary.goldLight} />
         </Pressable>
       </View>
 
@@ -144,7 +139,9 @@ export const HomeScreen = memo(function HomeScreen({
               icon="gift"
               tint={gradients.gift}
               title="Daily reward"
-              detail={dailyReady ? 'Ready to claim' : 'Come back tomorrow'}
+              detail={
+                reward === null ? `Back in ${countdown(remaining)}` : 'Ready to claim'
+              }
               onPress={openDaily}
             />
             <RewardChip

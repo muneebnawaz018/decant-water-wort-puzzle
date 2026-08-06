@@ -3,9 +3,9 @@ import { StyleSheet } from 'react-native';
 import { apothecary, SPACE } from '@/theme/apothecary';
 import { POPPINS } from '@/theme/fonts';
 import { s } from '@/theme/scale';
+import { NAV_BAR_HEIGHT } from '../chrome/styles/NavBar.styles';
 export const styles = StyleSheet.create({
   root: { flex: 1 },
-  homeButton: { position: 'absolute', top: s(60), left: SPACE.screen, zIndex: 5 },
 
   burst: {
     position: 'absolute',
@@ -21,6 +21,10 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: SPACE.screen,
+    // The nav bar floats over this screen now, and this screen does not
+    // scroll — so the clearance has to come out of the centred column itself
+    // or Replay and Next sit under the bar.
+    paddingBottom: NAV_BAR_HEIGHT,
   },
   title: {
     fontFamily: POPPINS.bold,
@@ -61,4 +65,7 @@ export const styles = StyleSheet.create({
   // than "Replay", and the wider button looked like the only real one.
   buttons: { flexDirection: 'row', gap: s(12), marginTop: s(30), alignSelf: 'stretch' },
   button: { flex: 1 },
+  // Full width under the pair, so the three read as one stack rather than as
+  // two buttons and a stray third.
+  homeRow: { alignSelf: 'stretch', marginTop: s(12) },
 });
