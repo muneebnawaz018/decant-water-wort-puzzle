@@ -33,7 +33,14 @@ export const styles = StyleSheet.create({
   title: { ...text.screenTitle, textAlign: 'center' },
   /** Pushes the trailing slot to the right end, now the title is out of flow. */
   filler: { flex: 1 },
-  trailing: { minWidth: 0 },
+  /**
+   * A row, because the slot holds two things now.
+   *
+   * It was a bare box while the only trailing content was a coin pill. Once the
+   * drawer handle joined it the default column direction stacked the pill on top
+   * of the button, which grew the header and pushed both over the title.
+   */
+  trailing: { minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: s(10) },
 
   /**
    * The stroke, drawn as a padded background rather than as `borderWidth`.

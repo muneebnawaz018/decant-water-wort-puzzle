@@ -25,6 +25,15 @@ export const styles = StyleSheet.create({
     paddingVertical: s(13),
   },
   divider: { borderBottomWidth: 1, borderBottomColor: ui.divider },
+  /**
+   * A row whose control sits under its label rather than beside it.
+   *
+   * `paddingBottom` only — the label line above brings its own vertical
+   * padding, so repeating it here would double the gap between the label and
+   * the control it belongs to.
+   */
+  stack: { paddingBottom: s(13) },
+  stackControl: { paddingHorizontal: SPACE.panel },
   rowIcon: {
     width: s(34),
     height: s(34),

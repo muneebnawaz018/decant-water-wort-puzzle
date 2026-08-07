@@ -1,5 +1,13 @@
+import {
+  Canvas,
+  LinearGradient as SkiaGradient,
+  Path,
+  PathOp,
+  Skia,
+  vec,
+} from '@shopify/react-native-skia';
 import { LinearGradient } from 'expo-linear-gradient';
-import { memo, useCallback, useEffect } from 'react';
+import { memo, useCallback, useEffect, useMemo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, {
   cancelAnimation,
@@ -9,52 +17,122 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { apothecary } from '@/theme/apothecary';
-import { gradients } from '@/theme/colors';
+import { gradients, ui } from '@/theme/colors';
 import { s } from '@/theme/scale';
 import { Icon, type IconName } from '../Icon';
+import { useTapBurst } from '../hooks/useTapBurst';
 import { useTapHandler } from '../hooks/useTapHandler';
 import { useTapScale } from '../hooks/useTapScale';
-import { styles } from './styles/NavBar.styles';
+import {
+  NAV_BAR_HEIGHT,
+  NAV_RADIUS,
+  navBarWidth,
+  NOTCH_RADIUS,
+  styles,
+} from './styles/NavBar.styles';
 
-export type NavDestination = 'daily' | 'shop' | 'stages' | 'stats' | 'settings';
+export type NavDestination = 'daily' | 'shop' | 'stages' | 'stats';
 
-const ITEMS: ReadonlyArray<{
-  id: NavDestination;
-  icon: IconName;
-  label: string;
-}> = [
+/**
+ * Two tabs, the Home bump, two tabs.
+ *
+ * Split rather than listed, because the bump is not a fifth item in a row — it
+ * sits in a gap the bar is cut around, and the pairs either side have to balance
+ * across that gap.
+ */
+const LEFT: ReadonlyArray<NavItem> = [
   // "Rewards", not "Daily". The destination is what you get, not how often it
   // refreshes — and the screen holds the ad payout and the bonus puzzle too,
   // neither of which is a daily anything.
   { id: 'daily', icon: 'gift', label: 'Rewards' },
-  { id: 'shop', icon: 'shop', label: 'Shop' },
+  // Stages sits beside Home, where Shop used to. The two inner seats are the
+  // easiest to reach either side of the thumb's resting point, and picking a
+  // level is what a player comes back to do — buying a skin is not.
   { id: 'stages', icon: 'stages', label: 'Stages' },
-  // Label, not id: the screen it opens is titled "Your progress", and the bar
-  // was the only place still calling it Stats.
-  { id: 'stats', icon: 'stats', label: 'Progress' },
-  { id: 'settings', icon: 'settings', label: 'Settings' },
 ];
 
+const RIGHT: ReadonlyArray<NavItem> = [
+  { id: 'shop', icon: 'shop', label: 'Shop' },
+  // Label, not id: the screen it opens is titled "Your progress", and the bar
+  // was the only place still calling it Stats.
+  { id: 'stats', icon: 'trophy', label: 'Progress' },
+];
+
+interface NavItem {
+  id: NavDestination;
+  icon: IconName;
+  label: string;
+}
+
 /**
- * The bottom navigation (spec §4.2): one grouped rounded panel, flat icons.
- * Grouped rather than five separate buttons — the panel is what reads as a bar.
+ * The bottom navigation: one rounded panel notched around a raised Home button.
  *
- * It is mounted once in `Root`, not per screen, so navigating never restarts
- * its entrance or pays for a new gradient. `active` marks where you are: a bar
- * that looks identical everywhere is decoration, not navigation.
+ * Settings used to be the fifth tab and is now the top bar's drawer. A settings
+ * screen is somewhere you go once; giving it a permanent seat next to the four
+ * places you actually move between made the bar a list of screens rather than a
+ * set of destinations.
+ *
+ * Mounted once in `Root`, not per screen, so navigating never restarts its
+ * entrance or pays for a new gradient. `active` marks where you are: a bar that
+ * looks identical everywhere is decoration, not navigation.
  */
 export const NavBar = memo(function NavBar({
   onNavigate,
+  onHome,
   active,
+  windowWidth,
+  sideInset = 0,
 }: {
   onNavigate: (destination: NavDestination) => void;
+  onHome: () => void;
   active?: NavDestination;
+  windowWidth: number;
+  sideInset?: number;
 }) {
+  const width = navBarWidth(windowWidth, sideInset);
+
+  /**
+   * The bar's shape: a rounded rectangle with a circle subtracted from its top
+   * edge.
+   *
+   * A real boolean difference, not a circle painted in the ground colour over
+   * the bar. The backdrop behind this is a live gradient with drifting motes, so
+   * a painted disc would be a flat patch that only matches where the gradient
+   * happens to agree — and it would slide out of register the moment the
+   * backdrop moved.
+   */
+  const path = useMemo(() => {
+    const bar = Skia.PathBuilder.Make()
+      .addRRect(
+        Skia.RRectXY(Skia.XYWHRect(0, 0, width, NAV_BAR_HEIGHT), NAV_RADIUS, NAV_RADIUS)
+      )
+      .detach();
+    const notch = Skia.PathBuilder.Make()
+      .addCircle(width / 2, 0, NOTCH_RADIUS)
+      .detach();
+    // Falls back to the un-notched bar rather than to nothing: a path op is the
+    // one part of this that can return null, and a bar with no bite is a far
+    // better failure than no bar at all.
+    return Skia.Path.MakeFromOp(bar, notch, PathOp.Difference) ?? bar;
+  }, [width]);
+
+  const canvasStyle = useMemo(() => ({ width, height: NAV_BAR_HEIGHT }), [width]);
+  const wrapStyle = useMemo(() => ({ width, height: NAV_BAR_HEIGHT }), [width]);
+  const gradientEnd = useMemo(() => vec(0, NAV_BAR_HEIGHT), []);
+  // Skia's colour prop is a mutable array; the palette's ramps are `as const`
+  // tuples so two components cannot reach in and edit a shared one.
+  const faceColours = useMemo(() => [...gradients.navBar], []);
+
   return (
-    <View style={styles.bar}>
-      <LinearGradient colors={gradients.navBar} style={styles.barFace}>
-        <View style={styles.gloss} pointerEvents="none" />
-        {ITEMS.map((item) => (
+    <View style={[styles.wrap, wrapStyle]}>
+      <Canvas style={[styles.face, canvasStyle]} pointerEvents="none">
+        <Path path={path}>
+          <SkiaGradient start={vec(0, 0)} end={gradientEnd} colors={faceColours} />
+        </Path>
+      </Canvas>
+
+      <View style={styles.row}>
+        {LEFT.map((item) => (
           <NavButton
             key={item.id}
             {...item}
@@ -62,8 +140,69 @@ export const NavBar = memo(function NavBar({
             active={item.id === active}
           />
         ))}
-      </LinearGradient>
+
+        {/* The bump's footprint, and its label. The button itself is absolutely
+            positioned above the bar, so it cannot be a child of this row. */}
+        <View style={styles.spacer}>
+          <Text style={styles.spacerLabel}>Home</Text>
+        </View>
+
+        {RIGHT.map((item) => (
+          <NavButton
+            key={item.id}
+            {...item}
+            onNavigate={onNavigate}
+            active={item.id === active}
+          />
+        ))}
+      </View>
+
+      <HomeBump onPress={onHome} active={active === undefined} />
     </View>
+  );
+});
+
+/**
+ * The raised Home button sitting in the bar's notch.
+ *
+ * It is a `Pressable` even when Home is already the screen, unlike the tabs —
+ * which disable themselves so a tap that changes nothing is silent. Home here is
+ * the way *back* from anything, and the one control a player reaches for without
+ * looking; a dead centre button is worse than a redundant one.
+ */
+const HomeBump = memo(function HomeBump({
+  onPress,
+  active,
+}: {
+  onPress: () => void;
+  active: boolean;
+}) {
+  const handlePress = useTapHandler(onPress);
+  const tap = useTapScale();
+  const burst = useTapBurst('dark');
+
+  const onPressIn = useCallback(() => {
+    tap.onPressIn();
+    burst.fire();
+  }, [tap, burst]);
+
+  return (
+    <Pressable
+      style={styles.bump}
+      onPress={handlePress}
+      onPressIn={onPressIn}
+      onPressOut={tap.onPressOut}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel="Home"
+    >
+      <Animated.View style={[styles.bumpFill, tap.style]}>
+        <LinearGradient colors={gradients.gold} style={styles.bumpFill} />
+        <View style={styles.bumpGloss} pointerEvents="none" />
+      </Animated.View>
+      {burst.node}
+      <Icon name="home" size={s(27)} color={ui.onGold} />
+    </Pressable>
   );
 });
 
@@ -73,16 +212,19 @@ const NavButton = memo(function NavButton({
   label,
   onNavigate,
   active,
-}: {
-  id: NavDestination;
-  icon: IconName;
-  label: string;
+}: NavItem & {
   onNavigate: (destination: NavDestination) => void;
   active: boolean;
 }) {
   const navigate = useCallback(() => onNavigate(id), [onNavigate, id]);
   const onPress = useTapHandler(navigate);
   const tap = useTapScale();
+  const burst = useTapBurst('light');
+
+  const onPressIn = useCallback(() => {
+    tap.onPressIn();
+    burst.fire();
+  }, [tap, burst]);
 
   /**
    * The pop when a destination becomes the active one.
@@ -108,9 +250,9 @@ const NavButton = memo(function NavButton({
 
   return (
     <Pressable
-      style={styles.button}
+      style={styles.tab}
       onPress={onPress}
-      onPressIn={tap.onPressIn}
+      onPressIn={onPressIn}
       onPressOut={tap.onPressOut}
       // The tab you are already on has nowhere to send you. Left pressable it
       // answered every tap with a buzz and changed nothing.
@@ -122,9 +264,10 @@ const NavButton = memo(function NavButton({
       <Animated.View
         style={[styles.iconSlot, active && styles.iconSlotActive, tap.style, popStyle]}
       >
+        {burst.node}
         <Icon
           name={icon}
-          size={s(24)}
+          size={s(23)}
           color={active ? apothecary.gold : apothecary.goldLight}
         />
       </Animated.View>

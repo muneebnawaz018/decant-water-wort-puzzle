@@ -21,7 +21,7 @@ import { GameScreen } from './GameScreen';
 import { useNotifications } from './hooks/useNotifications';
 import { HomeScreen } from './HomeScreen';
 import { ScreenTransition } from './ScreenTransition';
-import { SettingsScreen } from './SettingsScreen';
+import { SettingsDrawer } from './chrome/SettingsDrawer';
 import { ShopScreen } from './ShopScreen';
 import { SplashScreen } from './SplashScreen';
 import { StagesScreen } from './StagesScreen';
@@ -46,7 +46,6 @@ const WITH_NAV: ReadonlySet<Screen> = new Set<Screen>([
   'home',
   'complete',
   'stages',
-  'settings',
   'daily',
   'shop',
   'stats',
@@ -56,7 +55,6 @@ const WITH_NAV: ReadonlySet<Screen> = new Set<Screen>([
 const FORWARD: ReadonlySet<Screen> = new Set<Screen>([
   'game',
   'stages',
-  'settings',
   'daily',
   'shop',
   'stats',
@@ -116,6 +114,12 @@ export function Root() {
       useOverlayStore.getState().closeModal();
       return true;
     }
+    // The drawer takes it after a modal and before any screen: it is the
+    // frontmost surface, and back means "dismiss what is in front of me".
+    if (useOverlayStore.getState().drawer) {
+      useOverlayStore.getState().closeDrawer();
+      return true;
+    }
     if (screen === 'home') return false;
     if (screen === 'splash') return true;
     if (screen === 'game') {
@@ -166,8 +170,6 @@ export function Root() {
             <StagesScreen onBack={showHome} onPick={showGame} />
           ) : null}
 
-          {screen === 'settings' ? <SettingsScreen onClose={showHome} /> : null}
-
           {screen === 'daily' ? (
             <DailyScreen onBack={showHome} onPlayBonus={showGame} />
           ) : null}
@@ -206,10 +208,21 @@ export function Root() {
               current screen, so the bar always says where you are. */}
           <NavBar
             onNavigate={navigate}
-            active={screen === 'home' ? undefined : (screen as NavDestination)}
+            onHome={showHome}
+            windowWidth={width}
+            sideInset={insets.left + insets.right}
+            active={
+              screen === 'home' || screen === 'complete'
+                ? undefined
+                : (screen as NavDestination)
+            }
           />
         </View>
       ) : null}
+
+      {/* Above the nav bar and the screens, below the modal. Settings is a
+          detour over whatever you were doing, so nothing under it unmounts. */}
+      <SettingsDrawer />
 
       <Overlays />
     </View>

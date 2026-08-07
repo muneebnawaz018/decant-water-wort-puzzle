@@ -301,6 +301,15 @@ export const ui = {
   buttonGlowSoft: alpha('gold', 0.5),
   /** The neutral drop shadow, likewise pre-multiplied. */
   shadowSoft: alpha('black', 0.3),
+  /**
+   * The division between segments on the drawer's vial mark.
+   *
+   * Darker than the 0.16 the board and Home's rack use for the same idea, and
+   * deliberately so: those draw a tube 100dp tall where a whisper is enough,
+   * this one is 24dp, where 0.16 measured out at an 8% shift against the fill
+   * and vanished on the device. A seam that cannot be seen is not a seam.
+   */
+  segmentSeam: alpha('black', 0.34),
   ghost: alpha('white', 0.1),
 
   // Accent
@@ -363,6 +372,14 @@ export const gradients = {
    * content still slid visibly into its top edge; this dissolves it first.
    */
   navFade: [fade('nightDeep'), raw.nightDeep] as const,
+  /**
+   * The settings drawer, raked rather than vertical.
+   *
+   * A diagonal ramp because the drawer is tall and narrow: a top-to-bottom
+   * gradient over that shape banks all its change into the first third and
+   * leaves the rest flat, which is the one place a large surface shows it.
+   */
+  drawer: [raw.panel, raw.nightDeep] as const,
   /** Reward chips. */
   gift: [raw.mangoLight, raw.mango] as const,
   advert: [raw.blueberryLight, raw.blueberry] as const,

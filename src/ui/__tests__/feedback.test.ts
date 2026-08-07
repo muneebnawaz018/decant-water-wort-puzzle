@@ -15,7 +15,7 @@ jest.mock('expo-haptics', () => ({
   selectionAsync: jest.fn(),
   notificationAsync: jest.fn(),
   ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
-  NotificationFeedbackType: { Warning: 'warning' },
+  NotificationFeedbackType: { Warning: 'warning', Success: 'success' },
 }));
 
 const impact = Haptics.impactAsync as jest.Mock;
@@ -40,18 +40,23 @@ beforeEach(() => {
 });
 
 describe('board taps', () => {
-  it('taps for a pour and heavier for the one that solves the level', () => {
+  it('taps for a pour and answers the solving one with a pattern', () => {
     feedbackFor(pour());
-    expect(impact).toHaveBeenCalledWith(Platform.OS === 'android' ? 'medium' : 'light');
+    // Android sits a step up the ladder: its `heavy` is 60ms at 70/255, which
+    // is about what iOS renders `light` as.
+    expect(impact).toHaveBeenCalledWith(Platform.OS === 'android' ? 'heavy' : 'light');
 
     feedbackFor(pour(true));
-    expect(impact).toHaveBeenLastCalledWith('heavy');
+    // Not a bigger pulse — there is nothing above `heavy` on Android to
+    // escalate to. Two pulses instead, which no single pour can be confused
+    // with.
+    expect(notification).toHaveBeenCalledWith('success');
   });
 
   it('ticks for picking a vial up and for putting it back down', () => {
     feedbackFor({ kind: 'selected', tube: 0 });
     feedbackFor({ kind: 'deselected', tube: 0 });
-    // Not `selectionAsync` specifically: the tick is `impactAsync(Light)` on
+    // Not `selectionAsync` specifically: the tick is `impactAsync(Medium)` on
     // Android, where the selection effect is too faint to feel. What matters
     // is that both taps answer, and that neither is a warning.
     expect(calls()).toBe(2);

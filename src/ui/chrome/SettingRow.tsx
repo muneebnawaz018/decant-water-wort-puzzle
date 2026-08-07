@@ -1,5 +1,4 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { memo, useCallback, useEffect, type ReactNode } from 'react';
+import { memo, useEffect, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -39,6 +38,23 @@ interface RowProps {
   divider?: boolean;
   children?: ReactNode;
   onPress?: () => void;
+  /**
+   * Put the control on its own line under the label.
+   *
+   * For a control too wide to share a line. A switch or a badge never needs
+   * this, and the difficulty picker — the one row that did — now names its
+   * value instead, so nothing currently uses it.
+   */
+  stacked?: boolean;
+  /**
+   * The trailing `›`, drawn whenever a row is pressable.
+   *
+   * Off for a row that supplies its own trailing mark. A row that unfolds a
+   * list beneath itself wants a downward one, and it must not end up with both:
+   * two marks side by side pointing different ways is the row disagreeing with
+   * itself about where the press leads.
+   */
+  chevron?: boolean;
 }
 
 /** Stable no-op, so a row without an action still gets one hook call. */
@@ -50,6 +66,8 @@ export const SettingRow = memo(function SettingRow({
   divider = true,
   children,
   onPress,
+  stacked = false,
+  chevron = true,
 }: RowProps) {
   // Called unconditionally — `onPress` is optional and a hook cannot be. The
   // wrapped handler is only reachable through the `Pressable` below, which is
@@ -79,10 +97,29 @@ export const SettingRow = memo(function SettingRow({
       <Text style={styles.rowLabel} numberOfLines={1}>
         {label}
       </Text>
-      {children}
-      {onPress ? <Text style={styles.chevron}>›</Text> : null}
+      {stacked ? null : children}
+      {onPress && chevron ? <Text style={styles.chevron}>›</Text> : null}
     </View>
   );
+
+  if (stacked) {
+    return (
+      <View style={[styles.stack, divider && styles.divider]}>
+        {/* The label line keeps its own divider off — the wrapper carries it,
+            so the hairline lands under the control rather than between the two
+            halves of one row. */}
+        <View style={styles.row}>
+          <Animated.View style={styles.rowIcon}>
+            <Icon name={icon} size={s(18)} color={apothecary.goldLight} />
+          </Animated.View>
+          <Text style={styles.rowLabel} numberOfLines={1}>
+            {label}
+          </Text>
+        </View>
+        <View style={styles.stackControl}>{children}</View>
+      </View>
+    );
+  }
 
   if (!onPress) return body;
 
@@ -134,67 +171,6 @@ export const Switch = memo(function Switch({
       <View style={[styles.track, value && styles.trackOn]}>
         <Animated.View style={[styles.knob, knob]} />
       </View>
-    </Pressable>
-  );
-});
-
-/** The segmented control from spec §4.9 — gold for the chosen option. */
-export const Segmented = memo(function Segmented({
-  options,
-  value,
-  onChange,
-}: {
-  options: ReadonlyArray<{ id: string; label: string }>;
-  value: string;
-  onChange: (id: string) => void;
-}) {
-  return (
-    <View style={styles.segmented}>
-      {options.map((option) => (
-        <SegmentButton
-          key={option.id}
-          id={option.id}
-          label={option.label}
-          active={option.id === value}
-          onChange={onChange}
-        />
-      ))}
-    </View>
-  );
-});
-
-const SegmentButton = memo(function SegmentButton({
-  id,
-  label,
-  active,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  active: boolean;
-  onChange: (id: string) => void;
-}) {
-  const select = useCallback(() => onChange(id), [onChange, id]);
-  const onPress = useTapHandler(select);
-
-  if (active) {
-    // Already chosen: nothing to change, so nothing to press and nothing to
-    // feel.
-    return (
-      <Pressable disabled accessibilityRole="radio" accessibilityState={{ selected: true }}>
-        <LinearGradient
-          colors={[apothecary.goldLight, apothecary.gold]}
-          style={styles.segment}
-        >
-          <Text style={styles.segmentTextOn}>{label}</Text>
-        </LinearGradient>
-      </Pressable>
-    );
-  }
-
-  return (
-    <Pressable onPress={onPress} accessibilityRole="radio" style={styles.segment}>
-      <Text style={styles.segmentText}>{label}</Text>
     </Pressable>
   );
 });

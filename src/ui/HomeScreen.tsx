@@ -13,6 +13,7 @@ import { countdown, percentWidth } from '@/utils';
 import { CoinPill } from './chrome/CoinPill';
 import { GlossButton } from './chrome/GlossButton';
 import { HeroRack } from './chrome/HeroRack';
+import { ChromeIconButton } from './chrome/ScreenHeader';
 import { type NavDestination } from './chrome/NavBar';
 import { Panel } from './chrome/Panel';
 import { useScreenPadding } from './hooks/useScreenPadding';
@@ -52,38 +53,29 @@ export const HomeScreen = memo(function HomeScreen({
   const play = useTapHandler(onPlay);
   const openDaily = useCallback(() => onNavigate('daily'), [onNavigate]);
   const openStages = useCallback(() => onNavigate('stages'), [onNavigate]);
-  /**
-   * Says the music is not here yet, and does nothing else.
-   *
-   * Spec §7 gives this button real behaviour — cycle the track and toast its
-   * name, or offer to turn master sound back on when it is off — and that is
-   * what it did. But there is no audio in the build, and Settings marks all
-   * three sound rows "Soon" for exactly that reason. A button that announces
-   * "Now playing · Amberlight" over silence is the same broken promise those
-   * badges exist to avoid, just louder for being on the first screen.
-   *
-   * Restore the §7 logic when there are sound files to play. It is in the git
-   * history at this line.
-   */
-  const musicPress = useCallback(() => {
-    overlay.toast('Music arrives in a later update');
-  }, []);
-  const onMusicPress = useTapHandler(musicPress);
+  /*
+    The music button is gone from this corner.
+
+    Spec §7 gives it real behaviour — cycle the track and toast its name, or
+    offer to turn master sound back on when it is off — and that is what it did
+    until there was no audio in the build to cycle. What was left was a dimmed
+    control whose entire function was to say "not yet", sitting in the top-right
+    of the first screen a player sees, beside the one button up there that does
+    something.
+
+    The three "Soon" rows in the settings drawer already carry that message,
+    where a player is looking for settings rather than being told about one.
+    Restore the §7 logic here when there are sound files to play; it is in the
+    git history at this line.
+  */
 
   return (
     <View style={[styles.root, padding.frame]}>
       <View style={styles.topbar}>
         <CoinPill />
-        {/* Dimmed and showing the muted glyph: the same "not yet" the Settings
-            badges say, in the vocabulary this corner of the screen has. */}
-        <Pressable
-          style={[styles.iconButton, styles.iconButtonOff]}
-          onPress={onMusicPress}
-          accessibilityRole="button"
-          accessibilityLabel="Music, coming soon"
-        >
-          <Icon name="mute" size={s(20)} color={apothecary.goldLight} />
-        </Pressable>
+        {/* Settings lives behind this, not in the nav bar. See
+            `SettingsDrawer`. */}
+        <ChromeIconButton icon="menu" onPress={overlay.drawer} label="Settings" />
       </View>
 
       <View style={styles.body}>

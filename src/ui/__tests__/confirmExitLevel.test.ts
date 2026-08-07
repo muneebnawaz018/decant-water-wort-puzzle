@@ -30,7 +30,7 @@ describe('confirmExitLevel', () => {
 
     expect(leave).not.toHaveBeenCalled();
     expect(modal()?.title).toBe('Leave level 4?');
-    expect(modal()?.body).toContain('not made a move yet');
+    expect(modal()?.body).toContain('No moves made yet');
   });
 
   it('asks first once a pour has been made, and does not leave yet', () => {
@@ -82,6 +82,6 @@ describe('confirmExitLevel', () => {
     confirmExitLevel(leave);
 
     expect(leave).not.toHaveBeenCalled();
-    expect(modal()?.body).toContain('not made a move yet');
+    expect(modal()?.body).toContain('No moves made yet');
   });
 });

@@ -1,313 +1,245 @@
 import { StyleSheet } from 'react-native';
 
 import { apothecary, SPACE } from '@/theme/apothecary';
-import { alpha, ui } from '@/theme/colors';
+import { alpha, colours, ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
-import { text } from '@/theme/typography';
 import { s, WINDOW_WIDTH } from '@/theme/scale';
+import { text } from '@/theme/typography';
 
 /**
- * Days across the reward track. Seven rewards do not divide by it.
+ * Days across the reward track.
  *
- * Three, matching the stage grid. Four fitted the week into two neat rows and
- * made every tile 76dp — a day number and an amount in a box too narrow to say
- * what the amount is, which is why the unit was abbreviated to "c". At three
- * the tile is the one the stage grid uses and the word fits.
+ * Three, matching the stage grid. Six tiles divide by it exactly now that day
+ * seven has a row of its own, so the week is two clean rows with nothing to pad
+ * — the previous layout spent a `ORPHAN_SLOTS` computation on the remainder.
  */
-export const DAY_COLUMNS = 3;
+const DAY_COLUMNS = 3;
+export const FLAME_SIZE = s(26);
+export const COIN_SIZE = s(28);
+const GRAND_COIN = s(44);
 
-/** The 12 every other grid in the app uses. This track was on 10. */
-const GAP = SPACE.tile;
+const GAP = s(10);
 
 /**
  * A slot's share of the row, gaps removed first.
  *
- * Percentages alone cannot express this: four tiles at 25% plus three gaps is
- * wider than the row, so the fourth wraps and the track silently becomes three
+ * Percentages alone cannot express this: three tiles at 33% plus two gaps is
+ * wider than the row, so the last wraps and the track silently becomes two
  * across. The gaps are in dp and there is no `calc`, so the row's real width is
- * measured and the share falls out of it — the same derivation `theme/grid.ts`
- * does for the two-across grids, which cannot be reused here because it returns
- * a phone percentage verbatim and this track's was hand-tuned to a different
- * gap.
+ * measured and the share falls out of it.
+ *
+ * `ROUNDING_SLACK` is shaved off first. React Native resolves a percentage to a
+ * float and Android rounds each resolved width *up* to a whole physical pixel;
+ * at a 2.75 density that is a third of a dp per view, enough for a row that
+ * needs its full width to wrap on Android while iOS sits flush. Half a dp is
+ * below anything visible and above the error it absorbs.
  */
 const ROW_WIDTH = WINDOW_WIDTH - SPACE.screen * 2;
-
-/**
- * Shaved off the row before the slots are cut from it.
- *
- * Day 7 and the two-slot streak card add up to exactly the row, which is
- * correct arithmetic and wrong in practice: React Native resolves a percentage
- * to a float and Android rounds each resolved width *up* to a whole physical
- * pixel. At a 2.75 density that is a third of a dp per view, and a row that
- * needs its full width to fit is then a third of a dp too wide — so the streak
- * card wrapped to its own line on Android while iOS, which keeps subpixel
- * layout, sat flush.
- *
- * Half a dp is below the threshold of anything visible and above the rounding
- * error it exists to absorb.
- */
 const ROUNDING_SLACK = 0.5;
 const SLOT = (ROW_WIDTH - GAP * (DAY_COLUMNS - 1) - ROUNDING_SLACK) / DAY_COLUMNS;
 const DAY_SLOT_WIDTH = `${(SLOT / ROW_WIDTH) * 100}%` as const;
 
-/**
- * Two slots and the gap between them — the streak card's width.
- *
- * Seven days across three columns leaves day 7 alone beside two empty slots,
- * and the streak is exactly two slots wide. Putting it there fills the row and
- * lands the card at the end of the week it is counting, rather than above a
- * track the reader has not seen yet.
- *
- * Two slots plus one gap, not two-thirds of the row: the gap is dp and the
- * slots are a percentage, so adding them is the only way the card lines up with
- * the column boundary above it.
- */
-export const STREAK_SPAN = 2;
-const DAY_SLOT_WIDE = `${((SLOT * STREAK_SPAN + GAP) / ROW_WIDTH) * 100}%` as const;
-
-/** The streak glyph. */
-export const FLAME_SIZE = s(24);
-
-/** The play glyph on the ad ribbon. */
-export const RIBBON_ICON = s(11);
-
-/**
- * The ribbon's two halves: what shows above the claim button, and what hides
- * behind it.
- *
- * A tab is only a tab if something overlaps it. The lip has to clear the text
- * it holds — 20dp around an 11dp line — and the tuck only has to reach far
- * enough under the button that no gap opens between them at any rounding, which
- * 10dp does with room to spare.
- */
-const RIBBON_LIP = s(20);
-const RIBBON_TUCK = s(10);
-
-/**
- * A tile's shape, and the wide tile's — same height, twice the width.
- *
- * 1.4, not the 1.25 it was. At 1.25 the tile stood 85dp tall around 42dp of
- * type, so half of it was empty and the day read as a small label adrift in a
- * large box. The type below grew and the box shrank to meet it: the content now
- * sits about a `SPACE.tile` inset from each edge, which is what every other
- * grid tile in the app looks like.
- */
-const DAY_RATIO = 1.4;
-const DAY_HEIGHT = SLOT / DAY_RATIO;
-
 export const styles = StyleSheet.create({
-  // A tile of the track, not a panel above it — so it takes the tile's height
-  // and inset rather than `SPACE.panel`, and sits level with day 7 beside it.
   /**
-   * Gold, because it is not a day.
+   * The streak, first thing on the page.
    *
-   * Sat in the grid at a tile's height after a run of seven identical tiles, an
-   * untinted card reads as day 8 — the eye groups it with them before it reads
-   * the words. The wash and the edge are the same pair `dayToday` uses to mark
-   * itself out of the row.
+   * Above the track rather than tucked into its last row. The track is seven
+   * tiles the player scans; the streak is the one sentence that says what those
+   * tiles are worth to them right now, and a summary that reads after the thing
+   * it summarises is a footnote.
    */
   streak: {
-    height: DAY_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: s(12),
-    padding: SPACE.tile,
-    borderWidth: 1,
-    borderColor: alpha('gold', 0.35),
-    backgroundColor: alpha('gold', 0.12),
-  },
-  flame: {
-    width: FLAME_SIZE * 1.35,
-    height: FLAME_SIZE * 1.35,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  /** The pivot goes on the view that is transformed, not on the box holding it. */
-  flameGlyph: { transformOrigin: 'bottom' },
-  /**
-   * The heat the fire throws, behind it.
-   *
-   * On the slower of the two loops, so the light and the flame drift in and out
-   * of step rather than pulsing as one object.
-   *
-   * Sat low in the box, where the base of the flame is — the glyph is widest
-   * there and its tip is a point, so a centred glow lights empty air.
-   */
-  flameHalo: {
-    position: 'absolute',
-    bottom: 0,
-    width: FLAME_SIZE * 0.9,
-    height: FLAME_SIZE * 0.9,
-    borderRadius: FLAME_SIZE * 0.45,
-    backgroundColor: alpha('mango', 0.22),
+    gap: s(14),
+    padding: s(16),
   },
   streakText: { flex: 1 },
-  /**
-   * The card's two lines, at the presets' sizes.
-   *
-   * The detail was 11 against a 12 caption — a size that exists nowhere else in
-   * the app, set to squeeze under a title that was itself a point short. Both
-   * now match what the rest of the screens use, and the second line takes a
-   * small `marginTop` instead of relying on Poppins' leading to separate them.
-   */
-  streakTitle: { ...text.cardTitle, fontSize: s(16), color: apothecary.goldLight },
-  streakDetail: { ...text.caption, marginTop: s(2) },
-
-  // Same frame as the Shop and Progress grids: a tile gap between tiles, a
-  // section gap under the finished block. No top margin — `ScrollPage` already
-  // opens the page with one, and the track is now the first thing on it.
-  track: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: GAP,
-    marginBottom: SPACE.section,
+  streakTitle: {
+    fontFamily: POPPINS.semibold,
+    fontSize: s(16),
+    color: apothecary.ink,
+    includeFontPadding: false,
   },
+  streakDetail: {
+    fontFamily: POPPINS.regular,
+    fontSize: s(11),
+    color: apothecary.inkMuted,
+    includeFontPadding: false,
+    marginTop: s(6),
+  },
+  /** The week's progress, as a bar rather than as "3 of 7". */
+  streakBar: {
+    height: s(6),
+    borderRadius: s(4),
+    backgroundColor: ui.wellDeep,
+    overflow: 'hidden',
+    marginTop: s(8),
+  },
+  streakBarFill: { height: '100%' },
 
-  /**
-   * Four across, seven days — so the last row holds three and the grid has to
-   * be told what to do with the empty fourth slot.
-   *
-   * It used to hold `width`, `flexBasis` and `flexGrow: 1` together, which is
-   * three answers to one question. `flexBasis` wins over `width` in flex
-   * layout, so the width was dead, and `flexGrow: 1` handed the leftover space
-   * to whatever was in the row: four tiles came out 78dp wide and the last
-   * three came out 107dp. The comment above it claimed the row was not
-   * stretched, which is exactly what it was.
-   *
-   * This is the failure `src/theme/grid.ts` exists to prevent — the shop hit
-   * it first, with one skin alone on a row at three times the size of the one
-   * above. The rule it records: an explicit width has to come with an explicit
-   * `flexGrow: 0`. Daily missed it by hand-rolling its grid.
-   *
-   * `DailyScreen` now pads the short row with an empty slot, the same fix
-   * `StagesScreen` uses for a 50-tile page that never divides by four.
-   */
+  flame: { width: s(48), height: s(48), alignItems: 'center', justifyContent: 'center' },
+  flameHalo: {
+    position: 'absolute',
+    width: s(40),
+    height: s(40),
+    borderRadius: s(20),
+    backgroundColor: alpha('mango', 0.28),
+  },
+  flameGlyph: { transformOrigin: 'bottom' },
+
+  /** Section eyebrow, the same one Shop and Stats use. */
+  label: { ...text.eyebrow, marginTop: s(18), marginBottom: s(10), marginHorizontal: s(4) },
+
+  track: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
   daySlot: { flexGrow: 0, flexBasis: DAY_SLOT_WIDTH },
-  /** The streak card's slot, two columns wide. */
-  daySlotWide: { flexGrow: 0, flexBasis: DAY_SLOT_WIDE },
-
-  // A height, not an `aspectRatio`, because the streak card shares it and is
-  // twice as wide — a ratio would make it twice as tall too. `SPACE.tile` is
-  // the inset every other grid tile in the app uses; this track was on 12
-  // vertical against 4 horizontal, which is why it read as a different
-  // component from the grids on Shop and Progress.
-  day: {
-    height: DAY_HEIGHT,
-    padding: SPACE.tile,
+  day: { alignItems: 'center', paddingVertical: s(12), paddingHorizontal: s(6) },
+  /**
+   * Claimed and future both dim, and they are different things.
+   *
+   * Claimed carries a tick, so the fade reads as "done". A future day has
+   * nothing on it but the amount, and the same fade reads as "not yet" — which
+   * is the whole of what a locked tile has to say.
+   */
+  dayClaimed: { opacity: 0.5 },
+  dayFuture: { opacity: 0.5 },
+  /**
+   * Today, ringed rather than merely brighter.
+   *
+   * A gold border plus a wash: on a page of six panels that differ only in
+   * opacity, a colour shift alone was not enough to find at a glance.
+   */
+  dayToday: {
+    borderWidth: 1,
+    borderColor: apothecary.gold,
+    backgroundColor: alpha('gold', 0.1),
+  },
+  dayNumber: {
+    fontFamily: POPPINS.semibold,
+    fontSize: s(9),
+    letterSpacing: s(0.5),
+    color: apothecary.inkMuted,
+    includeFontPadding: false,
+  },
+  dayNumberToday: { color: apothecary.goldLight },
+  dayCoin: {
+    width: COIN_SIZE,
+    height: COIN_SIZE,
+    borderRadius: COIN_SIZE / 2,
+    marginVertical: s(7),
+    overflow: 'hidden',
+  },
+  dayAmount: {
+    fontFamily: POPPINS.bold,
+    fontSize: s(14),
+    color: apothecary.ink,
+    includeFontPadding: false,
+  },
+  /** The claimed tick, in the corner rather than over the coin. */
+  check: {
+    position: 'absolute',
+    top: s(6),
+    right: s(6),
+    width: s(18),
+    height: s(18),
+    borderRadius: s(9),
+    backgroundColor: apothecary.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dayClaimed: { backgroundColor: ui.accentWash },
-  dayToday: { borderColor: apothecary.gold, borderWidth: 2 },
-  /**
-   * The same eyebrow/figure pairing the Progress tiles use, at the preset's own
-   * sizes rather than shrunk below them.
-   *
-   * The day number was 9.5 and the amount 15 — a figure two thirds the size of
-   * a card title, which is not a figure. The amount is the only thing on the
-   * tile a player is comparing across the week, so it carries the weight and
-   * the day number sits above it as a label. `lineHeight` is set because
-   * Poppins' natural leading at this size opens a gap the tile cannot spare.
-   */
-  dayNumber: { ...text.eyebrow },
-  dayAmount: {
-    ...text.figure,
-    fontSize: s(21),
-    lineHeight: s(26),
-    marginTop: s(5),
-  },
-  /**
-   * The unit, held down while the figure went up.
-   *
-   * "150 coins" is the widest line the tile ever holds and it has to survive
-   * the narrowest phone: at 375pt the slot is 101dp and the `SPACE.tile` inset
-   * leaves about 77 for the text. A 21dp figure spends 39 of that, so the unit
-   * has roughly 30 to work in — which is where 10 comes from rather than
-   * taste. Raise either number and day 7 wraps on an SE while looking fine on
-   * every simulator anybody opens.
-   */
-  dayUnit: {
-    fontFamily: POPPINS.medium,
-    fontSize: s(10),
-    color: apothecary.inkMuted,
-  },
 
   /**
-   * The claim button and the ribbon hanging off it.
+   * Day seven, given a row of its own.
    *
-   * `paddingTop` rather than a negative offset on the ribbon: an absolutely
-   * positioned child that sticks out past its parent's box is clipped on
-   * Android in the cases where the parent gets a background or an elevation
-   * later, and nothing warns you — it renders correctly on iOS the whole time.
-   * Reserving the lip inside the wrapper keeps the ribbon in bounds by
-   * construction.
+   * It is ten times day one and the reason the streak is worth keeping, and as
+   * a seventh tile in a grid of six it was the same 104dp square as the 10-coin
+   * Monday. A reward that anchors a week has to look unlike the days leading to
+   * it.
    */
-  claim: { paddingTop: RIBBON_LIP },
-
-  /**
-   * The rewarded slot, as a tab tucked under the button's top edge.
-   *
-   * It was a settings row three blocks down the page, which is the wrong place
-   * for the only other way to earn coins on a screen about earning coins — the
-   * player is looking at the countdown, and the answer to "not for another
-   * sixteen hours" belongs where they are looking.
-   *
-   * Order does the layering, not `zIndex`: the ribbon is rendered before the
-   * button, so iOS paints the button over it, and on Android the button's own
-   * `elevation` puts it above a ribbon that has none. Nothing has to be told
-   * twice.
-   *
-   * `right` clears the button's 16dp corner radius, so the tab meets a straight
-   * edge rather than hanging over the curve.
-   *
-   * Opaque, in the button's own top-of-gradient colour. Translucent gold over
-   * the ground was tried and reads as a sticker: the tab has to look cut from
-   * the same material as the thing it is attached to.
-   */
-  ribbon: {
-    position: 'absolute',
-    top: 0,
-    right: s(18),
-    height: RIBBON_LIP + RIBBON_TUCK,
-    paddingBottom: RIBBON_TUCK,
-    paddingHorizontal: s(9),
+  grand: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: s(5),
-    borderTopLeftRadius: s(9),
-    borderTopRightRadius: s(9),
+    gap: s(14),
+    padding: s(14),
+    marginTop: s(10),
     borderWidth: 1,
-    borderBottomWidth: 0,
     borderColor: alpha('gold', 0.45),
-    backgroundColor: apothecary.surfaceTop,
+    backgroundColor: alpha('gold', 0.07),
   },
-  /**
-   * `includeFontPadding: false` on both, with the line heights stated.
-   *
-   * Android reserves an ascender/descender band this line never uses, and it is
-   * asymmetric — inside a 20dp lip that is the difference between lettering on
-   * the centre line and lettering sitting visibly high in the tab. The same fix
-   * `SoonBadge` carries, for the same reason.
-   */
-  ribbonAmount: {
+  grandCoin: {
+    width: GRAND_COIN,
+    height: GRAND_COIN,
+    borderRadius: GRAND_COIN / 2,
+    overflow: 'hidden',
+  },
+  grandText: { flex: 1 },
+  grandLabel: {
     fontFamily: POPPINS.bold,
-    fontSize: s(12),
-    lineHeight: s(15),
-    includeFontPadding: false,
+    fontSize: s(9),
+    letterSpacing: s(0.7),
     color: apothecary.goldLight,
-  },
-  /**
-   * The ad has no SDK behind it — spec §8 puts it in phase 2 — so the tab says
-   * so on itself rather than promising fifty coins it cannot pay. It is also
-   * why the ribbon takes no press: a marked control that still swallows a tap
-   * is the thing `SoonBadge` exists to avoid.
-   */
-  ribbonNote: {
-    ...text.eyebrow,
-    fontSize: s(8.5),
-    lineHeight: s(11),
     includeFontPadding: false,
+  },
+  grandAmount: {
+    fontFamily: POPPINS.bold,
+    fontSize: s(17),
+    color: apothecary.ink,
+    includeFontPadding: false,
+    marginTop: s(2),
   },
 
-  spacer: { height: SPACE.section },
+  claim: { marginTop: s(18) },
+
+  /**
+   * The rewarded slot, doc §8's highest-value one.
+   *
+   * Blue, alone among gold and green surfaces. It is the one thing on the page
+   * that is not the game paying you — it is an offer — and the palette says so
+   * before the label does.
+   */
+  advert: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(14),
+    padding: s(14),
+    marginTop: s(14),
+    borderWidth: 1,
+    borderColor: alpha('blueberryLight', 0.45),
+  },
+  advertIcon: {
+    width: s(42),
+    height: s(42),
+    borderRadius: s(12),
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  advertText: { flex: 1 },
+  advertTitle: {
+    fontFamily: POPPINS.semibold,
+    fontSize: s(14),
+    color: apothecary.ink,
+    includeFontPadding: false,
+  },
+  advertNote: {
+    fontFamily: POPPINS.regular,
+    fontSize: s(11),
+    color: apothecary.inkMuted,
+    includeFontPadding: false,
+    marginTop: s(2),
+  },
+  advertBadge: {
+    fontFamily: POPPINS.bold,
+    fontSize: s(12),
+    color: colours.blueberryLight,
+    includeFontPadding: false,
+    borderWidth: 1,
+    borderColor: alpha('blueberryLight', 0.5),
+    borderRadius: s(9),
+    paddingHorizontal: s(9),
+    paddingVertical: s(4),
+    overflow: 'hidden',
+  },
+
+  spacer: { height: SPACE.block },
 });

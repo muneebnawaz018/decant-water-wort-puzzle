@@ -7,17 +7,21 @@ import { currentSettings } from '@/state/settingsStore';
 /**
  * A tick, at a strength each platform can actually deliver.
  *
- * `selectionAsync` is the right call on iOS — the Taptic Engine renders it as a
- * crisp click. On Android it maps to `EFFECT_TICK`, which on a lot of hardware
- * is below the threshold of noticing with the phone in your hand, and the
- * feature reads as broken rather than as subtle. `impactAsync(Light)` is the
- * quietest Android effect that is reliably felt; on iOS the same call is
- * heavier than a selection should be, which is why this is split rather than
- * settled on one call for both.
+ * The two platforms are split because one call cannot serve both, and the
+ * Android side is set from what the module actually does rather than from what
+ * the name suggests. `expo-haptics` builds every Android effect as a waveform
+ * with an explicit amplitude out of 255, and they are *quiet*: `light` is 50ms
+ * at 30/255, about 12% of what the motor can do; `medium` is 43ms at 50; `heavy`
+ * is 60ms at 70. Only the top of that range is reliably felt with the phone in
+ * your hand, so the ladder here sits one step above where the names imply.
+ *
+ * iOS is the opposite problem — the Taptic Engine renders `selectionAsync` as a
+ * crisp click, and `impactAsync` at the same point in the ladder is heavier than
+ * a selection should be.
  */
 function tick(): void {
   if (Platform.OS === 'android') {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     return;
   }
   void Haptics.selectionAsync();
@@ -38,16 +42,23 @@ export function feedbackFor(outcome: TapOutcome): void {
 
   switch (outcome.kind) {
     // A pour is the one moment the player is waiting to feel, so Android takes
-    // the step up that its tick needed — Medium against iOS's Light, which
-    // lands about the same in the hand.
+    // the step up that its tick needed — Heavy against iOS's Light, which lands
+    // about the same in the hand once the amplitudes above are accounted for.
+    //
+    // The board being solved answers with a *pattern* rather than a bigger
+    // pulse. Android has nothing above Heavy, so a stronger single buzz is not
+    // available to escalate to; `Success` is two pulses 100ms apart, which
+    // cannot be mistaken for the pour it follows on either platform.
     case 'poured':
-      void Haptics.impactAsync(
-        outcome.solved
-          ? Haptics.ImpactFeedbackStyle.Heavy
-          : Platform.OS === 'android'
-            ? Haptics.ImpactFeedbackStyle.Medium
+      if (outcome.solved) {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        void Haptics.impactAsync(
+          Platform.OS === 'android'
+            ? Haptics.ImpactFeedbackStyle.Heavy
             : Haptics.ImpactFeedbackStyle.Light
-      );
+        );
+      }
       break;
     // Picking a vial up and putting it back down are both things the player
     // did on purpose. Only `ignored` — a tap on empty glass with nothing

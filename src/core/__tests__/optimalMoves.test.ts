@@ -93,17 +93,23 @@ describe('optimalMoves', () => {
     expect(optimalMoves(solved)).toBe(0);
   });
 
-  it('stays inside its time budget on the worst boards the game generates', () => {
+  it('prunes hard on the worst boards the game generates', () => {
     // Twelve colours, capacity 5, one spare. If a change to the heuristic or
     // to move ordering ever weakens the pruning, this is where it shows.
-    const started = Date.now();
+    //
+    // Counted in nodes, not milliseconds. This began as a wall-clock assertion
+    // and it flaked in the commit hook — the gate runs jest beside five other
+    // checks across eight workers, so the same boards that take 2ms alone took
+    // over 50ms under contention. A timing test measures the machine's spare
+    // capacity as much as the code, and the thing actually worth guarding here
+    // is search work, which is deterministic.
+    //
+    // Measured worst over levels 501–540 in classic and fiendish: 4,364 nodes.
+    // A 10x margin — a regression alarm, not a benchmark.
     for (let level = 501; level <= 540; level++) {
-      expect(optimalMoves(generateLevel(level, 'fiendish').state)).not.toBeNull();
+      expect(
+        optimalMoves(generateLevel(level, 'fiendish').state, { nodeBudget: 50_000 })
+      ).not.toBeNull();
     }
-    const each = (Date.now() - started) / 40;
-
-    // Measured at ~2ms per board. A 25x margin: this is a regression alarm,
-    // not a benchmark, and CI machines vary.
-    expect(each).toBeLessThan(50);
   }, 120_000);
 });

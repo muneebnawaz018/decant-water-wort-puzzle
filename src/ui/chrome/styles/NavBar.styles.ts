@@ -1,74 +1,110 @@
 import { StyleSheet } from 'react-native';
 
-import { apothecary, HAIRLINE } from '@/theme/apothecary';
+import { apothecary } from '@/theme/apothecary';
 import { alpha, ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
 import { s } from '@/theme/scale';
 
+/** Inset from the screen edge. The bar floats; it is not full-bleed. */
+const NAV_MARGIN = s(14);
+
 /**
- * The bar's own height, without safe-area inset: 13 + 13 padding, a 36 icon
- * slot, a 6 gap and a 10 label. Screens reserve this much space at the bottom
- * so their last card does not hide under it.
- *
- * Scaled as one number rather than as its parts, so it stays the sum of the
- * scaled paddings below and a screen's bottom tail cannot drift from the bar it
- * is clearing.
+ * The bar is clamped as well as inset. Its tabs are `flex: 1`, so on a tablet
+ * an unclamped bar puts four destinations a hand's width apart and the row
+ * stops reading as one control.
  */
-export const NAV_BAR_HEIGHT = s(80);
+const NAV_MAX_WIDTH = s(420);
+
+export const NAV_RADIUS = s(22);
+
+/**
+ * The bar's own height, without safe-area inset: 12 + 10 padding around a 26
+ * icon, a 5 gap and a 13 label line. Screens reserve this much at the bottom so
+ * their last card does not hide under it.
+ *
+ * Scaled as one number rather than as its parts, so a screen's bottom tail
+ * cannot drift from the bar it is clearing.
+ */
+export const NAV_BAR_HEIGHT = s(66);
+
+/**
+ * The raised Home button, and the bite taken out of the bar for it.
+ *
+ * The notch is the larger of the two, so the gold disc sits in a ring of
+ * background rather than against the bar's own edge — that gap is what makes it
+ * read as floating in front rather than glued on.
+ */
+const BUMP_SIZE = s(58);
+export const NOTCH_RADIUS = s(35);
+
+/**
+ * How far the bump's centre sits above the bar's top edge.
+ *
+ * Exported because a screen clearing the bar has to clear this too — the raised
+ * button is the tallest part of the chrome, and a tail sized to the bar alone
+ * lets the last card slide under it.
+ */
+export const BUMP_RISE = s(29);
+
+/**
+ * The drawn width of the bar, which the Skia face needs as a number.
+ *
+ * Measured rather than laid out: a `onLayout` pass would leave the face unpainted
+ * for a frame every time the bar mounts, and the bar mounts on every navigation
+ * between a screen that shows it and one that does not.
+ */
+export function navBarWidth(windowWidth: number, sideInset = 0): number {
+  const available = windowWidth - sideInset - NAV_MARGIN * 2;
+  return available < NAV_MAX_WIDTH ? available : NAV_MAX_WIDTH;
+}
 
 export const styles = StyleSheet.create({
-  bar: {
-    // The strip behind the bar stays full-width and opaque — that part is load
-    // bearing, content scrolls under it. The bar itself is clamped: its buttons
-    // are `flex: 1`, so at 950dp the six destinations sit a hand's width apart
-    // and the row stops reading as one control.
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: s(420),
-    borderRadius: s(22),
-    // Stroke as a padded background — see `HAIRLINE`. The bar's own padding
-    // moved to `barFace` with it; a view cannot be both the stroke and the
-    // padding box.
-    padding: HAIRLINE,
-    backgroundColor: ui.edge,
-    overflow: 'hidden',
-    shadowColor: ui.shadow,
-    shadowOpacity: 0.4,
-    shadowRadius: s(24),
-    shadowOffset: { width: 0, height: s(10) },
-    elevation: 10,
-  },
-  // No `flex: 1` — `bar` is only the stroke around this and has no height of
-  // its own, so a flexed face would collapse. The padding here is the bar.
-  barFace: {
+  /**
+   * `overflow: 'visible'` is load-bearing — the bump is absolutely positioned
+   * above this box and Android clips a child that leaves its parent's bounds.
+   */
+  wrap: { alignSelf: 'center', overflow: 'visible' },
+  face: { position: 'absolute', top: 0, left: 0 },
+  row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderRadius: s(22) - HAIRLINE,
-    paddingVertical: s(13) - HAIRLINE,
-    paddingHorizontal: s(8) - HAIRLINE,
-    overflow: 'hidden',
+    alignItems: 'flex-start',
+    height: NAV_BAR_HEIGHT,
+    paddingTop: s(12),
+    paddingHorizontal: s(6),
   },
-  gloss: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: ui.line,
+  tab: { flex: 1, alignItems: 'center', gap: s(5) },
+  /**
+   * The gap the bump sits in. A fixed width rather than a flexed one: the tabs
+   * either side must stay the same width as the outer pair, and a flexed spacer
+   * would take a fifth share instead of the bump's own footprint.
+   *
+   * `alignSelf: 'stretch'` is what puts its label on the same baseline as the
+   * others. The row aligns its children to `flex-start`, so a spacer sized by
+   * its own content is 13dp tall at the top of the bar — which is exactly where
+   * the bump is, and the label rendered underneath it, invisible.
+   */
+  spacer: {
+    width: BUMP_SIZE + s(14),
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
   },
-  button: { flex: 1, alignItems: 'center', gap: s(6) },
-  // A slot behind the icon rather than a tint on it: at 24px a colour shift
+  spacerLabel: {
+    fontFamily: POPPINS.semibold,
+    fontSize: s(10),
+    color: apothecary.goldLight,
+    includeFontPadding: false,
+    marginBottom: s(8),
+  },
+  // A slot behind the icon rather than a tint on it: at 24dp a colour shift
   // alone is easy to miss, and the pill reads as "you are here" at a glance.
   iconSlot: {
-    width: s(44),
-    height: s(36),
-    borderRadius: s(12),
-    // Android dropped this radius and drew a hard rectangle while iOS rounded
-    // it. The bar sets `elevation`, which promotes it to a hardware layer, and
-    // a descendant's rounded background loses its outline inside one unless the
-    // view clips itself. `overflow` makes the clip the view's own business
-    // rather than its parent's, which is the portable form; on iOS it changes
-    // nothing, because the radius already applied there.
+    width: s(40),
+    height: s(30),
+    borderRadius: s(11),
+    // Android drops a descendant's radius inside a hardware layer unless the
+    // view clips itself; `overflow` makes the clip its own business. On iOS this
+    // changes nothing.
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
@@ -78,6 +114,41 @@ export const styles = StyleSheet.create({
     fontFamily: POPPINS.medium,
     fontSize: s(10),
     color: apothecary.inkMuted,
+    includeFontPadding: false,
   },
   labelActive: { fontFamily: POPPINS.semibold, color: apothecary.goldLight },
+
+  /**
+   * The raised Home button.
+   *
+   * Centred by `left: '50%'` and a half-width pull rather than by stretching
+   * across the bar, so it stays on the notch's centre line whatever the bar
+   * measures.
+   */
+  bump: {
+    position: 'absolute',
+    left: '50%',
+    marginLeft: -BUMP_SIZE / 2,
+    top: -BUMP_RISE,
+    width: BUMP_SIZE,
+    height: BUMP_SIZE,
+    borderRadius: BUMP_SIZE / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    // Gold light, not a black shadow, and no offset — see `GlossButton`'s
+    // `primaryShadow` for why a glow has to be radially even.
+    boxShadow: [
+      {
+        offsetX: 0,
+        offsetY: 0,
+        blurRadius: s(18),
+        spreadDistance: s(2),
+        color: ui.buttonGlowSoft,
+      },
+    ],
+  },
+  bumpFill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  /** The 2px inner highlight along the disc's top, the same one buttons carry. */
+  bumpGloss: { position: 'absolute', top: 0, left: 0, right: 0, height: 2 },
 });

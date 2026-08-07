@@ -31,8 +31,8 @@ export function confirmExitLevel(leave: () => void): void {
   overlay.modal({
     title: `Leave level ${game.level}?`,
     body: started
-      ? `You are ${plural(moves, 'move')} in. Your progress is saved — the board will be waiting exactly as you left it.`
-      : 'You have not made a move yet. The level will be here whenever you come back.',
+      ? `${plural(moves, 'move')} in. Your progress is saved.`
+      : 'No moves made yet.',
     confirmLabel: 'Leave',
     // One word, like every other dialog here. The buttons split the card in
     // half — about 113dp each — so a two-word label wraps to two lines and the

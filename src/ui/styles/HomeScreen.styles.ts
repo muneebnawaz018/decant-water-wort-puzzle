@@ -18,19 +18,8 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom: s(12),
   },
-  iconButton: {
-    width: s(42),
-    height: s(42),
-    borderRadius: s(14),
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: apothecary.line,
-    backgroundColor: apothecary.surface,
-  },
   // Clears the bar that Root floats over every screen.
   navSlot: { height: NAV_BAR_HEIGHT + 10 },
-  iconButtonOff: { opacity: 0.42 },
 
   // Hero sits at the top of the column; the cards are pushed to the bottom by
   // `stack`'s auto margin, so all the slack falls between the two groups

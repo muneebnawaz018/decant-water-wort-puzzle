@@ -1,8 +1,9 @@
 import { memo, type ReactNode } from 'react';
 import { ScrollView, View } from 'react-native';
 
+import { overlay } from '@/state/overlayStore';
 import { useScreenPadding } from '../hooks/useScreenPadding';
-import { ScreenHeader } from './ScreenHeader';
+import { ChromeIconButton, ScreenHeader } from './ScreenHeader';
 import { styles } from './styles/ScrollPage.styles';
 
 interface ScrollPageProps {
@@ -34,7 +35,24 @@ export const ScrollPage = memo(function ScrollPage({
     // the body are inset together and a cutout cannot clip one but not the
     // other.
     <View style={[styles.root, padding.top, padding.sides]}>
-      <ScreenHeader title={title} onBack={onBack} trailing={trailing} />
+      {/*
+        Every page carries the drawer handle, not just Home.
+
+        Settings stopped being a place you navigate to when it became a drawer,
+        and a handle that only exists on Home would put it back — you would
+        leave the shop, go home, open settings, and come back. A detour has to
+        be available from wherever you are, or it is a destination again.
+      */}
+      <ScreenHeader
+        title={title}
+        onBack={onBack}
+        trailing={
+          <>
+            {trailing}
+            <ChromeIconButton icon="menu" onPress={overlay.drawer} label="Settings" />
+          </>
+        }
+      />
 
       <ScrollView
         style={styles.page}

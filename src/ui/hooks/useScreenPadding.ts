@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { s } from '@/theme/scale';
-import { NAV_BAR_HEIGHT } from '../chrome/styles/NavBar.styles';
+import { BUMP_RISE, NAV_BAR_HEIGHT } from '../chrome/styles/NavBar.styles';
 import { NAV_FADE } from '../styles/Root.styles';
 
 /**
@@ -51,7 +51,10 @@ export function useScreenPadding(): ScreenPadding {
       top: { paddingTop: insets.top },
       frame: { paddingTop: insets.top, paddingBottom: insets.bottom },
       scrollTailWithNav: {
-        paddingBottom: insets.bottom + SCROLL_TAIL + NAV_BAR_HEIGHT,
+        // `BUMP_RISE` as well as the bar: the Home button stands proud of the
+        // bar's top edge, so a tail measured to the bar alone leaves the last
+        // card half under a gold disc.
+        paddingBottom: insets.bottom + SCROLL_TAIL + NAV_BAR_HEIGHT + BUMP_RISE,
       },
       sides: { paddingLeft: insets.left, paddingRight: insets.right },
     }),

@@ -1,5 +1,6 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { memo, useCallback, useEffect } from 'react';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -10,38 +11,32 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { DAILY_REWARDS, useEconomyStore } from '@/state/economyStore';
 import { syncReminders } from '@/notifications/dailyReminder';
+import { DAILY_REWARDS, useEconomyStore } from '@/state/economyStore';
 import { overlay } from '@/state/overlayStore';
+import { apothecary } from '@/theme/apothecary';
+import { colours, gradients, ui } from '@/theme/colors';
+import { s } from '@/theme/scale';
+import { countdown, percentWidth, plural } from '@/utils';
 import { ClaimButton } from './chrome/ClaimButton';
 import { Panel } from './chrome/Panel';
 import { ScrollPage } from './chrome/ScrollPage';
 import { SettingGroup, SettingRow } from './chrome/SettingRow';
-import { countdown, plural } from '@/utils';
 import { useClaimTimer } from './hooks/useClaimTimer';
-import { colours } from '@/theme/colors';
 import { Icon } from './Icon';
-import {
-  DAY_COLUMNS,
-  FLAME_SIZE,
-  RIBBON_ICON,
-  STREAK_SPAN,
-  styles,
-} from './styles/DailyScreen.styles';
+import { dayState } from './rewardTrack';
+import { COIN_SIZE, FLAME_SIZE, styles } from './styles/DailyScreen.styles';
 
 /**
- * Empty slots needed to fill the reward track's last row.
+ * Day seven, and the six that lead to it.
  *
- * The days and the streak card share the grid, and the card is worth
- * `STREAK_SPAN` of them — at seven days across three columns that comes to
- * nine, so the rows divide evenly and there is nothing to pad. It is computed
- * rather than assumed because changing either constant would otherwise leave a
- * row spread across a gap with no warning.
- *
- * Computed once at module scope: the reward count and the column count are
- * both constants, so this cannot change while the app is running.
+ * Split at the source rather than sliced at the callsite, so the grid and the
+ * grand row cannot disagree about which day belongs where.
  */
-const FILLED = DAILY_REWARDS.length + STREAK_SPAN;
+const WEEK = DAILY_REWARDS.slice(0, -1);
+const FINALE = DAILY_REWARDS[DAILY_REWARDS.length - 1]!;
+const FINALE_INDEX = DAILY_REWARDS.length - 1;
+
 /**
  * What the rewarded ad pays, doc §8's highest-value slot.
  *
@@ -50,25 +45,17 @@ const FILLED = DAILY_REWARDS.length + STREAK_SPAN;
  */
 const AD_REWARD = 50;
 
-const ORPHAN_SLOTS = Array.from(
-  { length: (DAY_COLUMNS - (FILLED % DAY_COLUMNS)) % DAY_COLUMNS },
-  (_, index) => index
-);
-
-/** The week's biggest reward, and the one the streak is worth keeping for. */
-const FINALE = DAILY_REWARDS[DAILY_REWARDS.length - 1]!;
-
 /**
  * The streak card's second line.
  *
  * Deliberately not the countdown. The card used to print "Next reward in
- * 19:44:04" and the disabled claim button below it printed the same clock, 90dp
- * apart — the button is the one that has to explain itself, so the card says
- * the thing the button cannot: what the streak is being kept for.
+ * 19:44:04" and the claim button below it printed the same clock 90dp away —
+ * the button is the one that has to explain itself, so the card says the thing
+ * the button cannot: what the streak is being kept for.
  */
 function streakDetail(claimsLeft: number): string {
   if (claimsLeft <= 0) return 'Week complete — the track restarts';
-  return `${plural(claimsLeft, 'day')} to ${FINALE} coins`;
+  return `${plural(claimsLeft, 'day')} to the ${FINALE}-coin reward`;
 }
 
 interface DailyScreenProps {
@@ -95,6 +82,7 @@ export const DailyScreen = memo(function DailyScreen({
   // when there is one to make. The tile the track sits on is already claimed
   // while the timer runs, which is the `waiting` term.
   const claimsLeft = DAILY_REWARDS.length - currentIndex - (waiting ? 1 : 0);
+  const claimed = DAILY_REWARDS.length - claimsLeft;
 
   const claim = useCallback(() => {
     // `claimDaily` already refuses early and pays 0, so the guard is the toast
@@ -110,67 +98,65 @@ export const DailyScreen = memo(function DailyScreen({
 
   return (
     <ScrollPage title="Rewards" onBack={onBack}>
+      <Panel contentStyle={styles.streak}>
+        <StreakFlame />
+        <View style={styles.streakText}>
+          <Text style={styles.streakTitle}>
+            {streak === 1 ? '1-day streak' : `${streak}-day streak`}
+          </Text>
+          <View style={styles.streakBar}>
+            <LinearGradient
+              colors={gradients.gold}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[
+                styles.streakBarFill,
+                { width: percentWidth(claimed, DAILY_REWARDS.length) },
+              ]}
+            />
+          </View>
+          <Text style={styles.streakDetail}>{streakDetail(claimsLeft)}</Text>
+        </View>
+      </Panel>
+
+      <Text style={styles.label}>7-day rewards</Text>
+
       <View style={styles.track}>
-        {DAILY_REWARDS.map((amount, index) => (
+        {WEEK.map((amount, index) => (
           <DayTile
             key={index}
             day={index + 1}
             amount={amount}
-            state={
-              index < currentIndex || (waiting && index === currentIndex)
-                ? 'claimed'
-                : index === currentIndex
-                  ? 'today'
-                  : 'future'
-            }
+            state={dayState(index, currentIndex, waiting)}
           />
-        ))}
-
-        {/*
-          The streak sits in the track's last row, beside the final day, rather
-          than in a panel above it. Seven days across three columns leave two
-          slots empty there and the card is two slots wide, so it fills the row
-          the week would otherwise trail off in — and it reads after the track
-          it is counting rather than before it.
-        */}
-        <View style={styles.daySlotWide}>
-          <Panel contentStyle={styles.streak}>
-            <StreakFlame />
-            <View style={styles.streakText}>
-              <Text style={styles.streakTitle}>
-                {streak === 1 ? '1-day streak' : `${streak}-day streak`}
-              </Text>
-              <Text style={styles.streakDetail}>{streakDetail(claimsLeft)}</Text>
-            </View>
-          </Panel>
-        </View>
-
-        {/*
-          Whatever the day count and the streak card together leave short of a
-          full row. An empty slot rather than nothing: `flexWrap` would spread
-          the real tiles across the gap otherwise, and the columns would stop
-          lining up with the rows above.
-        */}
-        {ORPHAN_SLOTS.map((slot) => (
-          <View key={`pad-${slot}`} style={styles.daySlot} />
         ))}
       </View>
 
       {/*
-        The claim, full width, with the rewarded slot hanging off its top edge.
+        Day seven, out of the grid.
 
-        The ad was tried twice as a thing of its own — a row under a heading,
-        then a tile beside a two-thirds-width claim — and both spend real estate
-        on an offer that cannot be taken yet while shrinking the one control
-        that can. As a tab it is attached to the answer it belongs to: the
-        player reads "not for another sixteen hours", and the other way to get
-        coins is on the same object.
-
-        Rendered before the button so the button covers its tuck — see
-        `styles.ribbon`.
+        It is ten times day one and the reason the streak is worth keeping. As a
+        seventh tile it was the same square as the 10-coin Monday, which is the
+        layout telling the player the opposite of what the numbers do.
       */}
+      <Panel contentStyle={styles.grand}>
+        <View style={styles.grandCoin}>
+          <CoinFace />
+        </View>
+        <View style={styles.grandText}>
+          <Text style={styles.grandLabel}>DAY 7 · GRAND REWARD</Text>
+          <Text style={styles.grandAmount}>{FINALE} coins</Text>
+        </View>
+        <Icon
+          name={
+            dayState(FINALE_INDEX, currentIndex, waiting) === 'claimed' ? 'check' : 'lock'
+          }
+          size={s(18)}
+          color={apothecary.inkMuted}
+        />
+      </Panel>
+
       <View style={styles.claim}>
-        <AdRibbon />
         <ClaimButton
           label={waiting ? countdown(remaining) : `Claim ${reward} coins`}
           caption={waiting ? 'Next in' : undefined}
@@ -178,6 +164,26 @@ export const DailyScreen = memo(function DailyScreen({
           waiting={waiting}
         />
       </View>
+
+      {/*
+        The rewarded slot, doc §8's highest-value one.
+
+        A card rather than a pressable: the ad SDK is spec §8's phase 2, so
+        there is nothing behind it to answer a tap. It says "soon" for the same
+        reason `SoonBadge` exists — what is shown but cannot yet be delivered
+        has to say which it is, or it reads as a broken button.
+      */}
+      <Panel contentStyle={styles.advert}>
+        <View style={styles.advertIcon}>
+          <LinearGradient colors={gradients.advert} style={StyleSheet.absoluteFill} />
+          <Icon name="video" size={s(21)} color={colours.white} />
+        </View>
+        <View style={styles.advertText}>
+          <Text style={styles.advertTitle}>Double today&apos;s reward</Text>
+          <Text style={styles.advertNote}>Watch a short ad · +{AD_REWARD} soon</Text>
+        </View>
+        <Text style={styles.advertBadge}>2×</Text>
+      </Panel>
 
       <View style={styles.spacer} />
 
@@ -190,6 +196,18 @@ export const DailyScreen = memo(function DailyScreen({
         />
       </SettingGroup>
     </ScrollPage>
+  );
+});
+
+/** The coin disc, lit from the upper left. Used at two sizes. */
+const CoinFace = memo(function CoinFace() {
+  return (
+    <LinearGradient
+      colors={gradients.coin}
+      locations={[0, 0.62, 1]}
+      start={{ x: 0.34, y: 0.3 }}
+      style={StyleSheet.absoluteFill}
+    />
   );
 });
 
@@ -258,26 +276,6 @@ const StreakFlame = memo(function StreakFlame() {
   );
 });
 
-/**
- * The rewarded-ad slot, doc §8's highest-value one, as a tab on the claim.
- *
- * `pointerEvents="none"` is not decoration. The tab's bottom third sits over
- * the button's top edge, so without it the ribbon would eat presses aimed at a
- * control it is advertising alongside — and it has nothing of its own to
- * answer with, since the ad SDK is spec §8's phase 2. The "soon" on it is the
- * same promise `SoonBadge` makes everywhere else: what is shown but cannot yet
- * be delivered says so.
- */
-const AdRibbon = memo(function AdRibbon() {
-  return (
-    <View style={styles.ribbon} pointerEvents="none">
-      <Icon name="play" size={RIBBON_ICON} color={colours.goldLight} />
-      <Text style={styles.ribbonAmount}>+{AD_REWARD}</Text>
-      <Text style={styles.ribbonNote}>soon</Text>
-    </View>
-  );
-});
-
 const DayTile = memo(function DayTile({
   day,
   amount,
@@ -293,17 +291,24 @@ const DayTile = memo(function DayTile({
         contentStyle={[
           styles.day,
           state === 'claimed' && styles.dayClaimed,
+          state === 'future' && styles.dayFuture,
           state === 'today' && styles.dayToday,
         ]}
-        // No `radius` override. Every other tile in the app is a default-radius
-        // panel; this one was 14 against their 20 and read as a chip.
       >
-        <Text style={styles.dayNumber}>DAY {day}</Text>
-        <Text style={styles.dayAmount}>
-          {amount}
-          <Text style={styles.dayUnit}> coins</Text>
+        <Text style={[styles.dayNumber, state === 'today' && styles.dayNumberToday]}>
+          DAY {day}
         </Text>
+        <View style={[styles.dayCoin, { width: COIN_SIZE, height: COIN_SIZE }]}>
+          <CoinFace />
+        </View>
+        <Text style={styles.dayAmount}>{amount}</Text>
       </Panel>
+
+      {state === 'claimed' ? (
+        <View style={styles.check}>
+          <Icon name="check" size={s(11)} color={ui.onAccent} />
+        </View>
+      ) : null}
     </View>
   );
 });
