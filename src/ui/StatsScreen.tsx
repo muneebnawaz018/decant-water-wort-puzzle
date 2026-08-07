@@ -16,8 +16,6 @@ import { styles } from './styles/StatsScreen.styles';
 interface ModeTotals {
   /** Levels finished at least once. */
   solved: number;
-  /** Highest level unlocked — the frontier, whether or not it is beaten. */
-  reached: number;
   stars: number;
   /** Levels beaten at three stars. */
   perfect: number;
@@ -39,7 +37,6 @@ function totalsFor(progress: Progress): ModeTotals {
 
   return {
     solved: Object.keys(progress.best).length,
-    reached: progress.furthestLevel,
     stars,
     perfect,
     pours,
@@ -50,7 +47,6 @@ function totalsFor(progress: Progress): ModeTotals {
 function sumTotals(record: ProgressByDifficulty): ModeTotals {
   const total: ModeTotals = {
     solved: 0,
-    reached: 0,
     stars: 0,
     perfect: 0,
     pours: 0,
@@ -59,7 +55,6 @@ function sumTotals(record: ProgressByDifficulty): ModeTotals {
   for (const difficulty of DIFFICULTIES) {
     const mode = totalsFor(record[difficulty]!);
     total.solved += mode.solved;
-    total.reached += mode.reached;
     total.stars += mode.stars;
     total.perfect += mode.perfect;
     total.pours += mode.pours;
