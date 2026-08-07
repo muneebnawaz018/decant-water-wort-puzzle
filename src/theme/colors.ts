@@ -292,6 +292,15 @@ export const ui = {
    * of it.
    */
   buttonGlow: raw.gold,
+  /**
+   * The same glow pre-multiplied, for `boxShadow`.
+   *
+   * `shadowOpacity` is an iOS-only property, so the alpha has to live in the
+   * colour for a shadow that both platforms draw. See `primaryShadow`.
+   */
+  buttonGlowSoft: alpha('gold', 0.5),
+  /** The neutral drop shadow, likewise pre-multiplied. */
+  shadowSoft: alpha('black', 0.3),
   ghost: alpha('white', 0.1),
 
   // Accent

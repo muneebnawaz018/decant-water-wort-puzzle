@@ -1,5 +1,5 @@
 import LottieView from 'lottie-react-native';
-import { useCallback, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { View } from 'react-native';
 
 import { styles } from './styles/useTapBurst.styles';
@@ -58,6 +58,29 @@ export function useTapBurst(tone: BurstTone = 'light'): TapBurst {
     lottie.current?.play(0);
   }, []);
 
+  /**
+   * Clear the player on mount, and again the moment a burst ends.
+   *
+   * Fabric recycles native views by class, and `lottie-react-native`'s Android
+   * view manager resets nothing when a view is dropped — it implements no
+   * `prepareToRecycleView`. So the `LottieAnimationView` behind a button that
+   * has been pressed is handed to the *next* button of the same kind that
+   * mounts, carrying Lottie's own `playAnimationWhenShown` flag with it, and
+   * that flag fires `playAnimation()` on re-attach. The symptom is a burst
+   * playing by itself when you navigate back to a screen, with nobody having
+   * touched anything.
+   *
+   * `autoPlay={false}` cannot prevent it: it is a mount-time prop applied to a
+   * view that was already told to play. Only clearing the state does, hence
+   * both halves — on mount for a view arriving dirty, on finish so this one
+   * never leaves in that state to begin with.
+   */
+  const clear = useCallback(() => {
+    lottie.current?.reset();
+  }, []);
+
+  useEffect(clear, [clear]);
+
   const node = (
     // The wrapper carries `pointerEvents`: `LottieView` does not take it, and
     // it covers the whole face, so without it the button stops answering taps
@@ -68,6 +91,7 @@ export function useTapBurst(tone: BurstTone = 'light'): TapBurst {
         source={BURSTS[tone]}
         autoPlay={false}
         loop={false}
+        onAnimationFinish={clear}
         resizeMode="cover"
         style={styles.fill}
       />

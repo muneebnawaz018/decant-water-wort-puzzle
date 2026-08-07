@@ -13,6 +13,7 @@ import { Backdrop } from './chrome/Backdrop';
 import { NavBar, type NavDestination } from './chrome/NavBar';
 import { Overlays } from './chrome/Overlays';
 import { CompleteScreen } from './CompleteScreen';
+import { confirmExitLevel } from './confirmExitLevel';
 import { DailyScreen } from './DailyScreen';
 import { usePoppins } from './fonts';
 import { hideNativeSplash } from './nativeSplash';
@@ -91,6 +92,8 @@ export function Root() {
   const showHome = useCallback(() => setScreen('home'), []);
   const showGame = useCallback(() => setScreen('game'), []);
   const showStages = useCallback(() => setScreen('stages'), []);
+  /** Both ways off the board confirm first once it has been played on. */
+  const exitGame = useCallback(() => confirmExitLevel(showStages), [showStages]);
   const showComplete = useCallback(() => setScreen('complete'), []);
   const navigate = useCallback((destination: NavDestination) => setScreen(destination), []);
 
@@ -103,9 +106,10 @@ export function Root() {
    * two-second intro close the app.
    *
    * Every screen below home returns home, which is what its own back button
-   * does, so the two cannot disagree. The board is deliberately the same as its
-   * exit control: back leaves to the level list, and the level in progress is
-   * already saved after every pour, so nothing is lost by it.
+   * does, so the two cannot disagree. The board goes through the same exit
+   * control its header button does, so a half-solved level asks before it is
+   * left either way — the position is saved, but a back press forty moves in
+   * is nearly always a mis-tap and nothing on screen says so.
    */
   const handleBack = useCallback(() => {
     if (useOverlayStore.getState().modal !== null) {
@@ -115,12 +119,12 @@ export function Root() {
     if (screen === 'home') return false;
     if (screen === 'splash') return true;
     if (screen === 'game') {
-      setScreen('stages');
+      exitGame();
       return true;
     }
     setScreen('home');
     return true;
-  }, [screen]);
+  }, [screen, exitGame]);
 
   useAndroidBack(handleBack);
 
@@ -176,7 +180,7 @@ export function Root() {
             <GameScreen
               width={width}
               height={height}
-              onExit={showStages}
+              onExit={exitGame}
               onSolved={showComplete}
             />
           ) : null}

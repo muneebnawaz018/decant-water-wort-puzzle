@@ -7,11 +7,7 @@ import { s } from '@/theme/scale';
 export const styles = StyleSheet.create({
   shadow: {
     borderRadius: SPACE.buttonRadius,
-    shadowColor: ui.shadow,
-    shadowOpacity: 0.3,
-    shadowRadius: s(16),
-    shadowOffset: { width: 0, height: s(7) },
-    elevation: 6,
+    boxShadow: [{ offsetX: 0, offsetY: s(7), blurRadius: s(16), color: ui.shadowSoft }],
   },
   /**
    * A gold glow, not a black shadow.
@@ -20,14 +16,32 @@ export const styles = StyleSheet.create({
    * beneath it, so the button sits in a hole and the whole screen reads flat.
    * Spilling the button's own colour instead makes it the light source, which
    * is most of what "glossy" means here.
+   *
+   * **`boxShadow`, not `shadow*` plus `elevation`.** That pairing draws this on
+   * iOS and cannot draw it on Android: `elevation` renders a system shadow the
+   * platform colours itself, so the gold was simply missing there and a lit
+   * button sat flat against the purple — the one place the effect matters most.
+   * `boxShadow` is honoured by both under the new architecture, from one
+   * declaration. Its alpha comes from the colour, since `shadowOpacity` is
+   * iOS-only and would reintroduce the same split.
+   *
+   * **No offset, unlike the neutral shadow above.** A drop shadow is cast by a
+   * light somewhere else and belongs below the thing casting it; a glow is the
+   * object emitting, and light leaves it in every direction equally. Offset by
+   * 6 it read as a gold shadow pooling under the button rather than the button
+   * being lit. The spread makes up the reach the offset was providing.
    */
   primaryShadow: {
     borderRadius: SPACE.buttonRadius,
-    shadowColor: ui.buttonGlow,
-    shadowOpacity: 0.45,
-    shadowRadius: s(18),
-    shadowOffset: { width: 0, height: s(6) },
-    elevation: 8,
+    boxShadow: [
+      {
+        offsetX: 0,
+        offsetY: 0,
+        blurRadius: s(18),
+        spreadDistance: s(2),
+        color: ui.buttonGlowSoft,
+      },
+    ],
   },
   /**
    * The stroke. A padded background, not a `borderWidth` — see `HAIRLINE`.
@@ -63,13 +77,20 @@ export const styles = StyleSheet.create({
    * largest element on screen. Compact was the other extreme: at 34dp a
    * "Close" reads as an afterthought and sits under the 44pt tap target.
    *
-   * This lands at about 47dp: clearly secondary to a Play button, clearly a
-   * real button.
+   * This lands at about 40dp drawn. Under the 44pt minimum tap target, which
+   * is why `GlossButton` gives the smaller sizes a `hitSlop` — the touch area
+   * stays over the minimum while the face reads as secondary to a Play button.
+   * Shrink the face further and the slop has to grow with it.
+   *
+   * `paddingHorizontal` sets no width here. Both dialog callers size the button
+   * from outside — `flex: 1` for a pair, a `minWidth` floor for a lone one — so
+   * it only decides the room a label longer than that floor gets, and editing
+   * it looks like nothing happening. Width lives in `Overlays.styles.ts`.
    */
   dialogFace: { borderRadius: s(12) },
   dialogFill: {
-    paddingVertical: s(13),
-    paddingHorizontal: s(18),
+    paddingVertical: s(10),
+    paddingHorizontal: s(16),
     borderRadius: s(12) - HAIRLINE,
   },
   compactFace: { borderRadius: s(11) },
@@ -102,15 +123,31 @@ export const styles = StyleSheet.create({
     gap: s(10),
   },
 
+  /**
+   * `includeFontPadding: false` on every label, and it is not cosmetic.
+   *
+   * Android pads a Text by the font's own ascent and descent metrics, which
+   * Poppins declares asymmetrically — the extra sits mostly above the glyphs,
+   * so a label centred by flexbox draws visibly low on Android and correctly on
+   * iOS, from one stylesheet. Turning it off measures the glyphs instead.
+   *
+   * `textAlign: 'center'` covers the other half: `letterSpacing` is applied
+   * after the last character too, so a left-aligned label carries one trailing
+   * space's worth of dead width and sits off-centre by half of it.
+   */
   label: {
     fontFamily: POPPINS.medium,
     fontSize: s(15),
     color: apothecary.ink,
+    includeFontPadding: false,
+    textAlign: 'center',
   },
   primaryLabel: {
     fontFamily: POPPINS.bold,
     fontSize: s(18),
     letterSpacing: s(0.9),
+    includeFontPadding: false,
+    textAlign: 'center',
     // Dark ink, because the face is now light. White on gold fails contrast
     // outright — it measured 1.7:1 against the middle stop.
     color: ui.onGold,
@@ -123,7 +160,7 @@ export const styles = StyleSheet.create({
   // unreadable the moment the face stops being bright.
   primaryLabelOff: { color: ui.buttonLabelOff, textShadowColor: 'transparent' },
 
-  dialogLabel: { fontSize: s(15), letterSpacing: s(0.2) },
+  dialogLabel: { fontSize: s(13.5), letterSpacing: s(0.2) },
   compactLabel: { fontSize: s(12.5), letterSpacing: s(0.2) },
 
   ghost: {
@@ -154,6 +191,8 @@ export const styles = StyleSheet.create({
     // Gold, matching the icon beside it and the primary above. Plain ink made
     // a ghost look disabled next to a lit button.
     color: apothecary.goldLight,
+    includeFontPadding: false,
+    textAlign: 'center',
   },
   /**
    * Ghost at the smaller sizes. These exist so the two buttons in a dialog
@@ -163,7 +202,8 @@ export const styles = StyleSheet.create({
    * Each is a point over its primary counterpart because the ghost carries no
    * shadow — without that, the flat one reads as the smaller of the pair.
    */
-  dialogGhost: { paddingVertical: s(14), paddingHorizontal: s(18) },
+  dialogGhost: { paddingVertical: s(11), paddingHorizontal: s(16) },
+  dialogGhostLabel: { fontSize: s(13.5) },
   compactGhost: { paddingVertical: s(10), paddingHorizontal: s(14) },
   smallGhostLabel: { fontSize: s(12.5) },
 
@@ -171,21 +211,22 @@ export const styles = StyleSheet.create({
    * Dimmed, and unlit with it.
    *
    * `opacity` alone was not enough on Android. It fades a view's own pixels but
-   * not its `elevation` — the platform composites that shadow separately — so a
+   * not its `elevation` — the platform composited that shadow separately — so a
    * disabled gold button kept a full-strength glow behind a 42% face and came
    * out brighter than the same button on iOS, where `shadowOpacity` fades with
    * everything else. The countdown on Daily was the visible case: gold on
    * Android, brown on iOS, from one style.
    *
-   * Zeroing both shadow properties makes the two platforms agree, and it is
-   * also just right: a control that cannot be pressed should not still be
-   * throwing light.
+   * Dropping the shadow outright still says the right thing — a control that
+   * cannot be pressed should not throw light — and now says it once. `boxShadow`
+   * is a normal style property on both platforms, so an empty list clears it
+   * everywhere, where the old form needed one override per platform.
    */
-  disabled: { opacity: 0.42, elevation: 0, shadowOpacity: 0 },
+  disabled: { opacity: 0.42, boxShadow: [] },
   /**
    * For the primary variant, which does not fade at all — it swaps to an opaque
    * off ramp instead, so both platforms draw the same pixels. All this has to
    * do is stop the glow.
    */
-  unlit: { elevation: 0, shadowOpacity: 0 },
+  unlit: { boxShadow: [] },
 });

@@ -16,6 +16,16 @@ import { styles } from './styles/GlossButton.styles';
 
 type Variant = 'primary' | 'neutral' | 'ghost';
 
+/**
+ * Touch area added back to the shrunken sizes.
+ *
+ * `dialog` draws at about 40dp and `compact` lower still, both under the 44pt
+ * minimum. The face is deliberately small — a dialog's own dismissal should not
+ * be the largest thing on screen — so the target is restored invisibly instead
+ * of by growing the button back.
+ */
+const SMALL_HIT_SLOP = { top: 6, bottom: 6, left: 6, right: 6 } as const;
+
 /** Where the lit face's middle stop sits — it holds the colour longer than half. */
 const PRIMARY_STOPS = [0, 0.55, 1] as const;
 const FLAT_STOPS = [0, 1] as const;
@@ -87,6 +97,7 @@ export const GlossButton = memo(function GlossButton({
   }));
 
   const primary = variant === 'primary';
+  const hitSlop = size === 'regular' ? undefined : SMALL_HIT_SLOP;
   const face = primary
     ? disabled
       ? ui.buttonFaceOff
@@ -101,6 +112,7 @@ export const GlossButton = memo(function GlossButton({
         onPressOut={onPressOut}
         disabled={disabled}
         accessibilityRole="button"
+        hitSlop={hitSlop}
         style={style}
       >
         <Animated.View
@@ -113,10 +125,16 @@ export const GlossButton = memo(function GlossButton({
           ]}
         >
           {burst.node}
-          <Text style={[styles.ghostLabel, size === 'compact' && styles.smallGhostLabel]}>
+          <Text
+            style={[
+              styles.ghostLabel,
+              size === 'dialog' && styles.dialogGhostLabel,
+              size === 'compact' && styles.smallGhostLabel,
+            ]}
+          >
             {label}
           </Text>
-          <Animated.View style={iconScale}>{trailing}</Animated.View>
+          {trailing ? <Animated.View style={iconScale}>{trailing}</Animated.View> : null}
         </Animated.View>
       </Pressable>
     );
@@ -130,6 +148,7 @@ export const GlossButton = memo(function GlossButton({
       disabled={disabled}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
+      hitSlop={hitSlop}
       style={style}
     >
       <Animated.View
@@ -205,10 +224,19 @@ export const GlossButton = memo(function GlossButton({
               >
                 {label}
               </Text>
-              {/* The icon springs with the press, the label does not — a
-                  scaling word reads as a rendering glitch, a scaling glyph
-                  reads as a button. */}
-              <Animated.View style={iconScale}>{trailing}</Animated.View>
+              {/*
+                The icon springs with the press, the label does not — a scaling
+                word reads as a rendering glitch, a scaling glyph reads as a
+                button.
+
+                Rendered only when there is one. An empty wrapper is still a
+                flex child, so `content`'s gap opened between the label and
+                nothing and left every icon-less button's text sitting half a
+                gap left of centre.
+              */}
+              {trailing ? (
+                <Animated.View style={iconScale}>{trailing}</Animated.View>
+              ) : null}
             </View>
           </LinearGradient>
         </View>

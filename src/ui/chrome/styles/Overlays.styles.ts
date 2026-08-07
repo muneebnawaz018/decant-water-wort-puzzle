@@ -43,9 +43,27 @@ export const styles = StyleSheet.create({
   buttons: { flexDirection: 'row', gap: s(10), alignSelf: 'stretch' },
   button: { flex: 1 },
 
-  /** One button: sized to its label, floor of 140dp so it stays easy to hit. */
-  buttonsSingle: { flexDirection: 'row', alignSelf: 'center' },
-  buttonSingle: { minWidth: s(140) },
+  /**
+   * One button: sized to its label, floor of 104dp so it stays easy to hit.
+   *
+   * **This is what sets the width, not the button's own padding.** A label like
+   * "Close" measures about 50dp, so the floor always wins and `dialogFill`'s
+   * `paddingHorizontal` never becomes the constraint — changing it there looks
+   * like nothing happening. Same for the two-button row above, where `flex: 1`
+   * takes whatever the card gives. Resize a dialog button here or at
+   * `cardSlot.maxWidth`.
+   */
+  buttonsSingle: {
+    flexDirection: 'row',
+    // Full card width with the button centred inside it, rather than a row
+    // shrunk to its content. A shrink-wrapped row is centred by the card's
+    // `alignItems`, which puts it at the mercy of anything that measures wide —
+    // the primary's glow spills past the face, and the label carries a trailing
+    // letter-space. Centring within a known width has nothing to drift against.
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+  },
+  buttonSingle: { minWidth: s(104) },
 
   toast: {
     position: 'absolute',
