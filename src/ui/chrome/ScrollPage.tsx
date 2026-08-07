@@ -3,13 +3,15 @@ import { ScrollView, View } from 'react-native';
 
 import { overlay } from '@/state/overlayStore';
 import { useScreenPadding } from '../hooks/useScreenPadding';
+import { CoinPill } from './CoinPill';
 import { ChromeIconButton, ScreenHeader } from './ScreenHeader';
 import { styles } from './styles/ScrollPage.styles';
 
 interface ScrollPageProps {
   title: string;
-  onBack: () => void;
-  /** Rendered at the right end of the header — a coin pill, usually. */
+  /** Omitted on the nav bar's own destinations — see `ScreenHeader`. */
+  onBack?: () => void;
+  /** Rendered at the right end of the header, beside the drawer handle. */
   trailing?: ReactNode;
   children: ReactNode;
 }
@@ -46,6 +48,7 @@ export const ScrollPage = memo(function ScrollPage({
       <ScreenHeader
         title={title}
         onBack={onBack}
+        leading={<CoinPill />}
         trailing={
           <>
             {trailing}

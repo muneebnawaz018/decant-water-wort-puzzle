@@ -50,6 +50,9 @@
   },
   "scripts": {
     "android": "expo run:android",
+    "wifi": "script/android-wireless.sh",
+    "android:wifi": "script/android-wireless.sh run",
+    "start:wifi": "script/android-wireless.sh start",
     "android:apk": "cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a",
     "android:apk:all": "cd android && ./gradlew assembleRelease",
     "android:aab": "cd android && ./gradlew bundleRelease",

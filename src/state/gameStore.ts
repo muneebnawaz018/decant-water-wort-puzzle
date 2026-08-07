@@ -75,7 +75,12 @@ export type TapOutcome =
   | { kind: 'ignored' }
   | { kind: 'selected'; tube: number }
   | { kind: 'deselected'; tube: number }
-  | { kind: 'illegal'; tube: number }
+  /**
+   * A refused pour. `armed` is whether the tapped tube took the selection —
+   * see `tapTube`. The renderer treats both the same; the haptics do not,
+   * because an armed tube means something did happen.
+   */
+  | { kind: 'illegal'; tube: number; armed: boolean }
   | {
       kind: 'poured';
       move: PourMove;
@@ -290,7 +295,7 @@ export const useGameStore = create<GameState>((set, get) => {
         // target is full or holds a different colour. Guarded anyway.
         const takeable = board.tubes[index]!.length > 0;
         set({ selected: takeable ? index : null });
-        return { kind: 'illegal', tube: index };
+        return { kind: 'illegal', tube: index, armed: takeable };
       }
 
       // Captured before the pour lands — afterwards the source has lost the

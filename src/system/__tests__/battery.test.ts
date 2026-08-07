@@ -1,4 +1,11 @@
-import { bandsFor, isKnownLevel, isSameReading, LOW_LEVEL, percentOf } from '../battery';
+import {
+  CELLS,
+  chargeFor,
+  isKnownLevel,
+  isSameReading,
+  LOW_LEVEL,
+  percentOf,
+} from '../battery';
 import { colours } from '@/theme/colors';
 
 /**
@@ -29,29 +36,61 @@ describe('isKnownLevel', () => {
   });
 });
 
-describe('bandsFor', () => {
-  it('falls back to the two-band brand mark with no reading', () => {
-    expect(bandsFor(null, 'unknown')).toHaveLength(2);
-    expect(bandsFor(-1, 'unknown')).toHaveLength(2);
+describe('chargeFor', () => {
+  // Full green, not the brand's two-band stack. Two bands at fixed heights
+  // read as a battery at a strange level in strange colours, which is worse
+  // than saying nothing — and there is no caption to correct the impression.
+  it('falls back to every cell lit, in green, with no reading', () => {
+    for (const missing of [null, -1]) {
+      const charge = chargeFor(missing, 'unknown');
+      expect(charge.filled).toBe(CELLS);
+      expect(charge.colour).toBe(colours.accent);
+    }
   });
 
-  it('draws one band for a real reading', () => {
-    // Two bands would be read as part of the level.
-    expect(bandsFor(0.5, 'battery')).toHaveLength(1);
+  // Blue on a battery means nothing to anyone, and this is the one part of the
+  // mark carrying information that has to land without a caption.
+  it('draws a healthy charge in green, never the brand aqua', () => {
+    expect(chargeFor(0.8, 'battery').colour).toBe(colours.accent);
+    expect(chargeFor(0.5, 'unknown').colour).toBe(colours.accent);
   });
 
-  it('fills from the bottom, so a full battery starts at the top', () => {
-    expect(bandsFor(1, 'battery')[0]!.top).toBe(0);
-    expect(bandsFor(0.25, 'battery')[0]!.top).toBe(0.75);
-    expect(bandsFor(0, 'battery')[0]!.top).toBe(1);
+  // Each block owns a fifth, and lights the moment its slice is entered. The
+  // boundaries then fall where a reader would put them — 20, 40, 60, 80 — which
+  // rounding does not: it would light the fifth block at 90.
+  it('gives each block a fifth of the range', () => {
+    const bands: ReadonlyArray<[number, number]> = [
+      [0.01, 1],
+      [0.2, 1],
+      [0.21, 2],
+      [0.4, 2],
+      [0.41, 3],
+      [0.6, 3],
+      [0.61, 4],
+      [0.8, 4],
+      [0.81, 5],
+      [1, 5],
+    ];
+
+    for (const [level, expected] of bands) {
+      expect(chargeFor(level, 'battery').filled).toBe(expected);
+    }
+    expect(chargeFor(1, 'battery').filled).toBe(CELLS);
+  });
+
+  // An empty outline means "no reading", which is a different thing from a
+  // phone that is nearly flat and needs to say so.
+  it('keeps one cell lit above zero, and none at zero', () => {
+    expect(chargeFor(0.03, 'battery').filled).toBe(1);
+    expect(chargeFor(0, 'battery').filled).toBe(0);
   });
 
   it('warns in coral when the charge is low', () => {
-    expect(bandsFor(LOW_LEVEL - 0.01, 'battery')[0]!.colour).toBe(colours.coral);
+    expect(chargeFor(LOW_LEVEL - 0.01, 'battery').colour).toBe(colours.coral);
   });
 
   it('uses the accent while plugged in', () => {
-    expect(bandsFor(0.8, 'plugged')[0]!.colour).toBe(colours.accent);
+    expect(chargeFor(0.8, 'plugged').colour).toBe(colours.accent);
   });
 
   /**
@@ -60,11 +99,7 @@ describe('bandsFor', () => {
    * be telling the player about a problem they have already solved.
    */
   it('prefers the charging colour over the warning colour', () => {
-    expect(bandsFor(0.05, 'plugged')[0]!.colour).toBe(colours.accent);
-  });
-
-  it('uses the app colour in between', () => {
-    expect(bandsFor(0.8, 'battery')[0]!.colour).toBe(colours.aqua);
+    expect(chargeFor(0.05, 'plugged').colour).toBe(colours.accent);
   });
 });
 

@@ -12,9 +12,11 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { DIFFICULTIES, DIFFICULTY_INFO, type Difficulty } from '@/game/difficulty';
+import { overlay } from '@/state/overlayStore';
 import { useGameStore } from '@/state/gameStore';
 import { apothecary } from '@/theme/apothecary';
 import { s } from '@/theme/scale';
+import { CoinPill } from './chrome/CoinPill';
 import { ChromeIconButton, ScreenHeader } from './chrome/ScreenHeader';
 import { confirmDifficultyChange } from './confirmDifficulty';
 import { useScreenPadding } from './hooks/useScreenPadding';
@@ -23,7 +25,6 @@ import { Icon, Stars } from './Icon';
 import { COLUMNS, styles } from './styles/StagesScreen.styles';
 
 interface StagesScreenProps {
-  onBack: () => void;
   onPick: () => void;
 }
 
@@ -51,10 +52,7 @@ function pageOf(level: number): number {
   return Math.floor((level - 1) / PAGE_SIZE);
 }
 
-export const StagesScreen = memo(function StagesScreen({
-  onBack,
-  onPick,
-}: StagesScreenProps) {
+export const StagesScreen = memo(function StagesScreen({ onPick }: StagesScreenProps) {
   const padding = useScreenPadding();
   const record = useGameStore((state) => state.record);
   const difficulty = useGameStore((state) => state.difficulty);
@@ -143,7 +141,17 @@ export const StagesScreen = memo(function StagesScreen({
 
   return (
     <View style={[styles.root, padding.top]}>
-      <ScreenHeader title="Choose a shelf" onBack={onBack} />
+      {/* Stages is not a `ScrollPage` — its body is a `FlatList`, which cannot
+          live inside a `ScrollView` — so the drawer handle every other page
+          gets from that frame has to be spelled out here. Without it this was
+          the one destination you could not open Settings from. */}
+      <ScreenHeader
+        title="Levels"
+        leading={<CoinPill />}
+        trailing={
+          <ChromeIconButton icon="menu" onPress={overlay.drawer} label="Settings" />
+        }
+      />
 
       <View style={styles.tabs}>
         {DIFFICULTIES.map((id) => (

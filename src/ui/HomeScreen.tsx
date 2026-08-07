@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { DIFFICULTY_INFO } from '@/game/difficulty';
+import type { NavDestination } from '@/state/navStore';
 import { useGameStore } from '@/state/gameStore';
 import { overlay } from '@/state/overlayStore';
 import { apothecary } from '@/theme/apothecary';
@@ -14,10 +15,10 @@ import { CoinPill } from './chrome/CoinPill';
 import { GlossButton } from './chrome/GlossButton';
 import { HeroRack } from './chrome/HeroRack';
 import { ChromeIconButton } from './chrome/ScreenHeader';
-import { type NavDestination } from './chrome/NavBar';
 import { Panel } from './chrome/Panel';
 import { useScreenPadding } from './hooks/useScreenPadding';
 import { useClaimTimer } from './hooks/useClaimTimer';
+import { useTapBurst } from './hooks/useTapBurst';
 import { useTapHandler } from './hooks/useTapHandler';
 import { Icon } from './Icon';
 import { PAGE_SIZE } from './StagesScreen';
@@ -51,6 +52,10 @@ export const HomeScreen = memo(function HomeScreen({
   const { reward, remaining } = useClaimTimer();
 
   const play = useTapHandler(onPlay);
+  // The whole card is the tap target, but the burst belongs in the chip: it is
+  // the only round, clipped face on the card, and a ring drawn across a
+  // 300dp-wide panel reads as a flash rather than as a press.
+  const burst = useTapBurst();
   const openDaily = useCallback(() => onNavigate('daily'), [onNavigate]);
   const openStages = useCallback(() => onNavigate('stages'), [onNavigate]);
   /*
@@ -88,7 +93,7 @@ export const HomeScreen = memo(function HomeScreen({
 
         <View style={styles.stack}>
           <Animated.View entering={FadeInDown.duration(520).delay(STAGGER[1])}>
-            <Pressable onPress={play} accessibilityRole="button">
+            <Pressable onPress={play} onPressIn={burst.fire} accessibilityRole="button">
               <Panel contentStyle={styles.continueCard} radius={20}>
                 <View style={styles.badge}>
                   <LinearGradient
@@ -117,7 +122,10 @@ export const HomeScreen = memo(function HomeScreen({
                 </View>
 
                 <View style={styles.goChip}>
-                  <Icon name="play" size={s(12)} color={ui.accentBright} />
+                  {/* An arrow, not a play triangle. The card says Continue, and
+                      a media glyph promises a start rather than a resume. */}
+                  <Icon name="next" size={s(18)} color={ui.accentBright} />
+                  {burst.node}
                 </View>
               </Panel>
             </Pressable>

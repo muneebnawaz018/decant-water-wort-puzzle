@@ -126,9 +126,7 @@ export const SettingsDrawer = memo(function SettingsDrawer() {
         <View style={styles.edge} pointerEvents="none" />
 
         <View style={styles.head}>
-          <View style={styles.logo}>
-            <DrawerMark />
-          </View>
+          <DrawerMark />
           <Text style={styles.name}>DECANT</Text>
           <Pressable
             style={styles.close}
@@ -235,7 +233,9 @@ export const SettingsDrawer = memo(function SettingsDrawer() {
  */
 const DrawerMark = memo(function DrawerMark() {
   const battery = useBattery();
-  return <AppMark size={s(24)} level={battery.level} source={battery.source} />;
+  // `size` is the mark's width now that it lies down; the height follows at
+  // half of it, which is roughly the wordmark's cap height beside it.
+  return <AppMark size={s(34)} level={battery.level} source={battery.source} />;
 });
 
 /**

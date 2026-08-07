@@ -361,6 +361,14 @@ export const gradients = {
    */
   sheenSoft: [alpha('white', 0.16), alpha('white', 0.03), alpha('white', 0)] as const,
   goldShelf: [raw.goldLight, raw.goldDark] as const,
+  /**
+   * The action green, for the one control painted in it: the coin pill's plus.
+   *
+   * Green rather than gold on purpose, and the exception that proves the rule
+   * two lines up — the pill's own chrome *is* gold, so a gold button on it
+   * would disappear into the surface it sits on.
+   */
+  green: [raw.greenLight, raw.greenDeep] as const,
   coin: [raw.goldPale, raw.gold, raw.goldDark] as const,
   wordmark: [raw.goldPale, raw.goldSheen, raw.goldBronze] as const,
   /** The nav bar sits slightly translucent over the ground. */

@@ -59,15 +59,11 @@ function streakDetail(claimsLeft: number): string {
 }
 
 interface DailyScreenProps {
-  onBack: () => void;
   onPlayBonus: () => void;
 }
 
 /** The seven-day reward track, spec §4.6. */
-export const DailyScreen = memo(function DailyScreen({
-  onBack,
-  onPlayBonus,
-}: DailyScreenProps) {
+export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScreenProps) {
   const streak = useEconomyStore((state) => state.streak);
   const { reward, remaining, dayIndex } = useClaimTimer();
   const waiting = reward === null;
@@ -97,7 +93,7 @@ export const DailyScreen = memo(function DailyScreen({
   }, []);
 
   return (
-    <ScrollPage title="Rewards" onBack={onBack}>
+    <ScrollPage title="Rewards">
       <Panel contentStyle={styles.streak}>
         <StreakFlame />
         <View style={styles.streakText}>

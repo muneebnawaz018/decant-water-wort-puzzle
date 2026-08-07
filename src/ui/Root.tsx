@@ -1,16 +1,17 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { gradients } from '@/theme/colors';
-import { s } from '@/theme/scale';
 
 import { useGameStore } from '@/state/gameStore';
+import { useNavStore, type NavDestination } from '@/state/navStore';
 import { useOverlayStore } from '@/state/overlayStore';
 import { useAndroidBack } from './hooks/useAndroidBack';
 import { Backdrop } from './chrome/Backdrop';
-import { NavBar, type NavDestination } from './chrome/NavBar';
+import { NavBar } from './chrome/NavBar';
+import { NAV_OFFSET } from './chrome/styles/NavBar.styles';
 import { Overlays } from './chrome/Overlays';
 import { CompleteScreen } from './CompleteScreen';
 import { confirmExitLevel } from './confirmExitLevel';
@@ -88,12 +89,61 @@ export function Root() {
   }, []);
 
   const showHome = useCallback(() => setScreen('home'), []);
-  const showGame = useCallback(() => setScreen('game'), []);
-  const showStages = useCallback(() => setScreen('stages'), []);
+
+  /**
+   * Where leaving the board goes back to: whichever screen opened it.
+   *
+   * A ref rather than state, because nothing renders from it — and changing it
+   * must not re-render the board, which is the most expensive tree in the app.
+   *
+   * It used to be hardcoded to Stages, which was right for a level tile and
+   * wrong everywhere else: Home's Continue card and the Rewards screen's bonus
+   * row both dropped you on a screen you had not been to. "Back" that lands
+   * somewhere you were never is worse than no back button, because it silently
+   * moves you.
+   */
+  const gameOrigin = useRef<Screen>('home');
+
+  const showGame = useCallback((from: Screen) => {
+    gameOrigin.current = from;
+    setScreen('game');
+  }, []);
+
+  // One per entry point, so each screen hands over where it is rather than
+  // taking a router. Bound here because a screen must not be able to claim it
+  // was opened from somewhere it was not.
+  const playFromHome = useCallback(() => showGame('home'), [showGame]);
+  const playFromStages = useCallback(() => showGame('stages'), [showGame]);
+  const playFromDaily = useCallback(() => showGame('daily'), [showGame]);
+
   /** Both ways off the board confirm first once it has been played on. */
-  const exitGame = useCallback(() => confirmExitLevel(showStages), [showStages]);
+  const exitGame = useCallback(
+    () => confirmExitLevel(() => setScreen(gameOrigin.current)),
+    []
+  );
   const showComplete = useCallback(() => setScreen('complete'), []);
   const navigate = useCallback((destination: NavDestination) => setScreen(destination), []);
+
+  /**
+   * Requests raised by chrome that has no route of its own — currently the coin
+   * pill's shop shortcut, which is drawn on every page frame.
+   *
+   * Cleared as it is taken, so the same destination can be asked for twice.
+   * `Root` still decides what mounts; the store only carries the ask.
+   */
+  useEffect(
+    () =>
+      // Subscribed to, not selected. A selector would put the request in this
+      // component's render and the screen change in an effect reacting to it,
+      // which is a cascading render — and the store is an external system, so
+      // the callback form is the one React actually wants here.
+      useNavStore.subscribe((state) => {
+        if (state.request === null) return;
+        setScreen(state.request);
+        useNavStore.getState().clear();
+      }),
+    []
+  );
 
   /**
    * Android's back press, screen by screen.
@@ -163,20 +213,16 @@ export function Root() {
           direction={FORWARD.has(screen) ? 'forward' : 'fade'}
         >
           {screen === 'home' ? (
-            <HomeScreen onPlay={showGame} onNavigate={navigate} />
+            <HomeScreen onPlay={playFromHome} onNavigate={navigate} />
           ) : null}
 
-          {screen === 'stages' ? (
-            <StagesScreen onBack={showHome} onPick={showGame} />
-          ) : null}
+          {screen === 'stages' ? <StagesScreen onPick={playFromStages} /> : null}
 
-          {screen === 'daily' ? (
-            <DailyScreen onBack={showHome} onPlayBonus={showGame} />
-          ) : null}
+          {screen === 'daily' ? <DailyScreen onPlayBonus={playFromDaily} /> : null}
 
-          {screen === 'shop' ? <ShopScreen onBack={showHome} /> : null}
+          {screen === 'shop' ? <ShopScreen /> : null}
 
-          {screen === 'stats' ? <StatsScreen onBack={showHome} /> : null}
+          {screen === 'stats' ? <StatsScreen /> : null}
 
           {screen === 'game' ? (
             <GameScreen
@@ -194,7 +240,7 @@ export function Root() {
       )}
 
       {WITH_NAV.has(screen) ? (
-        <View style={[styles.navSlot, { paddingBottom: insets.bottom + s(10) }]}>
+        <View style={[styles.navSlot, { paddingBottom: insets.bottom + NAV_OFFSET }]}>
           {/* Content scrolls *under* a floating bar. An opaque bar hides it
               once it is behind, but the moment of sliding into the edge still
               reads as a glitch — so it fades out into the ground first. */}

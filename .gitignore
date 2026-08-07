@@ -40,6 +40,17 @@ yarn-error.*
 /ios
 /android
 
+# local modules keep their *source* — only the Gradle output is generated.
+#
+# The rules above are anchored to the repo root, so they miss
+# `modules/<name>/android/build/`, and 223 build artifacts were committed before
+# anyone noticed: `.jar`, `.dex`, `.bin` and Kotlin's incremental-compile caches.
+# All of it is rebuilt from scratch by any `npm run android`, all of it is binary,
+# and every one of those files conflicts on merge rather than diffing.
+modules/*/android/build/
+modules/*/android/.cxx/
+modules/*/ios/build/
+
 # design handoff — the prototype and its spec are a local working reference,
 # not part of the shipped source. Keep a copy; do not commit it.
 docs/decant-handoff/

@@ -15,7 +15,23 @@ import { styles } from './styles/ScreenHeader.styles';
 
 interface ScreenHeaderProps {
   title: string;
-  onBack: () => void;
+  /**
+   * Omitted on a screen the nav bar reaches directly.
+   *
+   * The four destinations are siblings, not children — the bar is always on
+   * screen and every one of them is one tap from every other, so an arrow
+   * pointing "back" to Home is offering what the Home bump already does, from
+   * the opposite corner. Deeper screens, which the bar cannot reach, keep it.
+   */
+  onBack?: () => void;
+  /**
+   * Rendered at the left end, in the seat the back arrow would take.
+   *
+   * For status rather than for action — a coin balance, not a button. It is
+   * only drawn on a screen with no arrow, since the two want the same corner
+   * and the arrow wins: navigation outranks a read-out.
+   */
+  leading?: ReactNode;
   /** Rendered at the right end — a second action, usually. */
   trailing?: ReactNode;
 }
@@ -24,21 +40,37 @@ interface ScreenHeaderProps {
 export const ScreenHeader = memo(function ScreenHeader({
   title,
   onBack,
+  leading,
   trailing,
 }: ScreenHeaderProps) {
   return (
     <View style={styles.head}>
-      <ChromeIconButton icon="back" onPress={onBack} label="Back" />
+      {/* A spacer when there is neither arrow nor leading content, not nothing:
+          the row's height and the trailing button's seat both have to survive
+          the arrow's absence. */}
+      {onBack ? (
+        <ChromeIconButton icon="back" onPress={onBack} label="Back" />
+      ) : (
+        <View style={styles.backSlot}>{leading}</View>
+      )}
+
       <View style={styles.filler} />
       <View style={styles.trailing}>{trailing}</View>
       {/*
         The title is out of flow and spans the whole header, so it lies over
-        both buttons. `pointerEvents` has to be on a `View` for that to be
-        harmless: on Android a `Text` swallows the touch regardless of the
-        prop, which left the back arrow dead on every Android device while iOS
+        both ends. `pointerEvents` has to be on a `View` for that to be
+        harmless: on Android a `Text` swallows the touch regardless of the prop,
+        which left the back arrow dead on every Android device while iOS
         behaved. A wrapper is the portable form.
+
+        Its side padding is whatever the left seat actually holds — a 42dp
+        button, or a coin pill more than twice that. One number for both put the
+        title straight through the pill.
       */}
-      <View style={styles.titleSlot} pointerEvents="none">
+      <View
+        style={leading && !onBack ? styles.titleSlotWide : styles.titleSlot}
+        pointerEvents="none"
+      >
         <Text style={styles.title} numberOfLines={1}>
           {title}
         </Text>

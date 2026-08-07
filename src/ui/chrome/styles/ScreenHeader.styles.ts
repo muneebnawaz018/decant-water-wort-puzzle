@@ -3,6 +3,7 @@ import { StyleSheet } from 'react-native';
 import { HAIRLINE, SPACE } from '@/theme/apothecary';
 import { ui } from '@/theme/colors';
 import { s } from '@/theme/scale';
+import { COIN_PILL_WIDTH } from './CoinPill.styles';
 import { text } from '@/theme/typography';
 export const styles = StyleSheet.create({
   head: {
@@ -31,6 +32,51 @@ export const styles = StyleSheet.create({
     paddingHorizontal: SPACE.screen + s(42) + s(14),
   },
   title: { ...text.screenTitle, textAlign: 'center' },
+  /**
+   * The slot for a header with a coin pill at one end and a button at the
+   * other: **centred between the two, not on the header.**
+   *
+   * The two ends are different widths — a 94dp pill against a 42dp square — so
+   * the two things that could be called centred are not the same place, and
+   * only one of them looks it. Centred on the header, the title sits about 25dp
+   * nearer the pill than the button, and every screen with a pill reads as
+   * slightly misaligned even though the arithmetic is exact. What the eye
+   * checks is the gap either side of the words.
+   *
+   * **It lands halfway between the two.** Both extremes were tried on a device
+   * and both read as off: centred on the header the title crowds the pill,
+   * centred in the gap it sits visibly right of everything else on the screen —
+   * the grid and cards below are centred on the header, and the title stops
+   * agreeing with them. Splitting the difference is not a fudge; it is the only
+   * position that answers to both, because the header's own two ends disagree
+   * about where the middle is.
+   *
+   * The right inset is still narrower than the left, which buys back width the
+   * symmetric version spent on nothing — that is what lets a two-word title fit
+   * on a 360dp phone. A longer one truncates rather than overlapping, via
+   * `numberOfLines`.
+   */
+  titleSlotWide: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    paddingLeft: SPACE.screen + COIN_PILL_WIDTH + s(8),
+    paddingRight: SPACE.screen + (COIN_PILL_WIDTH + s(42)) / 2 + s(8),
+  },
+  /**
+   * The back arrow's seat, held open on the screens that have no arrow.
+   *
+   * The same 42 square, so the header keeps its height and the title's absolute
+   * padding — which is written in terms of that button — still describes the
+   * space either side of it.
+   */
+  backSlot: {
+    // A floor, not a fixed width: empty it holds the arrow's square open, and
+    // with a coin pill in it, it grows to the pill.
+    minWidth: s(42),
+    height: s(42),
+    justifyContent: 'center',
+  },
   /** Pushes the trailing slot to the right end, now the title is out of flow. */
   filler: { flex: 1 },
   /**

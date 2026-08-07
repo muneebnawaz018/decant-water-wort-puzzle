@@ -40,6 +40,21 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.decant.watersort',
+    infoPlist: {
+      // The runtime `<StatusBar hidden />` in App.tsx only applies once React
+      // is drawing. These two hide the bar from the launch screen onward, so
+      // the clock does not sit over the splash vial for the first second and
+      // then vanish.
+      UIStatusBarHidden: true,
+      UIViewControllerBasedStatusBarAppearance: false,
+    },
+  },
+  androidStatusBar: {
+    // Same reason as the iOS pair above — hidden from the launch window, not
+    // only once React mounts.
+    hidden: true,
+    translucent: true,
+    barStyle: 'light-content',
   },
   android: {
     backgroundColor: colours.nightDeep,

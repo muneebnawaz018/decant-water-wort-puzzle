@@ -33,14 +33,5 @@ public class SystemHapticsModule: Module {
     Function("isTouchFeedbackEnabled") {
       true
     }
-
-    // Unreachable: `isTouchFeedbackEnabled` never returns false on iOS, so the
-    // JS side never reaches the branch that calls this. Defined anyway so the
-    // two platforms present the same surface, and left a no-op rather than
-    // opening the app's own settings page — which does not contain the haptics
-    // switch, and so would strand anyone sent there.
-    AsyncFunction("openSoundSettings") {
-      // No destination exists.
-    }
   }
 }

@@ -22,7 +22,7 @@ import {
 } from 'react-native-reanimated';
 
 import { colours, tint, ui } from '@/theme/colors';
-import { useUiValue2 } from './useUiValue';
+import { useUiValue2, useUiValue3 } from './useUiValue';
 
 interface AmbientVialsProps {
   width: number;
@@ -33,6 +33,22 @@ interface AmbientVialsProps {
 
 /** One full cycle. Slow on purpose — this is wallpaper, not a game. */
 const CYCLE_MS = 5200;
+
+/**
+ * How many cycles the clock counts before it starts over.
+ *
+ * The clock used to run 0→1 and snap back, and everything read it as
+ * `(clock * rate + offset) % 1`. That is only continuous across the snap when
+ * `rate` is a whole number — and the whole point of `rate` is that it is not,
+ * so every bubble jumped to a new position at the same instant, once a cycle.
+ * The symptom is the entire rack visibly resetting.
+ *
+ * Counting up instead means the wrap happens once every ~90 minutes rather than
+ * every five seconds. It is still there; a shared value is a double and this
+ * has to stay a finite number, so the honest fix is to make it rare rather than
+ * to pretend it is gone.
+ */
+const CLOCK_SPAN = 1024;
 
 const VIALS = 3;
 const CAPACITY = 4;
@@ -106,7 +122,10 @@ export const AmbientVials = memo(function AmbientVials({
   useEffect(() => {
     clock.value = 0;
     clock.value = withRepeat(
-      withTiming(1, { duration: CYCLE_MS, easing: Easing.linear }),
+      withTiming(CLOCK_SPAN, {
+        duration: CYCLE_MS * CLOCK_SPAN,
+        easing: Easing.linear,
+      }),
       -1,
       false
     );
@@ -346,7 +365,37 @@ const Meniscus = memo(function Meniscus({
   );
 });
 
-/** Slow rising bubbles. Cheap, and they sell the liquid as liquid. */
+const PER_VIAL = 3;
+
+/**
+ * A stable pseudo-random in 0..1 from two small integers.
+ *
+ * `Math.random` is not used, and the reason is not purity for its own sake:
+ * this runs inside a `useMemo`, so a fresh draw on any re-measure would make
+ * every bubble jump to a new size and lane the moment the box changes. A hash
+ * of the bubble's own identity gives the same scatter every time.
+ *
+ * The constants are arbitrary large odds — the usual trick of multiplying by an
+ * irrational-ish number and keeping the fraction. It is not a good generator
+ * and does not need to be; it needs nine values that do not look related.
+ */
+function scatter(a: number, b: number): number {
+  const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+/**
+ * Slow rising bubbles. Cheap, and they sell the liquid as liquid.
+ *
+ * Every property is scattered — size, lane, height, speed, and which way it
+ * sways — because the tidy version was worse than no bubbles at all. Radius and
+ * lane both stepped with `n`, and the phase offsets were a fixed ladder, so all
+ * nine rose in formation: three neat columns, small to large, left to right,
+ * each vial a beat behind the last. Real liquid does not do that, and the eye
+ * catches the pattern immediately on a screen you look at for as long as Home.
+ *
+ * Count is unchanged at three a vial. The problem was never how many.
+ */
 const Bubbles = memo(function Bubbles({
   clock,
   geometry,
@@ -361,14 +410,55 @@ const Bubbles = memo(function Bubbles({
   const bubbles = useMemo(
     () =>
       geometry.tubes.flatMap((tube, index) =>
-        [0, 1, 2].map((n) => ({
-          key: `${index}-${n}`,
-          x: tube.x + geometry.vialWidth * (0.3 + n * 0.2),
-          baseY: tube.y + geometry.vialHeight,
-          travel: geometry.vialHeight * 0.75,
-          radius: geometry.vialWidth * (0.05 + n * 0.015),
-          offset: index * 0.3 + n * 0.27,
-        }))
+        Array.from({ length: PER_VIAL }, (_, n) => {
+          const lane = scatter(index + 1, n + 1);
+          const size = scatter(index + 5, n + 3);
+          const pace = scatter(index + 11, n + 7);
+          const phase = scatter(index + 17, n + 13);
+          const sway = scatter(index + 23, n + 19);
+
+          // Not all the way up, and not all the same distance — a dot that
+          // stops early looks like it dissolved rather than like it was cut.
+          const travel = geometry.vialHeight * (0.55 + size * 0.3);
+          const drift = scatter(index + 31, n + 29);
+
+          return {
+            key: `${index}-${n}`,
+            // Kept off the walls: the glass highlight runs down the left
+            // shoulder and a bubble under it reads as a smudge.
+            x: tube.x + geometry.vialWidth * (0.22 + lane * 0.56),
+            // Always off the floor and always upward. Bubbles rise; a dot
+            // sinking through liquid is sediment, and one drifting down a vial
+            // reads as a bug rather than as a second kind of motion.
+            startY: tube.y + geometry.vialHeight,
+            travel,
+            radius: geometry.vialWidth * (0.035 + size * 0.055),
+            // Slower for the big ones, which is the direction real bubbles go.
+            rate: 0.75 + (1 - size) * 0.7 + pace * 0.25,
+            offset: phase,
+            /**
+             * Net sideways travel over the whole trip, signed.
+             *
+             * This is the part that was missing. Every bubble used to be a pure
+             * sine around its own lane, so every path was the same symmetric
+             * zig-zag — start left, end left, wobble in between — and nine of
+             * them read as one motion however much the amplitudes differed.
+             *
+             * A slant means each one arrives somewhere it did not start, so no
+             * two traces overlay: one leans across a third of the vial, the
+             * next goes almost straight up, the one beside it drifts back the
+             * other way.
+             */
+            slide: geometry.vialWidth * (drift - 0.5) * 0.7,
+            // The wobble on top of the slant, and small — it is texture on the
+            // path, not the path itself. That inversion is what made the old
+            // version read as a zig-zag.
+            swayWidth: geometry.vialWidth * 0.03 * (sway < 0.5 ? -1 : 1),
+            // Fractional, so the wobble does not close its own loop and hand
+            // back a path that repeats within one trip.
+            swayRate: 0.7 + sway * 1.6,
+          };
+        })
       ),
     [geometry]
   );
@@ -390,21 +480,34 @@ const Bubble = memo(function Bubble({
   clock: SharedValue<number>;
   bubble: {
     x: number;
-    baseY: number;
+    startY: number;
     travel: number;
     radius: number;
+    rate: number;
     offset: number;
+    slide: number;
+    swayWidth: number;
+    swayRate: number;
   };
   colour: string;
 }) {
-  // Both values come off the same phase, so they share a reaction. Nine
-  // bubbles at two subscriptions each was eighteen per frame for nine dots.
+  // All three values come off the same phase, so they share one reaction. Nine
+  // bubbles at three subscriptions each would be twenty-seven a frame for nine
+  // dots.
   const compute = useCallback(
-    (input: number): [number, number] => {
+    (input: number): [number, number, number] => {
       'worklet';
-      const t = (input + bubble.offset) % 1;
+      // `rate` is what desyncs them: each bubble runs its own trip length, so
+      // the nine never line back up the way a shared clock with different
+      // offsets does after one cycle.
+      const t = (input * bubble.rate + bubble.offset) % 1;
       return [
-        bubble.baseY - bubble.travel * t,
+        // Slant first, wobble second: the bubble crosses the vial over its
+        // trip and shivers on the way, rather than oscillating in place.
+        bubble.x +
+          bubble.slide * t +
+          Math.sin(t * Math.PI * 2 * bubble.swayRate) * bubble.swayWidth,
+        bubble.startY - bubble.travel * t,
         // Fade in off the floor, fade out before the surface.
         Math.sin(t * Math.PI) * 0.4,
       ];
@@ -412,9 +515,7 @@ const Bubble = memo(function Bubble({
     [bubble]
   );
 
-  const [cy, opacity] = useUiValue2(clock, compute, compute(0));
+  const [cx, cy, opacity] = useUiValue3(clock, compute, compute(0));
 
-  return (
-    <Circle cx={bubble.x} cy={cy} r={bubble.radius} color={colour} opacity={opacity} />
-  );
+  return <Circle cx={cx} cy={cy} r={bubble.radius} color={colour} opacity={opacity} />;
 });

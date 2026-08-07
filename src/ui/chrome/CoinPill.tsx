@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { memo, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { memo, useCallback, useEffect, useRef } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -9,8 +9,13 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { useEconomyStore } from '@/state/economyStore';
+import { nav } from '@/state/navStore';
 import { apothecary } from '@/theme/apothecary';
 import { gradients } from '@/theme/colors';
+import { s } from '@/theme/scale';
+import { useTapHandler } from '../hooks/useTapHandler';
+import { useTapScale } from '../hooks/useTapScale';
+import { Icon } from '../Icon';
 import { styles } from './styles/CoinPill.styles';
 
 /**
@@ -38,24 +43,53 @@ export const CoinPill = memo(function CoinPill() {
     transform: [{ scale: scale.value }],
   }));
 
+  const tap = useTapScale();
+  // Through `useTapHandler`, so the plus ticks like every other button in the
+  // chrome rather than being the one control that navigates in silence.
+  const openShop = useTapHandler(useCallback(() => nav.go('shop'), []));
+
   return (
     <Animated.View style={animated}>
-      <View style={styles.pill}>
-        <LinearGradient
-          colors={[apothecary.surfaceTop, apothecary.surface]}
-          style={styles.pillFace}
-        >
-          <View style={styles.coin}>
-            <LinearGradient
-              colors={gradients.coin}
-              locations={[0, 0.62, 1]}
-              start={{ x: 0.34, y: 0.3 }}
-              style={StyleSheet.absoluteFill}
-            />
-          </View>
-          <Text style={styles.value}>{coins}</Text>
-        </LinearGradient>
-      </View>
+      {/*
+        The whole pill opens the shop, not only the plus.
+
+        The plus is the affordance — it says what a tap does — but it is a 20dp
+        target inside a 94dp control, and a player reaching for "more coins"
+        aims at the pill. Making the balance dead meant most of that reach
+        landed on nothing.
+      */}
+      <Pressable
+        onPress={openShop}
+        onPressIn={tap.onPressIn}
+        onPressOut={tap.onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={`${coins} coins. Get more`}
+      >
+        <View style={styles.pill}>
+          <LinearGradient
+            colors={[apothecary.surfaceTop, apothecary.surface]}
+            style={styles.pillFace}
+          >
+            <View style={styles.coin}>
+              <LinearGradient
+                colors={gradients.coin}
+                locations={[0, 0.62, 1]}
+                start={{ x: 0.34, y: 0.3 }}
+                style={StyleSheet.absoluteFill}
+              />
+            </View>
+            <Text style={styles.value}>{coins}</Text>
+
+            {/* The affordance, no longer the target. It still springs on press,
+                because the thing that says "tap me" is the thing that should
+                answer — wherever on the pill the tap actually landed. */}
+            <Animated.View style={[styles.plus, tap.style]}>
+              <LinearGradient colors={gradients.green} style={StyleSheet.absoluteFill} />
+              <Icon name="plus" size={s(14)} color={apothecary.ink} />
+            </Animated.View>
+          </LinearGradient>
+        </View>
+      </Pressable>
     </Animated.View>
   );
 });

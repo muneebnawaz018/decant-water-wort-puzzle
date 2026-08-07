@@ -9,6 +9,15 @@ import { s } from '@/theme/scale';
 const NAV_MARGIN = s(14);
 
 /**
+ * How far `Root` holds the bar above the safe-area bottom edge.
+ *
+ * Exported because a screen reserving its own space has to add this on top of
+ * the bar and the bump — it was a bare `s(10)` in `Root` and a second bare 10 in
+ * Home's `navSlot`, two numbers that meant the same thing and could drift.
+ */
+export const NAV_OFFSET = s(10);
+
+/**
  * The bar is clamped as well as inset. Its tabs are `flex: 1`, so on a tablet
  * an unclamped bar puts four destinations a hand's width apart and the row
  * stops reading as one control.
@@ -34,8 +43,13 @@ export const NAV_BAR_HEIGHT = s(66);
  * background rather than against the bar's own edge — that gap is what makes it
  * read as floating in front rather than glued on.
  */
-const BUMP_SIZE = s(58);
-export const NOTCH_RADIUS = s(35);
+const BUMP_SIZE = s(54);
+
+/** The ring of background left visible between the disc and the bar's cut edge. */
+const NOTCH_GAP = s(6);
+
+/** Derived, so the ring stays even if the disc is resized. */
+export const NOTCH_RADIUS = BUMP_SIZE / 2 + NOTCH_GAP;
 
 /**
  * How far the bump's centre sits above the bar's top edge.
@@ -43,8 +57,28 @@ export const NOTCH_RADIUS = s(35);
  * Exported because a screen clearing the bar has to clear this too — the raised
  * button is the tallest part of the chrome, and a tail sized to the bar alone
  * lets the last card slide under it.
+ *
+ * **Lowering the disc is limited by the "Home" label, not by taste.** The notch
+ * follows the disc down, and its lowest point is `NOTCH_CENTRE_Y + NOTCH_RADIUS`
+ * — a hole in the bar's face. The label sits about 22 above the bar's bottom
+ * edge, so once the bite reaches that far the word is rendered over background
+ * rather than over the bar. At the current disc size the bite bottoms out at 41
+ * of the bar's 66, which leaves the label clear. Take the rise much below this
+ * and `BUMP_SIZE` has to come down with it.
  */
-export const BUMP_RISE = s(29);
+export const BUMP_RISE = s(19);
+
+/**
+ * Where the notch's centre sits relative to the bar's top edge, positive down.
+ *
+ * Derived, never typed in. The disc and the bite have to stay concentric or the
+ * ring of background between them stops being even — and the disc's centre is
+ * fixed by the rise, so the notch has to follow it. At the original rise of
+ * `BUMP_SIZE / 2` this was exactly zero, which is why the bar was drawn with a
+ * hardcoded `0` and why lowering the disc on its own would have thinned the gap
+ * under it while leaving the sides alone.
+ */
+export const NOTCH_CENTRE_Y = BUMP_SIZE / 2 - BUMP_RISE;
 
 /**
  * The drawn width of the bar, which the Skia face needs as a number.
@@ -148,7 +182,24 @@ export const styles = StyleSheet.create({
       },
     ],
   },
-  bumpFill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  /**
+   * The disc's face, and the layer the press scale is applied to.
+   *
+   * **It carries its own radius, and clips.** The round corner used to live
+   * only on `bump`, which is the parent and does not scale — so a press shrank
+   * this square inside a clip it no longer touched, and the gold disc turned
+   * into a gold *square* for the length of the press. The clip has to travel
+   * with whatever moves.
+   */
+  bumpFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: BUMP_SIZE / 2,
+    overflow: 'hidden',
+  },
   /** The 2px inner highlight along the disc's top, the same one buttons carry. */
   bumpGloss: { position: 'absolute', top: 0, left: 0, right: 0, height: 2 },
 });

@@ -63,9 +63,19 @@ describe('board taps', () => {
     expect(notification).not.toHaveBeenCalled();
   });
 
-  it('warns on a pour the board will not take', () => {
-    feedbackFor({ kind: 'illegal', tube: 3 });
+  it('warns on a refusal that leaves nothing selected', () => {
+    feedbackFor({ kind: 'illegal', tube: 3, armed: false });
     expect(notification).toHaveBeenCalledWith('warning');
+  });
+
+  // The refusal re-arms the tube that was tapped, so the player is now holding
+  // it. Warning there fired again on the *next* tap, which is a selection like
+  // any other — a board with a tube armed has no idea where it is going yet.
+  it('ticks, not warns, when the refusal re-armed the tapped tube', () => {
+    feedbackFor({ kind: 'illegal', tube: 3, armed: true });
+
+    expect(calls()).toBe(1);
+    expect(notification).not.toHaveBeenCalled();
   });
 
   it('stays silent on a tap that did nothing', () => {
@@ -96,7 +106,7 @@ describe('the setting', () => {
     feedbackFor(pour());
     feedbackFor(pour(true));
     feedbackFor({ kind: 'selected', tube: 0 });
-    feedbackFor({ kind: 'illegal', tube: 1 });
+    feedbackFor({ kind: 'illegal', tube: 1, armed: false });
     feedbackControl();
     feedbackWarn();
 

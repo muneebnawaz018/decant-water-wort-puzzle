@@ -3,7 +3,6 @@ import { Text, View } from 'react-native';
 
 import { overlay } from '@/state/overlayStore';
 import { colours } from '@/theme/colors';
-import { CoinPill } from './chrome/CoinPill';
 import { GlossButton } from './chrome/GlossButton';
 import { Panel } from './chrome/Panel';
 import { ScrollPage } from './chrome/ScrollPage';
@@ -59,9 +58,9 @@ const SKINS = [
   },
 ] as const;
 
-export const ShopScreen = memo(function ShopScreen({ onBack }: { onBack: () => void }) {
+export const ShopScreen = memo(function ShopScreen() {
   return (
-    <ScrollPage title="Shop" onBack={onBack} trailing={<CoinPill />}>
+    <ScrollPage title="Shop">
       <Text style={section.title}>Vial skins</Text>
       <View style={styles.grid}>
         {SKINS.map((skin) => (

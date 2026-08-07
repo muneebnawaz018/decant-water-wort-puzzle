@@ -48,6 +48,7 @@ describe('selection', () => {
     expect(store().tapTube(blocked)).toEqual({
       kind: 'illegal',
       tube: blocked,
+      armed: true,
     });
     // A refused pour is usually a mis-tap on the source. Carrying the old
     // selection meant tapping the wrong tube a second time just to clear it.

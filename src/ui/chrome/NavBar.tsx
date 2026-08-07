@@ -16,6 +16,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
+import type { NavDestination } from '@/state/navStore';
 import { apothecary } from '@/theme/apothecary';
 import { gradients, ui } from '@/theme/colors';
 import { s } from '@/theme/scale';
@@ -27,11 +28,10 @@ import {
   NAV_BAR_HEIGHT,
   NAV_RADIUS,
   navBarWidth,
+  NOTCH_CENTRE_Y,
   NOTCH_RADIUS,
   styles,
 } from './styles/NavBar.styles';
-
-export type NavDestination = 'daily' | 'shop' | 'stages' | 'stats';
 
 /**
  * Two tabs, the Home bump, two tabs.
@@ -39,23 +39,36 @@ export type NavDestination = 'daily' | 'shop' | 'stages' | 'stats';
  * Split rather than listed, because the bump is not a fifth item in a row — it
  * sits in a gap the bar is cut around, and the pairs either side have to balance
  * across that gap.
+ *
+ * **The sides are grouped by subject, and each tab sits beside its sibling.**
+ * Left is the game — the levels you can play and the record of the ones you
+ * have. Right is the economy — where coins come from and where they go.
+ *
+ * The order before this paired neither: Stages sat at one end and Progress at
+ * the other, Rewards at one end and Shop at the other, so the bar read as four
+ * unrelated destinations. A nav bar is the clearest statement of an app's shape
+ * a player ever sees, and earn sitting next to spend explains the economy
+ * without either screen being opened.
+ *
+ * It costs something. Stages is the most-visited destination after Home and
+ * this moves it from an inner seat to an outer one, which is the harder reach.
+ * It is the tab that loses least by moving: Home's Continue card is how a
+ * returning player actually resumes, so Stages is for picking a *different*
+ * level rather than the next one.
  */
 const LEFT: ReadonlyArray<NavItem> = [
+  { id: 'stages', icon: 'stages', label: 'Stages' },
+  // Label, not id: the screen it opens is titled "Progress", and the bar was
+  // the only place still calling it Stats.
+  { id: 'stats', icon: 'trophy', label: 'Progress' },
+];
+
+const RIGHT: ReadonlyArray<NavItem> = [
   // "Rewards", not "Daily". The destination is what you get, not how often it
   // refreshes — and the screen holds the ad payout and the bonus puzzle too,
   // neither of which is a daily anything.
   { id: 'daily', icon: 'gift', label: 'Rewards' },
-  // Stages sits beside Home, where Shop used to. The two inner seats are the
-  // easiest to reach either side of the thumb's resting point, and picking a
-  // level is what a player comes back to do — buying a skin is not.
-  { id: 'stages', icon: 'stages', label: 'Stages' },
-];
-
-const RIGHT: ReadonlyArray<NavItem> = [
   { id: 'shop', icon: 'shop', label: 'Shop' },
-  // Label, not id: the screen it opens is titled "Your progress", and the bar
-  // was the only place still calling it Stats.
-  { id: 'stats', icon: 'trophy', label: 'Progress' },
 ];
 
 interface NavItem {
@@ -108,7 +121,7 @@ export const NavBar = memo(function NavBar({
       )
       .detach();
     const notch = Skia.PathBuilder.Make()
-      .addCircle(width / 2, 0, NOTCH_RADIUS)
+      .addCircle(width / 2, NOTCH_CENTRE_Y, NOTCH_RADIUS)
       .detach();
     // Falls back to the un-notched bar rather than to nothing: a path op is the
     // one part of this that can return null, and a bar with no bite is a far
@@ -201,7 +214,7 @@ const HomeBump = memo(function HomeBump({
         <View style={styles.bumpGloss} pointerEvents="none" />
       </Animated.View>
       {burst.node}
-      <Icon name="home" size={s(27)} color={ui.onGold} />
+      <Icon name="home" size={s(25)} color={ui.onGold} />
     </Pressable>
   );
 });

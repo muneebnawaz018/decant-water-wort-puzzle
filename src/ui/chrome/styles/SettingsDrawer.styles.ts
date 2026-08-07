@@ -60,15 +60,6 @@ export const styles = StyleSheet.create({
     paddingHorizontal: s(18),
     paddingBottom: s(12),
   },
-  logo: {
-    width: s(40),
-    height: s(40),
-    borderRadius: s(12),
-    backgroundColor: alpha('white', 0.06),
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
   /**
    * Centred between the mark and the close button.
    *

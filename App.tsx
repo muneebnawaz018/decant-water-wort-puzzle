@@ -22,7 +22,14 @@ export default function App() {
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <Root />
-        <StatusBar style="light" />
+        {/*
+         * Fullscreen: the status bar is hidden for the whole session, on both
+         * platforms. The board and the chrome are drawn edge to edge and a
+         * clock over the parchment-dark ground reads as an intrusion, not as
+         * system UI. `style` still matters — Android restores the bar on a
+         * swipe-down, and it should come back light rather than dark-on-dark.
+         */}
+        <StatusBar style="light" hidden />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

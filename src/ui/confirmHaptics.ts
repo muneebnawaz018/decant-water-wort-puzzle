@@ -1,4 +1,4 @@
-import { hapticsAvailability, openSoundSettings } from '../../modules/system-haptics';
+import { hapticsAvailability } from '../../modules/system-haptics';
 import { overlay } from '@/state/overlayStore';
 import { useSettingsStore } from '@/state/settingsStore';
 import { feedbackFor } from './feedback';
@@ -23,36 +23,9 @@ export function confirmHaptics(): void {
     return;
   }
 
-  // Asked before the dialog opens, not after: if the phone cannot deliver a
-  // buzz, the dialog should say so up front rather than promise one and then
-  // apologise. Read fresh every time — the player can change this while the app
-  // is backgrounded, which is precisely what the settings button sends them off
-  // to do.
+  // Read fresh every time: the player can change this while the app is
+  // backgrounded, so a value cached at launch is stale exactly when it matters.
   const availability = hapticsAvailability();
-
-  if (availability === 'off') {
-    /*
-     * The OS says its own switch is off, so there is nothing to preview and no
-     * point turning the game's setting on quietly — it would sit there reading
-     * "on" against a system that swallows every buzz, which is the state that
-     * makes a working feature look broken.
-     *
-     * This is the one case that gets a real destination instead of advice.
-     * There is no deep link to the toggle itself, so it lands on the sound
-     * screen that holds it; vendors move the row but not the screen.
-     */
-    overlay.modal({
-      title: 'Vibration is off',
-      body: "Your phone's own vibration setting is switched off, so the board cannot buzz.",
-      confirmLabel: 'Open settings',
-      cancelLabel: 'Not now',
-      onConfirm: () => {
-        useSettingsStore.getState().set('haptics', true);
-        void openSoundSettings();
-      },
-    });
-    return;
-  }
 
   if (availability === 'noMotor') {
     // No motor to turn on. Told plainly and left alone — sending this player to
@@ -66,9 +39,32 @@ export function confirmHaptics(): void {
     return;
   }
 
+  /*
+   * A reported "off" is a *hint*, never a veto.
+   *
+   * It used to be a veto: the OS saying its switch was off replaced this dialog
+   * with one offering a trip to system settings, and the game's own toggle was
+   * left alone. That is right when the reading is right, and actively wrong when
+   * it is not — and it is not, often enough to matter. Android has more than one
+   * row describing this setting, builds disagree about which one they maintain,
+   * and a superseded row left at zero reports "off" on a phone that vibrates
+   * perfectly well. A player in that position was told their working phone was
+   * broken and sent to a screen where everything was already correct, with no
+   * way to turn the feature on.
+   *
+   * So the buzz decides, not the lookup. The dialog reads the same either way
+   * and always ends in a sample: feel it and the reading was wrong, feel nothing
+   * and the extra line says where to look. The cost of being wrong is now one
+   * unnecessary sentence instead of a feature that cannot be switched on.
+   */
+  const hint =
+    availability === 'off'
+      ? " If you feel nothing, check your phone's own vibration setting."
+      : '';
+
   overlay.modal({
     title: 'Turn on vibration?',
-    body: 'The board will buzz as you pour.',
+    body: `The board will buzz as you pour.${hint}`,
     confirmLabel: 'Turn on',
     cancelLabel: 'Not now',
     onConfirm: () => {

@@ -2,7 +2,7 @@ import * as Haptics from 'expo-haptics';
 
 import { useOverlayStore } from '@/state/overlayStore';
 import { useSettingsStore } from '@/state/settingsStore';
-import { hapticsAvailability, openSoundSettings } from '../../../modules/system-haptics';
+import { hapticsAvailability } from '../../../modules/system-haptics';
 import { confirmHaptics } from '../confirmHaptics';
 
 jest.mock('expo-haptics', () => ({
@@ -21,11 +21,9 @@ jest.mock('expo-haptics', () => ({
  */
 jest.mock('../../../modules/system-haptics', () => ({
   hapticsAvailability: jest.fn(() => 'ready'),
-  openSoundSettings: jest.fn(),
 }));
 
 const availability = hapticsAvailability as jest.Mock;
-const openSettings = openSoundSettings as jest.Mock;
 const modal = () => useOverlayStore.getState().modal;
 const haptics = () => useSettingsStore.getState().haptics;
 const impact = Haptics.impactAsync as jest.Mock;
@@ -60,10 +58,8 @@ describe('when the phone can vibrate', () => {
   // time, including to players whose vibration was working perfectly.
   it('says nothing about system settings', () => {
     confirmHaptics();
-    modal()!.onConfirm!();
 
-    expect(useOverlayStore.getState().toast).toBeNull();
-    expect(openSettings).not.toHaveBeenCalled();
+    expect(modal()?.body).not.toContain('vibration setting');
   });
 
   it('stays off if the modal is dismissed', () => {
@@ -75,32 +71,36 @@ describe('when the phone can vibrate', () => {
   });
 });
 
-describe("when the phone's own vibration is off", () => {
+describe('when the phone reports its own vibration off', () => {
   beforeEach(() => availability.mockReturnValue('off'));
 
-  it('says so instead of promising a buzz it cannot deliver', () => {
+  /*
+   * The reading is a hint, not a veto, and this is the case that proves it.
+   * Android keeps more than one row for this setting and builds disagree about
+   * which they maintain, so a stale row reports "off" on a phone that vibrates
+   * perfectly well. Blocking on it told those players their working phone was
+   * broken and left them no way to switch the feature on.
+   */
+  it('still offers to turn vibration on', () => {
     confirmHaptics();
 
-    expect(modal()?.title).toBe('Vibration is off');
-    expect(modal()?.confirmLabel).toBe('Open settings');
+    expect(modal()?.title).toBe('Turn on vibration?');
+    expect(modal()?.confirmLabel).toBe('Turn on');
   });
 
-  it('opens the system settings on confirm', () => {
+  it('turns on and samples anyway, so the buzz settles it', () => {
     confirmHaptics();
     modal()!.onConfirm!();
 
-    expect(openSettings).toHaveBeenCalledTimes(1);
-    // Switched on too, so the game is ready the moment the OS switch is.
     expect(haptics()).toBe(true);
+    expect(impact).toHaveBeenCalledTimes(1);
   });
 
-  // Nothing to preview while the OS is swallowing every effect, and a buzz
-  // that cannot be felt would read as the feature failing.
-  it('does not try to sample a buzz', () => {
+  // The only difference a reported "off" makes: one extra sentence.
+  it('adds a line saying where to look', () => {
     confirmHaptics();
-    modal()!.onConfirm!();
 
-    expect(impact).not.toHaveBeenCalled();
+    expect(modal()?.body).toContain('vibration setting');
   });
 });
 
@@ -130,6 +130,6 @@ describe('when the system cannot be read', () => {
     expect(modal()?.title).toBe('Turn on vibration?');
     expect(haptics()).toBe(true);
     expect(impact).toHaveBeenCalledTimes(1);
-    expect(useOverlayStore.getState().toast).toBeNull();
+    expect(modal()?.body).not.toContain('vibration setting');
   });
 });

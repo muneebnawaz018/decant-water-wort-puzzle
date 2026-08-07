@@ -2,6 +2,7 @@ import { memo, useMemo } from 'react';
 import { Text, View } from 'react-native';
 
 import { DIFFICULTIES, DIFFICULTY_INFO, type Difficulty } from '@/game/difficulty';
+import { MILESTONE_SIZE } from '@/game/stars';
 import { useEconomyStore } from '@/state/economyStore';
 import { useGameStore } from '@/state/gameStore';
 import type { Progress, ProgressByDifficulty } from '@/state/progress';
@@ -81,7 +82,7 @@ function sumTotals(record: ProgressByDifficulty): ModeTotals {
  * nobody asked — "how far am I on Hard" is the question, and a single
  * number cannot answer it.
  */
-export const StatsScreen = memo(function StatsScreen({ onBack }: { onBack: () => void }) {
+export const StatsScreen = memo(function StatsScreen() {
   const record = useGameStore((state) => state.record);
   const streak = useEconomyStore((state) => state.streak);
   const coins = useEconomyStore((state) => state.coins);
@@ -93,7 +94,7 @@ export const StatsScreen = memo(function StatsScreen({ onBack }: { onBack: () =>
   const perLevel = totals.solved === 0 ? 0 : totals.stars / totals.solved;
 
   return (
-    <ScrollPage title="Your progress" onBack={onBack}>
+    <ScrollPage title="Progress">
       <View style={styles.grid}>
         <StatTile value={String(streak)} label="Day streak" />
         <StatTile value={String(coins)} label="Coins" />
@@ -162,18 +163,51 @@ const ModeCard = memo(function ModeCard({
       <View style={styles.modeHead}>
         <View style={[styles.modeDot, { backgroundColor: info.accent }]} />
         <Text style={styles.modeName}>{info.title}</Text>
-        <Text style={styles.modeCount}>
-          {totals.solved} / {totals.reached}
-        </Text>
+        {/*
+          What has been finished, not where the player is.
+
+          This read `solved / reached`, and those two can never disagree by more
+          than one: a level unlocks only by beating the one before it, and
+          `recordWin` writes the score and raises the frontier in the same
+          update. So `best` always holds exactly `1..furthestLevel - 1`, with no
+          gaps, and the fraction was always `n / n+1` — two numbers carrying one
+          number's worth of information, and neither of them labelled.
+
+          Then it was `Level N`, which is the same value read the other way, and
+          wrong for this card twice over. Stars, 3 star and Pours are all things
+          the player has *done*; a frontier is where they *are*, and it made the
+          heading the odd one out on a card of achievements. It also claimed an
+          untouched mode was underway — Easy opened on `Level 1` with a flat bar
+          and three zeros beneath it, where `0 solved` is simply true.
+
+          "Solved", not "stages". A stage in this app is a page of levels in
+          `StagesScreen`, and the nav bar spends the word on that; borrowing it
+          here for a single level would make one term mean two things.
+        */}
+        <Text style={styles.modeCount}>{totals.solved} solved</Text>
       </View>
 
+      {/*
+        The bar measures the block of ten, not the whole mode.
+
+        Driven by `solved / reached` it was `n / n+1`, so it rendered 75% on
+        level 4 and 99% on level 100 — a bar that creeps toward full as you play
+        and tells a player barely started that they have nearly finished. The
+        one job a progress bar has, done backwards.
+
+        A block of ten is a real target with a reward attached — `paidBlocks`
+        and `milestoneBonus` already work in exactly these units — and it
+        resets, so it still means something at level 400. `solved % MILESTONE_SIZE`
+        is the count inside the current block, and it correctly reads zero on the
+        level that opens a new one.
+      */}
       <View style={styles.bar}>
         <View
           style={[
             styles.barFill,
             {
               // `percentWidth` guards the zero total that would render `NaN%`.
-              width: percentWidth(totals.solved, totals.reached),
+              width: percentWidth(totals.solved % MILESTONE_SIZE, MILESTONE_SIZE),
               backgroundColor: info.accent,
             },
           ]}

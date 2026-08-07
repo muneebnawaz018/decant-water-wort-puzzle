@@ -124,6 +124,60 @@ describe('scale', () => {
       expect(columnsFor(200, 300, 14, 4)).toBe(4);
     });
   });
+
+  describe('v() compresses vertical rhythm on short screens only', () => {
+    // The counterpart to "phones are untouched": `v()` is allowed to differ
+    // between phones — that is its whole reason to exist — so the guarantee it
+    // has to keep instead is that it never *grows* anything.
+    it.each([
+      ['iPhone 17 Pro', IPHONE_17],
+      ['Pixel 8', PIXEL_8],
+    ])('leaves a tall phone alone on %s', (_name, [width, height]) => {
+      const { s, v } = loadScaleFor(width, height);
+
+      for (const value of [6, 8, 12, 20, 24, 28, 150]) {
+        expect(v(value)).toBe(s(value));
+      }
+    });
+
+    it('shrinks on a short phone', () => {
+      const { v } = loadScaleFor(...IPHONE_SE);
+
+      expect(v(150)).toBeLessThan(150);
+      expect(v(24)).toBeLessThan(24);
+    });
+
+    it('never falls below four-fifths, however short the screen', () => {
+      // Past this the gaps stop reading as gaps and separate blocks merge.
+      const { v } = loadScaleFor(320, 480);
+
+      expect(v(100)).toBeGreaterThanOrEqual(80);
+    });
+
+    it('never grows a value', () => {
+      const devices: ReadonlyArray<readonly [number, number]> = [
+        IPHONE_17,
+        IPHONE_SE,
+        PIXEL_8,
+        IPAD_MINI,
+        IPAD_PRO,
+      ];
+
+      for (const [width, height] of devices) {
+        const { s, v } = loadScaleFor(width, height);
+
+        expect(v(100)).toBeLessThanOrEqual(s(100));
+      }
+    });
+
+    it('applies the tablet factor once, not twice', () => {
+      // `v()` calls `s()` internally. Passing it an already-scaled token would
+      // square the factor, which is a silent 2x on an iPad.
+      const { s, v } = loadScaleFor(...IPAD_PRO);
+
+      expect(v(24)).toBe(s(24));
+    });
+  });
 });
 
 describe('the splash vial is not scaled', () => {

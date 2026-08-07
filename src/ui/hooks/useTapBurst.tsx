@@ -92,7 +92,20 @@ export function useTapBurst(tone: BurstTone = 'light'): TapBurst {
         autoPlay={false}
         loop={false}
         onAnimationFinish={clear}
-        resizeMode="cover"
+        /**
+         * `contain`, not `cover`.
+         *
+         * The rings expand to the full width of their 300×300 canvas. Under
+         * `cover` the composition is scaled to fill the button's longer axis,
+         * so on any face that is not square the ring runs off the short one —
+         * and `styles.burst` clips it there. What you see is not a ring at all
+         * but the clip: four straight edges growing outward, a rectangle.
+         *
+         * `contain` fits the whole canvas inside the face, so the ring never
+         * reaches an edge and nothing is cut. It plays smaller on a wide
+         * button, which is the right trade — a burst that reads as a burst.
+         */
+        resizeMode="contain"
         style={styles.fill}
       />
     </View>

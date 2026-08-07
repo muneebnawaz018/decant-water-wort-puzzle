@@ -81,6 +81,54 @@ export const s = (value: number): number =>
   isTablet ? PixelRatio.roundToNearestPixel(value * SCALE) : value;
 
 /**
+ * Logical height of the phone the design was drawn against — the partner to
+ * `BASELINE_WIDTH`, same device.
+ */
+const BASELINE_HEIGHT = 844;
+
+/**
+ * Floor on the vertical multiplier.
+ *
+ * A gap can compress a long way before it stops reading as a gap, but not
+ * forever — below about four-fifths the rhythm collapses and blocks that were
+ * distinct start to look like one. Screens shorter than ~675dp get this rather
+ * than a true ratio, which means the very smallest phones still overflow a
+ * little. That is the right trade: a cramped screen is legible, a squashed one
+ * is not.
+ */
+const MIN_VERTICAL = 0.8;
+
+/**
+ * The multiplier `v()` applies. Never above 1.
+ *
+ * `s()` is about *width*, and it is identity on every phone by design — a phone
+ * build has to render the styles this project already shipped. That leaves
+ * height unhandled, and height is where phones actually differ: a 932dp iPhone
+ * and a 780dp Android run the same fixed dp down a column that is 150dp
+ * shorter, so the same layout is comfortable on one and overflowing on the
+ * other.
+ *
+ * Capped at 1 rather than allowed to grow, for two reasons. Growing would
+ * change every screen already signed off on a tall phone, and slack on a tall
+ * screen is not a problem worth solving — the layout pools it at the bottom
+ * where it reads as breathing room.
+ */
+const VERTICAL = isTablet
+  ? 1
+  : Math.min(1, Math.max(MIN_VERTICAL, window.height / BASELINE_HEIGHT));
+
+/**
+ * Scale a vertical rhythm value — a gap, a block height, a margin down the page.
+ *
+ * For the spaces *between* things, not the things themselves. Type stays at
+ * `s()`: a 10pt label shrunk 20% is a 8pt label, which is a legibility bug
+ * dressed up as a layout fix. Tap targets stay too, for the same reason in
+ * reverse — 44pt is a finger, and fingers do not scale with the phone.
+ */
+export const v = (value: number): number =>
+  VERTICAL === 1 ? s(value) : PixelRatio.roundToNearestPixel(s(value) * VERTICAL);
+
+/**
  * How many columns a grid of `min`-wide tiles should use at the current width.
  *
  * The stage grid was a hardcoded `4`, which on an iPad produced 230dp tiles

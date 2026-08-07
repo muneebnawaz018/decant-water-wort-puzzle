@@ -22,24 +22,28 @@ export const LOW_LEVEL = 0.2;
  */
 export type PowerSource = 'battery' | 'plugged' | 'unknown';
 
-export interface Band {
-  /** Where the band starts, as a share of the tube's height from the top. */
-  top: number;
+export interface Charge {
+  /** How many cells are lit, 0..`total`. */
+  filled: number;
   colour: string;
 }
 
+/** Cells in the mark. Five, like every battery glyph people already read. */
+export const CELLS = 5;
+
 /**
- * The brand mark: two stacked bands, the shape the launcher icon draws.
+ * A full cell stack, in the same green a healthy battery draws.
  *
  * What the drawer shows when there is no reading — an iOS simulator, a device
- * that does not report, or the first frame before the first read resolves. It
- * is deliberately the identity rather than an empty tube or a spinner: a mark
- * that cannot show a level should look like a logo, not like a broken gauge.
+ * that does not report, or the first frame before the first read resolves.
+ *
+ * It was the brand's two-colour stack first, on the theory that a mark unable
+ * to show a level should look like a logo rather than a broken gauge. In the
+ * hand it reads as a *reading*: bands at fixed heights look like a battery at
+ * some strange level in strange colours, and nothing on screen says otherwise.
+ * Full and green is the one fallback that cannot be misread as bad news.
  */
-const BRAND: readonly Band[] = [
-  { top: 0.5, colour: colours.plum },
-  { top: 0.75, colour: colours.aqua },
-];
+const FALLBACK: Charge = { filled: CELLS, colour: colours.accent };
 
 /**
  * A reading the platform actually gave us.
@@ -53,29 +57,56 @@ export function isKnownLevel(level: number): boolean {
 }
 
 /**
- * The liquid, for a given charge.
+ * The lit cells, for a given charge.
  *
- * One band, not two. The brand mark stacks colours because it has to say
- * "sorted colour"; a gauge has to say one number, and a second band would be
- * read as part of the level.
+ * Cells rather than a continuous column, and the reason is legibility at the
+ * size this is drawn. A 36dp bar with a moving surface asks the eye to measure
+ * a height; five blocks ask it to count, and counting to five is instant and
+ * exact where estimating a fraction is neither.
  *
- * Colour carries the state that the height cannot: green while it is filling
- * from the wall, red when it is nearly out, and the app's own aqua the rest of
- * the time. `charging` wins over `low`, because a phone on 5% and climbing is
- * not the thing a warning colour is for.
+ * Each block owns a fifth of the range, and a block lights the moment its slice
+ * is entered — 81% and 100% both show five, 41% and 60% both show three:
+ *
+ *     0%        empty
+ *     1-20%     one block
+ *     21-40%    two
+ *     41-60%    three
+ *     61-80%    four
+ *     81-100%   five
+ *
+ * `ceil`, so the count answers "how much is left" rather than "how much is
+ * certainly left". Rounding was tried and puts 90% on five *and* 81% on four,
+ * which makes the boundaries land at 10, 30, 50 — halfway through each block's
+ * own slice, and impossible to explain to anyone reading the glyph. Flooring is
+ * worse: a full battery would need exactly 100.0% to show its last block.
+ *
+ * Anything above zero keeps a block, which `ceil` gives for free: a phone with
+ * 3% left shows the red block it is warning about, where an empty outline would
+ * say "no reading" — a different thing entirely.
+ *
+ * Green, and red when it is nearly out. Those are the two colours a battery is
+ * read in everywhere else on the phone, and a gauge is not the place to be
+ * inventive — the status bar two inches above this one uses exactly them.
+ *
+ * The healthy colour was the app's aqua at first, to tie the mark to the brand.
+ * It reads as blue on a device, and blue on a battery means nothing to anyone;
+ * worse, it is the one part of this mark carrying information that has to land
+ * without a caption. Green is not decoration here, it is the label.
+ *
+ * Plugged in draws the same green rather than a third colour. It is not a
+ * warning and the level is not falling, which is all the colour has to say —
+ * and `low` never overrides it, because a phone on 5% and climbing is not what
+ * a warning colour is for.
  */
-export function bandsFor(level: number | null, source: PowerSource): readonly Band[] {
-  if (level === null || !isKnownLevel(level)) return BRAND;
+export function chargeFor(level: number | null, source: PowerSource): Charge {
+  if (level === null || !isKnownLevel(level)) return FALLBACK;
 
   const colour =
-    source === 'plugged'
-      ? colours.accent
-      : level <= LOW_LEVEL
-        ? colours.coral
-        : colours.aqua;
+    source !== 'plugged' && level <= LOW_LEVEL ? colours.coral : colours.accent;
 
-  // `top` is measured from the top of the tube, so a full battery starts at 0.
-  return [{ top: 1 - level, colour }];
+  const filled = Math.ceil(level * CELLS);
+
+  return { filled, colour };
 }
 
 /**
