@@ -7,12 +7,12 @@ reload will not pick it up.
 
 ## Files
 
-| File            | Where it plays                 | Notes                    |
-| --------------- | ------------------------------ | ------------------------ |
-| `win.json`      | The win card, behind the stars | Placeholder. Replace it. |
-| `tap.json`      | Press burst, on dark buttons   | Placeholder.             |
-| `tap-dark.json` | The same, on lit gold faces    | Placeholder.             |
-| `clock.json`    | Daily's countdown button       | LottieFiles, recoloured. |
+| File            | Where it plays                      | Notes                    |
+| --------------- | ----------------------------------- | ------------------------ |
+| `win.json`      | The win card, and the reward dialog | Generated — see below.   |
+| `tap.json`      | Press burst, on dark buttons        | Placeholder.             |
+| `tap-dark.json` | The same, on lit gold faces         | Placeholder.             |
+| `clock.json`    | Daily's countdown button            | LottieFiles, recoloured. |
 
 `clock.json` came from LottieFiles as a black-and-white dial and was recoloured
 to the palette before being committed — gold edge and ticks, pale gold hands, a
@@ -20,10 +20,22 @@ dark face. The recolour is baked into the file rather than applied at runtime
 through `colorFilters`, which matches layers by name and is not equally
 supported on both platforms.
 
-`win.json` is a hand-written stand-in — three gold dots that expand and fade. It
-exists so the integration compiles and the dependency is not dead code, not
-because it looks like anything. Drop a real export over it and nothing else has
-to change.
+`win.json` is **generated**, not authored: run `python3 script/make-lottie.py`
+to rebuild it, and commit both the script and the JSON. It draws 46 confetti
+scraps on ballistic arcs plus a gold ring pushing out of the centre, in the
+palette's own colours.
+
+It replaced a hand-written stand-in — three gold dots that expanded and faded —
+which existed so the integration compiled, not because it looked like anything.
+On a device the reward dialog read as a plain modal, because it was one.
+
+Generated for the same reason the app icons and the splash are: a committed
+binary nobody can regenerate drifts from the palette the moment a colour moves.
+The seed is fixed, so a rerun is byte-identical and a regenerated file is not a
+diff nobody can review. Confetti is also the one celebration shape that survives
+being generated — many simple pieces under one physical rule, so it is
+arithmetic rather than draughtsmanship. A drawn flourish would still need a
+hand, and a real export can still be dropped over this.
 
 ## Before you commit a downloaded file
 

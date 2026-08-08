@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 import Animated, {
   cancelAnimation,
@@ -12,7 +12,10 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { EARNINGS } from '@/game/economy';
+import { useEconomyStore } from '@/state/economyStore';
 import { useGameStore } from '@/state/gameStore';
+import { overlay } from '@/state/overlayStore';
 import { apothecary } from '@/theme/apothecary';
 import { colours, ui } from '@/theme/colors';
 import { s } from '@/theme/scale';
@@ -68,6 +71,7 @@ export const CompleteScreen = memo(function CompleteScreen({
 }: CompleteScreenProps) {
   const padding = useScreenPadding();
   const level = useGameStore((state) => state.level);
+  const bonus = useGameStore((state) => state.bonus);
   const moves = useGameStore((state) => state.history.length);
   const stars = useGameStore((state) => state.earned);
   // What the run actually paid, not what its stars are worth: a replay that
@@ -75,6 +79,38 @@ export const CompleteScreen = memo(function CompleteScreen({
   // a payout that never landed is worse than announcing none.
   const reward = useGameStore((state) => state.earnedCoins);
   const rewardDelay = STAR_START + stars * STAR_DELAY + 150;
+
+  /**
+   * Whether the ad bonus has been taken for this run.
+   *
+   * Local state rather than a store field, and that is the right scope: the
+   * offer belongs to the card that is on screen. Leaving the screen ends the
+   * run, and the next one arrives with a fresh card and a fresh offer.
+   *
+   * The button is disabled afterwards rather than hidden. A control that
+   * vanishes under the finger moves everything beside it, and this row is two
+   * buttons wide.
+   */
+  const [doubled, setDoubled] = useState(false);
+
+  /**
+   * Pay the bonus. **The ad is not wired** — spec §10 puts the SDK in phase 2,
+   * so this pays outright rather than refusing, the same trade the daily
+   * reward's offer makes.
+   *
+   * When the SDK lands: show the ad, and move this into its completion
+   * callback. Nothing else has to change — the coins are already paid
+   * separately from the level's own payout, so a failed or skipped ad simply
+   * leaves the run's earnings as they were.
+   */
+  const double = useCallback(() => {
+    if (doubled || reward <= 0) return;
+    setDoubled(true);
+    // `- 1` because the run already paid one share. Doubling adds the
+    // difference, not the whole amount again.
+    useEconomyStore.getState().add(reward * (EARNINGS.adMultiplier - 1));
+    overlay.toast(`Doubled · +${reward * (EARNINGS.adMultiplier - 1)} coins`);
+  }, [doubled, reward]);
 
   return (
     <View style={[styles.root, padding.frame]}>
@@ -168,12 +204,20 @@ export const CompleteScreen = memo(function CompleteScreen({
             style={styles.next}
             entering={FadeIn.duration(500).delay(rewardDelay + 200)}
           >
+            {/*
+              The bonus puzzle has no next level, and "Level 20676" is what
+              `level + 1` prints there — the day index plus one. It is also
+              once a day, so there is nothing to advance *to*; the button goes
+              home instead, which is where the player was headed anyway.
+            */}
             <GlossButton
-              label={`Level ${level + 1}`}
+              label={bonus ? 'Done' : `Level ${level + 1}`}
               variant="primary"
               size="dialog"
-              trailing={<Icon name="play" size={s(15)} color={ui.onGold} />}
-              onPress={onNext}
+              trailing={
+                <Icon name={bonus ? 'check' : 'play'} size={s(15)} color={ui.onGold} />
+              }
+              onPress={bonus ? onHome : onNext}
             />
           </Animated.View>
 
@@ -191,14 +235,44 @@ export const CompleteScreen = memo(function CompleteScreen({
               onPress={onReplay}
               style={styles.secondaryButton}
             />
-            <GlossButton
-              label="Home"
-              variant="ghost"
-              size="dialog"
-              trailing={<Icon name="home" size={s(15)} color={apothecary.goldLight} />}
-              onPress={onHome}
-              style={styles.secondaryButton}
-            />
+            {/*
+              Doubling the payout, where Home used to be.
+
+              Home was the third way to reach a screen the nav bar already
+              carries — the bar shows on this screen — so the slot was spending
+              the win moment on navigation the player has two other routes to.
+              What belongs here is the offer, and this is the moment for it:
+              the coins have just landed and the number is still on screen.
+
+              Named for the outcome rather than the price — "Make it 2X", not
+              "Watch ad". It shares a row with Again, so each button gets about
+              half the card, and the longer wording wrapped to two lines and
+              left the pair at different heights.
+
+              Only when there is something to double. A replay that matched a
+              previous result pays nothing, and "2X of nothing" is a button
+              that takes a press and changes no number.
+            */}
+            {reward > 0 ? (
+              <GlossButton
+                label={`Make it ${EARNINGS.adMultiplier}X`}
+                variant="primary"
+                size="dialog"
+                trailing={<Icon name="video" size={s(15)} color={ui.onGold} />}
+                onPress={double}
+                disabled={doubled}
+                style={styles.secondaryButton}
+              />
+            ) : (
+              <GlossButton
+                label="Home"
+                variant="ghost"
+                size="dialog"
+                trailing={<Icon name="home" size={s(15)} color={apothecary.goldLight} />}
+                onPress={onHome}
+                style={styles.secondaryButton}
+              />
+            )}
           </Animated.View>
         </Panel>
       </Animated.View>

@@ -55,6 +55,16 @@ interface RowProps {
    * itself about where the press leads.
    */
   chevron?: boolean;
+  /**
+   * Dim the row: it is reporting a state rather than offering an action.
+   *
+   * Not the same as having no `onPress`. A row with no handler is often still
+   * live information — a value, a badge, a switch someone else owns — and
+   * dimming every one of those would grey out half the settings screen. This is
+   * for the narrower case where the row *was* an action and is spent: today's
+   * bonus puzzle, once it has been played.
+   */
+  spent?: boolean;
 }
 
 /** Stable no-op, so a row without an action still gets one hook call. */
@@ -68,6 +78,7 @@ export const SettingRow = memo(function SettingRow({
   onPress,
   stacked = false,
   chevron = true,
+  spent = false,
 }: RowProps) {
   // Called unconditionally — `onPress` is optional and a hook cannot be. The
   // wrapped handler is only reachable through the `Pressable` below, which is
@@ -76,7 +87,7 @@ export const SettingRow = memo(function SettingRow({
   const tap = useTapScale();
 
   const body = (
-    <View style={[styles.row, divider && styles.divider]}>
+    <View style={[styles.row, divider && styles.divider, spent && styles.spent]}>
       <Animated.View style={[styles.rowIcon, tap.style]}>
         <Icon name={icon} size={s(18)} color={apothecary.goldLight} />
       </Animated.View>

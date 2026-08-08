@@ -22,6 +22,32 @@ export const styles = StyleSheet.create({
   // on a tablet sits in the middle of the screen with type that has grown
   // around it, which reads as a phone dialog someone forgot to finish.
   cardSlot: { width: '100%', maxWidth: s(300) },
+  /**
+   * The celebration's layer: the whole screen, above everything, inert.
+   *
+   * Full-bleed rather than boxed around a card. Confined, confetti reads as a
+   * texture on a panel — it needs somewhere to fall or it is a pattern. It also
+   * carries no scrim of its own: the burst is the only thing on screen at that
+   * moment, and dimming the page behind it would make the reward feel like an
+   * interruption rather than a payout.
+   *
+   * **Above the modal's scrim, which is what the `zIndex` is for.** Rendering
+   * the burst last is not enough: paint order only decides between siblings
+   * that have no `zIndex`, and the scrim has one. So the confetti landed behind
+   * the dialog it was celebrating — visible around the edges of the card and
+   * nowhere near the thing the player had just tapped.
+   *
+   * It has to stay ahead of `scrim`. The two numbers are a pair; moving one
+   * without the other puts the burst back underneath.
+   */
+  celebration: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 30,
+  },
   card: { padding: s(24), paddingBottom: s(18), alignItems: 'center' },
   title: {
     fontFamily: POPPINS.semibold,

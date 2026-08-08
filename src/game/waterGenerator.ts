@@ -18,6 +18,30 @@ export interface AcceptanceOptions {
   minFragmentation?: number;
   /** Tubes allowed to start already finished. Doc §5 allows one freebie. */
   maxSolvedTubes?: number;
+  /**
+   * Tubes allowed to start one lift from finished.
+   *
+   * A full-height run of one colour under a single foreign segment. Doc §5 has
+   * no word for these and the gate could not see them: `isTubeComplete` is
+   * false, so a board of five of them reported `solvedTubes: 0` and passed.
+   * They are not "nearly solved" in the sense of being a bit easier — they are
+   * *done*, one obvious pour each, and a board carrying five reads as half
+   * already played before the player has touched it.
+   *
+   * Reverse-generation produces them by construction, which is why there are so
+   * many: an un-pour lifts a whole run only when the tube empties, so the
+   * common shape it leaves behind is a full run with one segment dropped on
+   * top. Measured at capacity 5 with 12 colours the median board has five, and
+   * a longer scramble does not help — 400 steps gives the same distribution as
+   * 130, because each extra step is as likely to cap a tube as to uncap one.
+   *
+   * **Unbounded by default, deliberately.** Every generated level is rebuilt
+   * from its seed and nothing about a board is stored, so tightening this gate
+   * would change which attempt is accepted and repoint every player's progress
+   * at different puzzles. Boards that are *not* levels — the daily bonus — have
+   * no such history and set it.
+   */
+  maxCappedTubes?: number;
   /** Node ceiling for the solvability check. */
   nodeBudget?: number;
 }
@@ -31,6 +55,23 @@ export interface GenerateOptions extends AcceptanceOptions {
    * board — the first board over the bar is usually only just over it.
    */
   sampleSize?: number;
+  /**
+   * Board shape, overriding the level curve.
+   *
+   * For boards that are not a level: the daily bonus puzzle is one board a day
+   * at a fixed, hard shape, and it has no place on a curve that exists to ramp
+   * a player up over hundreds of levels. Everything else is unchanged — the
+   * same reverse-generation, the same acceptance gate, the same solvability
+   * guarantee — so a board built this way is as trustworthy as any other.
+   */
+  params?: LevelParams;
+  /**
+   * Seed, overriding `seedForLevel`.
+   *
+   * Same reason. A bonus board is keyed by the day rather than by a level
+   * number, and reusing the level seed would hand out level N's board.
+   */
+  seed?: number;
 }
 
 export interface AcceptanceReport {
@@ -39,12 +80,17 @@ export interface AcceptanceReport {
   lowerBound: number;
   fragmentation: number;
   solvedTubes: number;
+  /** Tubes one pour from finished — see `maxCappedTubes`. */
+  cappedTubes: number;
   reasons: string[];
 }
 
 const DEFAULTS: Required<Omit<AcceptanceOptions, 'minFragmentation'>> = {
   minMoves: 4,
   maxSolvedTubes: 1,
+  // See `maxCappedTubes`. Off for levels because the gate is part of the save
+  // format in practice — a stricter one repoints every board in the game.
+  maxCappedTubes: Infinity,
   nodeBudget: 200_000,
 };
 
@@ -62,6 +108,23 @@ const DEFAULTS: Required<Omit<AcceptanceOptions, 'minFragmentation'>> = {
  */
 function defaultMinFragmentation(capacity: number): number {
   return capacity >= 5 ? 0.5 : 0.6;
+}
+
+/**
+ * A tube one lift from finished: a full-height run of one colour, capped by at
+ * most one segment of another.
+ *
+ * `capacity - 1` rather than `capacity`, because the cap is what stops
+ * `isTubeComplete` from seeing it. A tube holding four 8s under a single 0 is
+ * one pour from done and reads, on screen, as already sorted.
+ */
+function isTubeCapped(tube: readonly Colour[], capacity: number): boolean {
+  if (tube.length < capacity - 1) return false;
+
+  const run = tube.slice(0, capacity - 1);
+  if (new Set(run).size !== 1) return false;
+  // A genuinely finished tube is `maxSolvedTubes`' business, not this one.
+  return tube.length !== capacity || tube[capacity - 1] !== run[0];
 }
 
 /** A solved board: one full tube per colour, plus the spare empties. */
@@ -162,11 +225,17 @@ export function isAcceptable(
   const solvedTubes = state.tubes.filter((tube) =>
     isTubeComplete(tube, state.capacity)
   ).length;
+  const cappedTubes = state.tubes.filter((tube) =>
+    isTubeCapped(tube, state.capacity)
+  ).length;
   const lowerBound = moveLowerBound(state);
   const spread = fragmentation(state);
 
   if (solvedTubes > config.maxSolvedTubes) {
     reasons.push(`${solvedTubes} tubes already solved`);
+  }
+  if (cappedTubes > config.maxCappedTubes) {
+    reasons.push(`${cappedTubes} tubes one pour from solved`);
   }
   if (lowerBound < config.minMoves) {
     reasons.push(`needs only ${lowerBound} moves`);
@@ -188,6 +257,7 @@ export function isAcceptable(
     lowerBound,
     fragmentation: spread,
     solvedTubes,
+    cappedTubes,
     reasons,
   };
 }
@@ -214,8 +284,8 @@ export function generateLevel(
 ): GeneratedLevel {
   const maxAttempts = options.maxAttempts ?? 40;
   const sampleSize = options.sampleSize ?? 8;
-  const params = paramsForLevel(level, difficulty);
-  const seed = seedForLevel(level, DIFFICULTY_SALT[difficulty]);
+  const params = options.params ?? paramsForLevel(level, difficulty);
+  const seed = options.seed ?? seedForLevel(level, DIFFICULTY_SALT[difficulty]);
 
   let bestAccepted: {
     state: WaterState;

@@ -1,4 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import LottieView from 'lottie-react-native';
 import { memo, useEffect } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, {
@@ -15,6 +16,18 @@ import { usePressBounce } from '../hooks/usePressBounce';
 import { useTapBurst } from '../hooks/useTapBurst';
 import { useTapHandler } from '../hooks/useTapHandler';
 import { styles } from './styles/ClaimButton.styles';
+
+/**
+ * The waiting mark: a vial filling a drop at a time.
+ *
+ * Required at module scope rather than inline, so Metro resolves it once — the
+ * same rule `CompleteScreen` and `useTapBurst` already follow.
+ *
+ * Generated, not authored: `python3 script/make-brew.py` redraws it from the
+ * palette. See that script for why this project generates its artwork.
+ */
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const BREW = require('../../../assets/lottie/brew.json');
 
 /**
  * Daily's claim control — the one button in the app with two jobs.
@@ -51,6 +64,7 @@ export const ClaimButton = memo(function ClaimButton({
   caption,
   onPress,
   waiting,
+  fill = false,
 }: {
   label: string;
   /** Small line above the label. Omitted when the button is ready to pay. */
@@ -58,6 +72,15 @@ export const ClaimButton = memo(function ClaimButton({
   onPress: () => void;
   /** Counting down. The button is live either way — it just cannot pay yet. */
   waiting: boolean;
+  /**
+   * Fill the slot it is placed in, rather than sizing to its own content.
+   *
+   * For the reward track's last row, where it sits beside day seven's tile and
+   * has to be the same height as it — a control that shrinks to its text leaves
+   * the row looking like a tile with a pill parked next to it. The height comes
+   * from the tile, so nothing here states one.
+   */
+  fill?: boolean;
 }) {
   const handlePress = useTapHandler(onPress);
   const bounce = usePressBounce();
@@ -99,6 +122,7 @@ export const ClaimButton = memo(function ClaimButton({
 
   return (
     <Pressable
+      style={fill ? styles.grow : undefined}
       onPress={handlePress}
       onPressIn={() => {
         bounce.onPressIn();
@@ -112,9 +136,20 @@ export const ClaimButton = memo(function ClaimButton({
       accessibilityState={{ disabled: waiting }}
     >
       <Animated.View
-        style={[waiting ? styles.restShadow : styles.readyShadow, breathing, bounce.style]}
+        style={[
+          waiting ? styles.restShadow : styles.readyShadow,
+          fill && styles.grow,
+          breathing,
+          bounce.style,
+        ]}
       >
-        <View style={[styles.face, waiting ? styles.restEdge : styles.readyEdge]}>
+        <View
+          style={[
+            styles.face,
+            waiting ? styles.restEdge : styles.readyEdge,
+            fill && styles.grow,
+          ]}
+        >
           <LinearGradient
             colors={waiting ? gradients.panel : ui.buttonFace}
             style={styles.fill}
@@ -122,31 +157,66 @@ export const ClaimButton = memo(function ClaimButton({
             {burst.node}
 
             {/*
-              One line, two sizes.
-              
-              A bare clock is ambiguous — session timer, cooldown, ad
-              countdown, no way to tell. The caption names what is being
-              counted; the numbers carry it. Nesting it inside the same `Text`
-              keeps them on one baseline, which stacked rows could not do: two
-              centred lines in a 50dp button read as two messages rather than
-              as a label and its value.
+              Waiting and ready are laid out differently, because they are
+              different things.
 
-              The caption is dropped once the reward is claimable, where the
-              label says the whole thing on its own.
+              Ready is one line: a label that says the whole thing. Waiting was
+              the same line with a caption spliced into it — `Next in 23:58:10`
+              — and it never balanced. Two short words carry no weight against
+              an eight-digit clock, and the obvious fixes both make it worse:
+              growing the words fights the number that is actually the value,
+              and shrinking the number is shrinking the thing people came to
+              read.
+
+              So the words leave the line. A mark takes the left, the clock
+              takes the rest, and the caption sits above it small — where a
+              caption belongs and where its length stops mattering.
+
+              The mark is a vial filling a drop at a time. It says *waiting* in
+              the game's own vocabulary rather than in English, which is the
+              other half of why the words could go: a countdown beside a
+              dripping vial does not need to be told what it is counting.
             */}
-            <Text style={[styles.label, waiting ? styles.restLabel : styles.readyLabel]}>
-              {caption ? (
-                <Text
-                  style={[
-                    styles.caption,
-                    waiting ? styles.restCaption : styles.readyCaption,
-                  ]}
-                >
-                  {caption}{' '}
-                </Text>
-              ) : null}
-              {label}
-            </Text>
+            {waiting ? (
+              <View style={styles.waitRow}>
+                {/*
+                  `autoPlay` and `loop`, and no ref. Unlike the tap burst this
+                  is not fired by a press — it runs for as long as the row is on
+                  screen, which is only while a reward is pending. Once the
+                  timer is up the whole branch unmounts and the player goes with
+                  it; a Lottie left mounted is a native view and a redraw target
+                  for as long as it exists.
+                */}
+                <LottieView
+                  source={BREW}
+                  autoPlay
+                  loop
+                  resizeMode="contain"
+                  style={styles.brew}
+                />
+                <View style={styles.waitText}>
+                  {caption ? <Text style={styles.waitCaption}>{caption}</Text> : null}
+                  <Text
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    style={[styles.label, styles.restLabel]}
+                  >
+                    {label}
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              /* One line, always. The control shares a row with day seven's
+                 tile, so a wrap would make it taller than the tile beside it
+                 and the last row would stop lining up with the two above. */
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                style={[styles.label, styles.readyLabel]}
+              >
+                {label}
+              </Text>
+            )}
           </LinearGradient>
         </View>
       </Animated.View>

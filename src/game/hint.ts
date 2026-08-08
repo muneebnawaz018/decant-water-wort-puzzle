@@ -1,5 +1,6 @@
 import type { PourMove, WaterState } from '@/core/types';
 import { solve } from '@/core/solver';
+import { applyPour } from '@/core/waterCore';
 
 /**
  * The pour a hint should point at, or null when the board cannot be won.
@@ -36,8 +37,14 @@ import { solve } from '@/core/solver';
  * which is the single most useful thing the button can say.
  */
 export type HintSearch =
-  /** A pour on a winning line from the position given. */
-  | { kind: 'move'; move: PourMove }
+  /**
+   * A pour on a winning line, and the rest of that line with it.
+   *
+   * `line` maps every position along the way to the move that leaves it, keyed
+   * by `positionKey`. The caller keeps it and answers from it, which is what
+   * makes consecutive hints agree with each other — see `suggestPour`.
+   */
+  | { kind: 'move'; move: PourMove; line: Record<string, PourMove> }
   /** The search finished and no winning line exists. Certain, not a guess. */
   | { kind: 'stuck' }
   /**
@@ -53,9 +60,36 @@ export type HintSearch =
 
 export function suggestPour(board: WaterState): HintSearch {
   const result = solve(board, { nodeBudget: HINT_NODE_BUDGET });
-  const move = result.moves?.[0];
-  if (move) return { kind: 'move', move };
-  return result.exhaustedBudget ? { kind: 'unsure' } : { kind: 'stuck' };
+  const first = result.moves?.[0];
+  if (!first) return result.exhaustedBudget ? { kind: 'unsure' } : { kind: 'stuck' };
+
+  /**
+   * The whole line, not just its head — and this is load-bearing.
+   *
+   * Returning only the first move meant every press ran its own search, and
+   * two searches from adjacent positions do not have to agree: `solve` is a
+   * depth-first walk that returns *a* winning line, not the shortest, so from
+   * P it would answer "4 → 5" and from the position that produces, "5 → 4".
+   * Both are genuinely on winning lines. Following them alternates forever.
+   *
+   * Measured on level 1,000,000: two of the three modes cycled inside four
+   * moves and never reached solved. With a paid hint that is a button charging
+   * for a loop, which is the worst version of the bug.
+   *
+   * Handing back the line fixes it by construction. The caller answers every
+   * position on it from the same walk, so the advice is one plan followed to
+   * the end rather than a fresh opinion each time. A player who ignores it and
+   * pours something else simply falls off the line, and the next press plans
+   * again from wherever they now are.
+   */
+  const line: Record<string, PourMove> = {};
+  let position = board;
+  for (const move of result.moves!) {
+    line[positionKey(position)] = move;
+    position = applyPour(position, move.from, move.to)!.state;
+  }
+
+  return { kind: 'move', move: first, line };
 }
 
 /**

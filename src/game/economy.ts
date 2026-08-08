@@ -169,6 +169,41 @@ export const EARNINGS = {
    * coming rather than offering it.
    */
   rewardedAd: 50,
+
+  /**
+   * What a rewarded ad multiplies a payout by.
+   *
+   * One number for every "watch for double" offer in the app — the daily
+   * reward's dialog and the win screen's — so the two cannot drift, and
+   * changing what an ad is worth is one edit rather than a hunt through two
+   * screens.
+   *
+   * A multiplier rather than a flat bonus, unlike `rewardedAd` above. Those are
+   * different offers: `rewardedAd` is a standalone watch that pays a fixed 50,
+   * while this doubles something the player has already earned, so it scales
+   * with how well they earned it. A flat bonus on a win screen would pay the
+   * same for a one-star scrape as for a three-star run, which is the opposite
+   * of what the star economy is for.
+   *
+   * **The ad SDK is phase 2 (spec §10).** Until it lands both offers pay
+   * outright rather than refusing — see the callers.
+   */
+  adMultiplier: 2,
+
+  /**
+   * The daily bonus puzzle, paid flat on completion.
+   *
+   * Flat rather than by stars, and that is the one place this game pays for
+   * finishing rather than for finishing well. The board is the hardest shape
+   * the generator can produce — twelve colours, one spare tube — so par on it
+   * is long and a star rating would mostly measure patience. It is also once a
+   * day, which caps it: no amount of grinding turns 120 into an income.
+   *
+   * Sized between a good level (60) and a milestone block (up to 180). Above a
+   * level because it is harder than any level; below a block because a block is
+   * ten levels of work.
+   */
+  bonusPuzzle: 120,
 } as const;
 
 /**

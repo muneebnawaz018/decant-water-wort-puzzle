@@ -114,7 +114,19 @@ export function Root() {
   // was opened from somewhere it was not.
   const playFromHome = useCallback(() => showGame('home'), [showGame]);
   const playFromStages = useCallback(() => showGame('stages'), [showGame]);
-  const playFromDaily = useCallback(() => showGame('daily'), [showGame]);
+  /**
+   * The bonus puzzle, which is a different board rather than a different route.
+   *
+   * `loadBonus` refuses when today's has already been played, and this respects
+   * that refusal rather than navigating anyway — the row that raises it is
+   * already unpressable in that state, so reaching here means the day turned
+   * between the render and the tap, and opening the board would show yesterday's
+   * position under a title that says today.
+   */
+  const playFromDaily = useCallback(() => {
+    if (!useGameStore.getState().loadBonus(Date.now())) return;
+    showGame('daily');
+  }, [showGame]);
 
   /** Both ways off the board confirm first once it has been played on. */
   const exitGame = useCallback(

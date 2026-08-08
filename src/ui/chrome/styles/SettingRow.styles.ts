@@ -26,6 +26,19 @@ export const styles = StyleSheet.create({
   },
   divider: { borderBottomWidth: 1, borderBottomColor: ui.divider },
   /**
+   * A row that is showing something rather than offering it.
+   *
+   * One opacity on the whole row instead of a muted colour per element. The
+   * icon is gold, the label is near-white and the trailing control is whatever
+   * the caller passed — dimming each in its own way is three chances to end up
+   * with a row that is half lit, and the caller's control cannot be reached
+   * from here at all.
+   *
+   * 0.45 rather than something subtler: this has to read as unavailable from
+   * arm's length, next to identical rows that are not.
+   */
+  spent: { opacity: 0.45 },
+  /**
    * A row whose control sits under its label rather than beside it.
    *
    * `paddingBottom` only — the label line above brings its own vertical

@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { memo, useCallback, useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { memo, useCallback, useEffect, type ReactNode } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -13,8 +13,7 @@ import Animated, {
 
 import { syncReminders } from '@/notifications/dailyReminder';
 import { DAILY_REWARDS, useEconomyStore } from '@/state/economyStore';
-import { overlay } from '@/state/overlayStore';
-import { apothecary } from '@/theme/apothecary';
+import { overlay, useOverlayStore } from '@/state/overlayStore';
 import { colours, gradients, ui } from '@/theme/colors';
 import { s } from '@/theme/scale';
 import { countdown, percentWidth, plural } from '@/utils';
@@ -22,30 +21,27 @@ import { ClaimButton } from './chrome/ClaimButton';
 import { Panel } from './chrome/Panel';
 import { ScrollPage } from './chrome/ScrollPage';
 import { SettingGroup, SettingRow } from './chrome/SettingRow';
+import { useBonusTimer } from './hooks/useBonusTimer';
 import { useClaimTimer } from './hooks/useClaimTimer';
+import { useTapBurst } from './hooks/useTapBurst';
+import { useTapHandler } from './hooks/useTapHandler';
+import { useTapScale } from './hooks/useTapScale';
 import { Icon } from './Icon';
-import { dayState } from './rewardTrack';
-import {
-  COIN_SIZE,
-  FLAME_SIZE,
-  GRAND_TINT,
-  styles,
-  TODAY_TINT,
-} from './styles/DailyScreen.styles';
+import { claimToast, dayState, offerMessage } from './rewardTrack';
+import { COIN_SIZE, FLAME_SIZE, styles, TODAY_TINT } from './styles/DailyScreen.styles';
 import { EARNINGS } from '@/game/economy';
 
 /**
- * Day seven, and the six that lead to it.
+ * What the week builds to, for the streak card's sentence.
  *
- * Split at the source rather than sliced at the callsite, so the grid and the
- * grand row cannot disagree about which day belongs where.
+ * The split that used to live here — six days and a finale — went with the
+ * grand row. The grid renders `DAILY_REWARDS` whole now, so there is nothing
+ * left for the two halves to disagree about.
  */
-const WEEK = DAILY_REWARDS.slice(0, -1);
 const FINALE = DAILY_REWARDS[DAILY_REWARDS.length - 1]!;
-const FINALE_INDEX = DAILY_REWARDS.length - 1;
 
-/** What the rewarded ad pays. From `economy.ts`, which Home's chip reads too. */
-const AD_REWARD = EARNINGS.rewardedAd;
+/** What the bonus puzzle pays. Flat — see `economy.ts` for why. */
+const BONUS_REWARD = EARNINGS.bonusPuzzle;
 
 /**
  * The streak card's second line.
@@ -83,16 +79,98 @@ export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScree
   const claimed = DAILY_REWARDS.length - claimsLeft;
 
   const claim = useCallback(() => {
-    // `claimDaily` already refuses early and pays 0, so the guard is the toast
-    // rather than the claim — the button stays pressable while it counts down
-    // so the press still answers, and a press that pays nothing must not say
-    // it paid something.
-    const paid = useEconomyStore.getState().claimDaily(Date.now());
-    if (paid > 0) overlay.toast(`+${paid} coins claimed`);
-    // The reminder is anchored to the claim, so a new claim moves it. Fire and
-    // forget: nothing on screen waits for the OS to accept a schedule.
-    void syncReminders();
-  }, []);
+    // Still counting down: nothing to offer, so no dialog. The press answers
+    // itself through the tile's own bounce and tick, and that is the whole
+    // response — a dialog offering coins it will not pay would be a lie.
+    if (waiting) return;
+
+    /*
+      The dialog is the offer; Collect is the payment.
+
+      `claimDaily` runs inside `onConfirm`, not here. Opened *after* paying,
+      the dialog was a receipt with one button that merely dismissed it — and
+      the celebration marked the dismissal, the least interesting press on the
+      screen. This way the sequence is the one the words promise: read what day
+      it is and what it pays, press Collect, the coins move, and the burst
+      lands on the moment they do.
+    */
+    overlay.modal({
+      // The day lives in the body now, where the sentence carries it.
+      title: 'Daily reward',
+      body: offerMessage(currentIndex, DAILY_REWARDS),
+      confirmLabel: 'Collect',
+      // No cancel — the scrim already dismisses, and "decline my coins" is not
+      // a choice worth a button. The left slot carries the doubling offer
+      // instead, which is a real second answer to the same question.
+      //
+      // "Make it 2X" rather than "Watch ad · 2X". The pair splits the card
+      // between them, so each button has about 110dp — and the longer wording
+      // wrapped to two lines there, which made the offer taller than the
+      // Collect beside it. It also says what the player *gets*; the ad is the
+      // price, and a button is better named for its outcome.
+      cancelLabel: null,
+      secondaryLabel: `Make it ${EARNINGS.adMultiplier}X`,
+      // The host leaves the card up; the burst plays over it and its finish
+      // closes it. Tied to the animation rather than a timeout, so the artwork
+      // can change length without a second number drifting out of step.
+      stayOpen: true,
+      onConfirm: () => {
+        // Collect can be pressed again while the burst runs — the card is
+        // still up. The coins moved on the first press; a second is a no-op
+        // rather than a double-pay or a stuttering replay.
+        if (useOverlayStore.getState().celebration) return;
+
+        useEconomyStore.getState().claimDaily(Date.now());
+        // The reminder is anchored to the claim, so a new claim moves it.
+        // Fire and forget: nothing on screen waits for the OS.
+        void syncReminders();
+
+        // Read the balance *after* paying, so the toast quotes the number the
+        // coin pill now shows rather than one derived from the reward.
+        const balance = useEconomyStore.getState().coins;
+
+        overlay.celebrate(() => {
+          overlay.closeModal();
+          // Raised on the burst's finish, not with it. The celebration layer is
+          // full-screen and drawn above the toast, so a toast shown at the same
+          // moment spends its whole life behind confetti.
+          overlay.toast(claimToast(DAILY_REWARDS[currentIndex]!, balance));
+        });
+      },
+      /**
+       * Double it — doc §8's highest-value rewarded slot.
+       *
+       * **The ad is not wired, and this pays anyway.** Spec §10 puts the SDK in
+       * phase 2; until it lands the choice is between a button that opens an
+       * offer and does nothing, and one that is generous early. The second
+       * keeps the whole flow — offer, payment, burst, toast, dismissal —
+       * exercisable now rather than after the SDK.
+       *
+       * When the SDK arrives this becomes: show the ad, pay the bonus from its
+       * completion callback. `claimDaily` stays where it is regardless — the
+       * base reward is owed either way, and an ad that fails to load or is
+       * skipped must not cost the player their daily claim.
+       */
+      onSecondary: () => {
+        if (useOverlayStore.getState().celebration) return;
+
+        // Read from what the claim returned rather than from the table, so the
+        // two cannot disagree about which day was paid. `- 1` because the
+        // claim already paid one share: doubling means adding the difference,
+        // not the whole amount again.
+        const paid = useEconomyStore.getState().claimDaily(Date.now());
+        useEconomyStore.getState().add(paid * (EARNINGS.adMultiplier - 1));
+        void syncReminders();
+
+        const balance = useEconomyStore.getState().coins;
+
+        overlay.celebrate(() => {
+          overlay.closeModal();
+          overlay.toast(claimToast(paid * EARNINGS.adMultiplier, balance));
+        });
+      },
+    });
+  }, [currentIndex, waiting]);
 
   return (
     <ScrollPage title="Rewards">
@@ -119,81 +197,84 @@ export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScree
 
       <Text style={styles.label}>7-day rewards</Text>
 
+      {/*
+        All seven days in one grid, and the claim control in the space day
+        seven leaves behind.
+
+        Day seven used to sit outside the track in a full-width card, on the
+        argument that the reward it pays is ten times day one and a square tile
+        says otherwise. What that actually produced was a week the player could
+        not read as a week: six tiles, then a different-shaped card, then a
+        third full-width bar for the timer — three blocks for one idea, and the
+        "DAY 7" tile everyone was looking for was missing from the row of days.
+
+        Seven into three leaves one tile on the last row and two slots spare,
+        which is exactly where the claim control belongs: it is what the seventh
+        row is *for*, and it costs the page a block rather than adding one.
+
+        The grand reward still reads as grand — the tile names 150 against
+        neighbours paying 10 to 75, and the number is the part that says so.
+      */}
       <View style={styles.track}>
-        {WEEK.map((amount, index) => (
+        {DAILY_REWARDS.map((amount, index) => (
           <DayTile
             key={index}
             day={index + 1}
             amount={amount}
             state={dayState(index, currentIndex, waiting)}
+            onClaim={waiting ? undefined : claim}
           />
         ))}
+
+        <View style={styles.claimSlot}>
+          <ClaimButton
+            label={waiting ? countdown(remaining) : `Claim ${reward} coins`}
+            caption={waiting ? 'Next in' : undefined}
+            onPress={claim}
+            waiting={waiting}
+            fill
+          />
+        </View>
       </View>
-
-      {/*
-        Day seven, out of the grid.
-
-        It is ten times day one and the reason the streak is worth keeping. As a
-        seventh tile it was the same square as the 10-coin Monday, which is the
-        layout telling the player the opposite of what the numbers do.
-      */}
-      <Panel style={styles.grandBox} contentStyle={styles.grand} tint={GRAND_TINT}>
-        <View style={styles.grandCoin}>
-          <CoinFace />
-        </View>
-        <View style={styles.grandText}>
-          <Text style={styles.grandLabel}>DAY 7 · GRAND REWARD</Text>
-          <Text style={styles.grandAmount}>{FINALE} coins</Text>
-        </View>
-        <Icon
-          name={
-            dayState(FINALE_INDEX, currentIndex, waiting) === 'claimed' ? 'check' : 'lock'
-          }
-          size={s(18)}
-          color={apothecary.inkMuted}
-        />
-      </Panel>
-
-      <View style={styles.claim}>
-        <ClaimButton
-          label={waiting ? countdown(remaining) : `Claim ${reward} coins`}
-          caption={waiting ? 'Next in' : undefined}
-          onPress={claim}
-          waiting={waiting}
-        />
-      </View>
-
-      {/*
-        The rewarded slot, doc §8's highest-value one.
-
-        A card rather than a pressable: the ad SDK is spec §8's phase 2, so
-        there is nothing behind it to answer a tap. It says "soon" for the same
-        reason `SoonBadge` exists — what is shown but cannot yet be delivered
-        has to say which it is, or it reads as a broken button.
-      */}
-      <Panel style={styles.advertBox} contentStyle={styles.advert}>
-        <View style={styles.advertIcon}>
-          <LinearGradient colors={gradients.advert} style={StyleSheet.absoluteFill} />
-          <Icon name="video" size={s(21)} color={colours.white} />
-        </View>
-        <View style={styles.advertText}>
-          <Text style={styles.advertTitle}>Double today&apos;s reward</Text>
-          <Text style={styles.advertNote}>Watch a short ad · +{AD_REWARD} soon</Text>
-        </View>
-        <Text style={styles.advertBadge}>2×</Text>
-      </Panel>
 
       <View style={styles.spacer} />
 
       <SettingGroup title="Bonus">
-        <SettingRow
-          icon="book"
-          label="Today's brew — bonus puzzle"
-          divider={false}
-          onPress={onPlayBonus}
-        />
+        <BonusRow onPlay={onPlayBonus} />
       </SettingGroup>
     </ScrollPage>
+  );
+});
+
+/**
+ * Today's bonus puzzle.
+ *
+ * The row used to open whatever level `gameStore` was holding — a player on
+ * stage 3 pressed it and got stage 3, paying the same coins for the same board
+ * a second time. It now has its own board, its own seed and its own reward; see
+ * `game/dailyPuzzle.ts`.
+ *
+ * Two states and no third. Open, and it says what it pays. Played, and it
+ * counts down with **no `onPress` at all** rather than a greyed one — a
+ * `Pressable` that is simply absent cannot be tapped, cannot buzz, and drops
+ * the trailing chevron on its own, so nothing has to remember to turn three
+ * things off together.
+ */
+const BonusRow = memo(function BonusRow({ onPlay }: { onPlay: () => void }) {
+  const { available, remaining } = useBonusTimer();
+
+  return (
+    <SettingRow
+      icon="book"
+      label={available ? "Today's brew — bonus puzzle" : 'Today\u2019s brew — played'}
+      divider={false}
+      onPress={available ? onPlay : undefined}
+      spent={!available}
+    >
+      <Text style={available ? styles.bonusReward : styles.bonusWait}>
+        {available ? `+${BONUS_REWARD}` : countdown(remaining)}
+      </Text>
+    </SettingRow>
   );
 });
 
@@ -296,13 +377,23 @@ const DayTile = memo(function DayTile({
   day,
   amount,
   state,
+  onClaim,
 }: {
   day: number;
   amount: number;
   state: 'claimed' | 'today' | 'future';
+  /**
+   * Claims the day, when there is one to claim.
+   *
+   * Only ever passed to today's tile, and only while the reward is actually
+   * waiting to be taken — a tile that cannot pay must not answer a press.
+   */
+  onClaim?: () => void;
 }) {
-  return (
-    <View style={styles.daySlot}>
+  const claimable = state === 'today' && onClaim !== undefined;
+
+  const tile = (
+    <>
       <Panel
         contentStyle={[
           styles.day,
@@ -326,6 +417,63 @@ const DayTile = memo(function DayTile({
           <Icon name="check" size={s(11)} color={ui.onAccent} />
         </View>
       ) : null}
-    </View>
+    </>
+  );
+
+  if (!claimable) return <View style={styles.daySlot}>{tile}</View>;
+
+  // No `daySlot` wrapper here: `ClaimTile`'s own `Pressable` is the row child
+  // and carries the slot width. Nested, `daySlot`'s `flexBasis` would be read
+  // down the Pressable's column axis and become a *height*.
+  return <ClaimTile onClaim={onClaim}>{tile}</ClaimTile>;
+});
+
+/**
+ * Today's tile, as a second way to take the reward.
+ *
+ * The Claim button below is the one that says what you get, and it stays. This
+ * exists because the tile is the thing a player is already looking at — it is
+ * ringed gold, it names the amount, and until now pressing it did nothing,
+ * which reads as a dead control rather than as a label.
+ *
+ * The press scale and the burst are the same pair every button in this app
+ * uses, so the tile answers a tap exactly like a button does. It has to: a
+ * surface that pays coins and responds with nothing is indistinguishable from
+ * one that failed.
+ *
+ * Wrapped around the slot rather than built into `Panel`, so the burst clips to
+ * the card and the six tiles that are *not* claimable stay plain views with no
+ * Lottie player behind them — there is one player per mounted `useTapBurst`,
+ * and six idle ones on a screen is six native views for nothing.
+ */
+const ClaimTile = memo(function ClaimTile({
+  onClaim,
+  children,
+}: {
+  onClaim: () => void;
+  children: ReactNode;
+}) {
+  const handlePress = useTapHandler(onClaim);
+  const bounce = useTapScale();
+  // Gold rings would vanish into the tile's gold ring and its lit surface.
+  const burst = useTapBurst('light');
+
+  return (
+    <Pressable
+      onPress={handlePress}
+      onPressIn={() => {
+        bounce.onPressIn();
+        burst.fire();
+      }}
+      onPressOut={bounce.onPressOut}
+      accessibilityRole="button"
+      accessibilityLabel="Claim today's reward"
+      style={styles.claimTile}
+    >
+      <Animated.View style={[styles.claimTileFace, bounce.style]}>
+        {children}
+        {burst.node}
+      </Animated.View>
+    </Pressable>
   );
 });

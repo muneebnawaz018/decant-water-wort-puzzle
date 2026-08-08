@@ -1,7 +1,10 @@
 import { isSolved } from '@/core/waterCore';
 import { solve } from '@/core/solver';
+import { DIFFICULTIES } from '@/game/difficulty';
 import { FREE_HINTS, PRICES } from '@/game/economy';
 import { freeUndosFor } from '@/game/undoCost';
+import { EARNINGS } from '@/game/economy';
+import { useBonusStore } from '../bonusStore';
 import { useEconomyStore } from '../economyStore';
 import { useGameStore } from '../gameStore';
 
@@ -732,6 +735,38 @@ describe('the free-undo warning', () => {
 
 describe('solving a whole level on hints', () => {
   /**
+   * The guarantee the meter is sold on, at every size the game reaches.
+   *
+   * Hints used to be able to alternate forever: each press ran its own search,
+   * and `solve` returns *a* winning line rather than the shortest, so a search
+   * from one position could answer with the move undoing the last one. Level
+   * 1,000,000 cycled inside four moves in two of three modes — a paid button
+   * charging for a loop.
+   *
+   * Difficulty caps out (12 colours, capacity 5, one spare), so a level in the
+   * millions is the same *size* board as level 501 — which is exactly why the
+   * bug was about consistency between searches and not about scale.
+   */
+  it('never loops, at any level number', () => {
+    for (const mode of DIFFICULTIES) {
+      for (const level of [1_000_000, 1_000_001, 12_345_678]) {
+        useEconomyStore.setState({ coins: 100_000 });
+        useGameStore.setState({ difficulty: mode });
+        store().loadLevel(level);
+
+        // Comfortably above the longest solution the generator produces.
+        for (let step = 0; step < 400 && !store().solved; step++) {
+          const outcome = store().hint();
+          if (outcome.kind !== 'shown') break;
+          store().tapTube(outcome.move.to);
+        }
+
+        expect(store().solved).toBe(true);
+      }
+    }
+  });
+
+  /**
    * The promise the meter is sold on: a player who pays for every hint gets a
    * real path all the way to solved, never a fake pointer. Each hint is asked
    * against the *current* board, so this also proves the chain re-plans after
@@ -769,5 +804,73 @@ describe('solving a whole level on hints', () => {
     expect(store().solved).toBe(true);
     expect(paid).toBe((shown - FREE_HINTS) * PRICES.hint);
     expect(useEconomyStore.getState().coins).toBe(10_000 - paid);
+  });
+});
+
+describe('the daily bonus puzzle', () => {
+  const NOW = new Date('2026-08-08T12:00:00').getTime();
+
+  beforeEach(() => {
+    useBonusStore.setState({ solvedAt: null, solvedDay: null, total: 0 });
+  });
+
+  const solveBoard = () => {
+    for (const move of solve(store().board).moves!) {
+      store().tapTube(move.from);
+      store().tapTube(move.to);
+    }
+  };
+
+  it('loads a board that is not the level in progress', () => {
+    store().loadLevel(3);
+    const level = store().board.tubes.map((tube) => [...tube]);
+
+    expect(store().loadBonus(NOW)).toBe(true);
+    expect(store().bonus).toBe(true);
+    expect(store().board.tubes).not.toEqual(level);
+  });
+
+  it('refuses once the day has been played', () => {
+    store().loadBonus(NOW);
+    solveBoard();
+    expect(store().loadBonus(NOW)).toBe(false);
+  });
+
+  it('pays flat, and pays once', () => {
+    useEconomyStore.setState({ coins: 0 });
+    store().loadBonus(NOW);
+    solveBoard();
+
+    expect(useEconomyStore.getState().coins).toBe(EARNINGS.bonusPuzzle);
+    expect(store().earnedCoins).toBe(EARNINGS.bonusPuzzle);
+
+    // Redo re-enters the win path. It must not pay a second time.
+    store().undo();
+    store().redo();
+    expect(useEconomyStore.getState().coins).toBe(EARNINGS.bonusPuzzle);
+  });
+
+  /**
+   * The reason `bonus` exists as a flag at all. `level` holds the day index
+   * while a bonus board is loaded, so without the guard the win path files a
+   * completion of "level 20675" — unlocking a level nobody has reached, adding
+   * stars to a total that is meant to count levels, and possibly paying a
+   * milestone block.
+   */
+  it('writes nothing to progress', () => {
+    store().loadLevel(1);
+    const before = JSON.stringify(store().record);
+
+    store().loadBonus(NOW);
+    solveBoard();
+
+    expect(JSON.stringify(store().record)).toBe(before);
+  });
+
+  it('goes back to being a level once one is loaded', () => {
+    store().loadBonus(NOW);
+    store().loadLevel(2);
+    expect(store().bonus).toBe(false);
+    expect(store().level).toBe(2);
   });
 });

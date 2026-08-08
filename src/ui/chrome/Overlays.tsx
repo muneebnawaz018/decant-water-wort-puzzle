@@ -1,3 +1,4 @@
+import LottieView from 'lottie-react-native';
 import { memo, useCallback, useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -14,6 +15,14 @@ import { GlossButton } from './GlossButton';
 import { Panel } from './Panel';
 import { styles } from './styles/Overlays.styles';
 
+/**
+ * The same placeholder the win screen uses — three gold dots until there is
+ * real artwork. One file for both, so a celebration looks the same wherever it
+ * is earned; see `assets/lottie/README.md`.
+ */
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const WIN_BURST = require('../../../assets/lottie/win.json');
+
 /** Spec §4.10: toast auto-dismisses after ~1.8s. */
 const TOAST_MS = 1800;
 
@@ -28,6 +37,9 @@ export const Overlays = memo(function Overlays() {
     <>
       <ModalHost />
       <ToastHost />
+      {/* Last, so the burst is above both. It is the loudest thing the app
+          ever shows and it lasts 1.6 seconds. */}
+      <CelebrationHost />
     </>
   );
 });
@@ -49,12 +61,23 @@ const ModalHost = memo(function ModalHost() {
 
   const confirm = useCallback(() => {
     modal?.onConfirm?.();
-    closeModal();
+    // `stayOpen` hands the dismissal to whatever `onConfirm` started — the
+    // reward dialog stays up under its burst and closes when the burst does.
+    if (!modal?.stayOpen) closeModal();
+  }, [modal, closeModal]);
+
+  const secondary = useCallback(() => {
+    modal?.onSecondary?.();
+    if (!modal?.stayOpen) closeModal();
   }, [modal, closeModal]);
 
   if (!modal) return null;
 
-  const showCancel = modal.cancelLabel !== null;
+  // A secondary action takes the left slot outright: it is an offer, not a way
+  // out, and a dialog with Cancel, Watch ad and Collect gives three buttons to
+  // a question with two answers. The scrim still dismisses.
+  const showSecondary = modal.onSecondary !== undefined;
+  const showLeft = showSecondary || modal.cancelLabel !== null;
 
   return (
     <Animated.View
@@ -76,27 +99,79 @@ const ModalHost = memo(function ModalHost() {
             the largest element on screen. `compact` was the overcorrection, at
             34dp.
           */}
-          <View style={showCancel ? styles.buttons : styles.buttonsSingle}>
-            {showCancel ? (
+          <View style={showLeft ? styles.buttons : styles.buttonsSingle}>
+            {/*
+              Order depends on what the left slot holds.
+
+              Against a *cancel* the confirm sits right: the pair reads
+              "back out / go on", and go-on belongs at the end of that line.
+              Against an *offer* it does not. Both buttons pay, one pays more,
+              and the bigger of the two is what the row is steering towards —
+              so the offer takes the right and the plain confirm steps left.
+            */}
+            <GlossButton
+              label={modal.confirmLabel ?? 'OK'}
+              variant={showSecondary ? 'ghost' : 'primary'}
+              onPress={confirm}
+              size="dialog"
+              style={showLeft ? styles.button : styles.buttonSingle}
+            />
+            {showLeft ? (
               <GlossButton
-                label={modal.cancelLabel ?? 'Cancel'}
-                variant="ghost"
-                onPress={closeModal}
+                label={
+                  showSecondary
+                    ? (modal.secondaryLabel ?? 'More')
+                    : (modal.cancelLabel ?? 'Cancel')
+                }
+                variant={showSecondary ? 'primary' : 'ghost'}
+                onPress={showSecondary ? secondary : closeModal}
                 size="dialog"
                 style={styles.button}
               />
             ) : null}
-            <GlossButton
-              label={modal.confirmLabel ?? 'OK'}
-              variant="primary"
-              onPress={confirm}
-              size="dialog"
-              style={showCancel ? styles.button : styles.buttonSingle}
-            />
           </View>
         </Panel>
       </Animated.View>
     </Animated.View>
+  );
+});
+
+/**
+ * The reward burst, played on its own and *before* the dialog.
+ *
+ * It used to be a layer behind the modal, and the two fought: the card covers
+ * the middle of the screen, which is where the confetti comes from, and the
+ * player is asked to read a sentence through falling scraps. Sequenced instead
+ * — burst, then receipt — each one gets the screen to itself and the dialog
+ * arrives as the thing that summarises what just happened.
+ *
+ * Mounted only while it plays. A Lottie player left mounted is a native view
+ * and a redraw target for as long as it exists, and this one is on screen for
+ * a second and a half a day.
+ */
+const CelebrationHost = memo(function CelebrationHost() {
+  const celebration = useOverlayStore((state) => state.celebration);
+  const endCelebration = useOverlayStore((state) => state.endCelebration);
+
+  if (!celebration) return null;
+
+  return (
+    <View style={styles.celebration} pointerEvents="none">
+      <LottieView
+        // A nonce, not the content: two claims in a row are identical, and
+        // without this the second would resume the first rather than restart.
+        key={celebration.id}
+        source={WIN_BURST}
+        autoPlay
+        loop={false}
+        resizeMode="cover"
+        style={StyleSheet.absoluteFill}
+        // What raises the dialog. Tied to the animation rather than to a
+        // `setTimeout` matched to its length, which is a duration written down
+        // twice and free to drift the moment the artwork changes.
+        onAnimationFinish={endCelebration}
+      />
+    </View>
   );
 });
 

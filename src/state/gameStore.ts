@@ -4,11 +4,13 @@ import type { Colour, PourMove, WaterState } from '@/core/types';
 import { optimalMoves } from '@/core/solver';
 import { applyPour, canPour, isSolved } from '@/core/waterCore';
 import type { Difficulty } from '@/game/difficulty';
-import { FREE_HINTS, PRICES } from '@/game/economy';
-import { positionKey, suggestPour } from '@/game/hint';
+import { dayIndex, generateBonus } from '@/game/dailyPuzzle';
+import { EARNINGS, FREE_HINTS, PRICES } from '@/game/economy';
+import { positionKey, suggestPour, type HintSearch } from '@/game/hint';
 import { coinsForImprovement, milestoneBonus, starsFor } from '@/game/stars';
 import { forgetFrom, freeUndosFor, undoCharge, withUndoPaid } from '@/game/undoCost';
 import { generateLevel } from '@/game/waterGenerator';
+import { useBonusStore } from './bonusStore';
 import { useEconomyStore } from './economyStore';
 import { overlay } from './overlayStore';
 import {
@@ -79,6 +81,21 @@ export interface GameState {
   /** Whether the level's one spare vial has been taken. */
   extraTaken: boolean;
   /**
+   * Whether the board on screen is the daily bonus puzzle rather than a level.
+   *
+   * A flag on the same store rather than a second engine: the bonus board is
+   * played with the identical rules, controls, undo economy and renderer, and
+   * the only things that differ are where the board came from and what
+   * finishing it does. Duplicating `gameStore` to change two of those would
+   * mean every future rule landing in one copy.
+   *
+   * What it switches off is the progress record. A bonus board unlocks
+   * nothing, has no place in a star total and completes no milestone block —
+   * it is not a level, and `level` holds the day index while it is set, which
+   * would be a nonsense level number to write into progress.
+   */
+  bonus: boolean;
+  /**
    * Depths in `history` whose undo has already been paid for.
    *
    * Undo costs coins; redo does not. Taking a move back, putting it forward and
@@ -135,6 +152,22 @@ export interface GameState {
    * position in any order.
    */
   paidHints: string[];
+  /**
+   * The winning line the hints are following, as position → move.
+   *
+   * Consecutive hints have to agree, and independent searches do not: `solve`
+   * returns *a* winning line rather than the shortest, so a search from one
+   * position can answer with the move that undoes the last one. Following that
+   * alternates forever — measured, on real generated boards.
+   *
+   * So the first search plans the whole route and every position on it is
+   * answered from that plan. Falling off it (the player pours something else)
+   * simply misses, and the next press plans again from there.
+   *
+   * Not persisted: it is a cache, rebuildable in a few dozen nodes, and
+   * `paidHints` is the part that has to survive a relaunch.
+   */
+  hintLine: Record<string, PourMove>;
   record: ProgressByDifficulty;
 
   loadLevel: (level: number) => void;
@@ -158,6 +191,13 @@ export interface GameState {
   hint: () => HintOutcome;
   /** Adds one empty tube. Spec §10's rewarded slot; one per level. */
   addTube: () => boolean;
+  /**
+   * Loads today's bonus puzzle. Returns false when it has already been played.
+   *
+   * The gate is here rather than only on the screen so the board cannot be
+   * reached twice by any route.
+   */
+  loadBonus: (now: number) => boolean;
   nextLevel: () => void;
   setLocked: (locked: boolean) => void;
   /** Progress for the mode being played. */
@@ -325,7 +365,33 @@ export const useGameStore = create<GameState>((set, get) => {
     return markBlockPaid(record, mode, block);
   };
 
+  /**
+   * What finishing the daily bonus puzzle pays.
+   *
+   * Flat, and nothing is written to `progress` — the board is not a level, so
+   * it unlocks nothing and belongs in no star total. `bonusStore` holds the
+   * only record of it, which is also the cooldown.
+   *
+   * Ordered so the mark lands first: `complete` is idempotent within a day, so
+   * a second call cannot pay twice however the win path is re-entered — and a
+   * redo of the winning pour does re-enter it.
+   */
+  const payBonus = (): number => {
+    const store = useBonusStore.getState();
+    const now = Date.now();
+    if (!store.available(now) && store.solvedDay === dayIndex(now)) return 0;
+
+    store.complete(now);
+    useEconomyStore.getState().add(EARNINGS.bonusPuzzle);
+    return EARNINGS.bonusPuzzle;
+  };
+
   const persistSession = (): void => {
+    // The bonus board is never saved. `session.v1` is keyed by difficulty and
+    // level, and a bonus board has neither — restoring one would replay its
+    // moves onto that level's board. See `loadBonus`.
+    if (get().bonus) return;
+
     const {
       difficulty: mode,
       level,
@@ -367,6 +433,8 @@ export const useGameStore = create<GameState>((set, get) => {
     solved: false,
     locked: false,
     extraTaken: saved?.extraTaken === true && resumed !== null,
+    // Never restored. A bonus board in progress is not saved — see `loadBonus`.
+    bonus: false,
     // Only meaningful alongside the moves it refers to, so it is dropped with
     // them when a session fails to restore.
     paidUndos: resumed !== null ? (saved?.paidUndos ?? []) : [],
@@ -375,6 +443,7 @@ export const useGameStore = create<GameState>((set, get) => {
     hintMove: null,
     heldHint: null,
     paidHints: resumed !== null ? (saved?.paidHints ?? []) : [],
+    hintLine: {},
     record,
 
     progress: () => progressFor(get().record, get().difficulty),
@@ -403,10 +472,12 @@ export const useGameStore = create<GameState>((set, get) => {
         solved: false,
         locked: false,
         extraTaken: false,
+        bonus: false,
         hintsUsed: 0,
         hintMove: null,
         heldHint: null,
         paidHints: [],
+        hintLine: {},
         record: next,
       });
       refinePar(level, mode, generated.state);
@@ -439,10 +510,12 @@ export const useGameStore = create<GameState>((set, get) => {
         solved: false,
         locked: false,
         extraTaken: false,
+        bonus: false,
         hintsUsed: 0,
         hintMove: null,
         heldHint: null,
         paidHints: [],
+        hintLine: {},
       });
       refinePar(level, difficulty, generated.state);
     },
@@ -499,18 +572,25 @@ export const useGameStore = create<GameState>((set, get) => {
         const before = _progressFor(current.record, current.difficulty).stars[
           current.level
         ];
-        let next = nowSolved
-          ? recordCompletion(
-              current.record,
-              current.difficulty,
-              current.level,
-              moves,
-              stars
-            )
-          : current.record;
+        let next =
+          nowSolved && !current.bonus
+            ? recordCompletion(
+                current.record,
+                current.difficulty,
+                current.level,
+                moves,
+                stars
+              )
+            : current.record;
         if (nowSolved) {
-          next = payFor(next, current.difficulty, current.level, stars, before ?? 0);
-          saveProgress(next);
+          // The bonus board pays flat and writes nothing to progress. `payFor`
+          // would file it as a completion of whatever `level` happens to hold,
+          // which on a bonus board is the day index.
+          if (current.bonus) lastPayout = payBonus();
+          else {
+            next = payFor(next, current.difficulty, current.level, stars, before ?? 0);
+            saveProgress(next);
+          }
         }
 
         return {
@@ -624,18 +704,25 @@ export const useGameStore = create<GameState>((set, get) => {
         const before = _progressFor(current.record, current.difficulty).stars[
           current.level
         ];
-        let next = nowSolved
-          ? recordCompletion(
-              current.record,
-              current.difficulty,
-              current.level,
-              moves,
-              stars
-            )
-          : current.record;
+        let next =
+          nowSolved && !current.bonus
+            ? recordCompletion(
+                current.record,
+                current.difficulty,
+                current.level,
+                moves,
+                stars
+              )
+            : current.record;
         if (nowSolved) {
-          next = payFor(next, current.difficulty, current.level, stars, before ?? 0);
-          saveProgress(next);
+          // The bonus board pays flat and writes nothing to progress. `payFor`
+          // would file it as a completion of whatever `level` happens to hold,
+          // which on a bonus board is the day index.
+          if (current.bonus) lastPayout = payBonus();
+          else {
+            next = payFor(next, current.difficulty, current.level, stars, before ?? 0);
+            saveProgress(next);
+          }
         }
 
         return {
@@ -723,7 +810,17 @@ export const useGameStore = create<GameState>((set, get) => {
         return { kind: 'shown', move: heldHint, charged: 0 };
       }
 
-      const search = suggestPour(board);
+      /**
+       * The plan first, a fresh search only when it has nothing to say.
+       *
+       * A position already on the line is answered from it, which is what
+       * keeps consecutive hints consistent — and costs no search at all.
+       */
+      const key = positionKey(board);
+      const planned = get().hintLine[key];
+      const search: HintSearch = planned
+        ? { kind: 'move', move: planned, line: {} }
+        : suggestPour(board);
       if (search.kind !== 'move') return { kind: search.kind };
 
       /**
@@ -735,7 +832,6 @@ export const useGameStore = create<GameState>((set, get) => {
        * The solver is deterministic, so recomputing at a recorded position
        * always re-produces the move that was originally delivered.
        */
-      const key = positionKey(board);
       const alreadyDelivered = paidHints.includes(key);
       const price = alreadyDelivered || hintsUsed < FREE_HINTS ? 0 : PRICES.hint;
       if (price > 0 && !useEconomyStore.getState().spend(price)) {
@@ -753,6 +849,10 @@ export const useGameStore = create<GameState>((set, get) => {
         // when a position is answered for the first time.
         hintsUsed: alreadyDelivered ? hintsUsed : hintsUsed + 1,
         paidHints: alreadyDelivered ? paidHints : [...paidHints, key],
+        // Merged, not replaced: a re-plan after the player wandered off the
+        // old route still leaves the old route's answers valid, and undo can
+        // walk them back onto it.
+        hintLine: { ...get().hintLine, ...search.line },
       });
       persistSession();
       return { kind: 'shown', move: search.move, charged: price };
@@ -777,6 +877,55 @@ export const useGameStore = create<GameState>((set, get) => {
         heldHint: null,
       });
       persistSession();
+      return true;
+    },
+
+    /**
+     * Today's bonus puzzle — its own board, not the level in progress.
+     *
+     * The session is **cleared, not saved**, in both directions. Leaving a
+     * level to play the bonus drops that level's moves, and a bonus board in
+     * progress is not written anywhere: `session.v1` is keyed by difficulty and
+     * level, and a bonus board has neither. Restoring one under a level number
+     * would replay bonus moves onto that level's board, which the session's own
+     * legality check would then reject on every launch.
+     *
+     * `level` holds the day index while this is set. Nothing reads it as a
+     * level — `bonus` gates the progress write — and it is what makes the HUD
+     * and the seed agree about which board is on screen.
+     */
+    loadBonus: (now) => {
+      if (!useBonusStore.getState().available(now)) return false;
+
+      const day = dayIndex(now);
+      const generated = generateBonus(day);
+      clearSession();
+
+      set({
+        level: day,
+        bonus: true,
+        board: generated.state,
+        initial: generated.state,
+        par: generated.report.lowerBound,
+        earned: 0,
+        earnedCoins: 0,
+        history: [],
+        future: [],
+        paidUndos: [],
+        freeUndosUsed: 0,
+        selected: null,
+        solved: false,
+        locked: false,
+        extraTaken: false,
+        hintsUsed: 0,
+        hintMove: null,
+        heldHint: null,
+        paidHints: [],
+        hintLine: {},
+      });
+      // Par matters here more than anywhere: the board is the hardest shape the
+      // generator makes, so the bound it starts with is furthest from the truth.
+      refinePar(day, get().difficulty, generated.state);
       return true;
     },
 

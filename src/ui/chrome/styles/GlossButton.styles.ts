@@ -4,6 +4,15 @@ import { apothecary, HAIRLINE, SPACE } from '@/theme/apothecary';
 import { ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
 import { s } from '@/theme/scale';
+/**
+ * Half a dialog button's drawn height, so both variants come out as pills.
+ *
+ * A constant rather than a literal in three places: the ghost variant is a
+ * separate branch in `GlossButton` and shares none of the lit face's styles, so
+ * a hand-written radius there drifts the moment this one is changed.
+ */
+const DIALOG_RADIUS = s(21);
+
 export const styles = StyleSheet.create({
   shadow: {
     borderRadius: SPACE.buttonRadius,
@@ -86,12 +95,18 @@ export const styles = StyleSheet.create({
    * from outside — `flex: 1` for a pair, a `minWidth` floor for a lone one — so
    * it only decides the room a label longer than that floor gets, and editing
    * it looks like nothing happening. Width lives in `Overlays.styles.ts`.
+   *
+   * **Fully rounded, not a soft rectangle.** At 40dp tall a radius of half that
+   * is a pill, which is what every other small control in this app already is —
+   * the coin pill, the nav bar, the round board buttons. At 12 these were the
+   * only squared-off things on screen and read as a different design system
+   * wandering into the card.
    */
-  dialogFace: { borderRadius: s(12) },
+  dialogFace: { borderRadius: DIALOG_RADIUS },
   dialogFill: {
     paddingVertical: s(10),
     paddingHorizontal: s(16),
-    borderRadius: s(12) - HAIRLINE,
+    borderRadius: DIALOG_RADIUS - HAIRLINE,
   },
   compactFace: { borderRadius: s(11) },
   compactFill: {
@@ -202,7 +217,11 @@ export const styles = StyleSheet.create({
    * Each is a point over its primary counterpart because the ghost carries no
    * shadow — without that, the flat one reads as the smaller of the pair.
    */
-  dialogGhost: { paddingVertical: s(11), paddingHorizontal: s(16) },
+  dialogGhost: {
+    paddingVertical: s(11),
+    paddingHorizontal: s(16),
+    borderRadius: DIALOG_RADIUS,
+  },
   dialogGhostLabel: { fontSize: s(13.5) },
   compactGhost: { paddingVertical: s(10), paddingHorizontal: s(14) },
   smallGhostLabel: { fontSize: s(12.5) },

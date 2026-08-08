@@ -1,22 +1,22 @@
 import { StyleSheet } from 'react-native';
 
 import { apothecary, SPACE } from '@/theme/apothecary';
-import { alpha, colours, ui } from '@/theme/colors';
+import { alpha, ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
 import { s, WINDOW_WIDTH } from '@/theme/scale';
+import { text } from '@/theme/typography';
 import { section } from '@/ui/chrome/styles/section.styles';
 
 /**
  * Days across the reward track.
  *
- * Three, matching the stage grid. Six tiles divide by it exactly now that day
- * seven has a row of its own, so the week is two clean rows with nothing to pad
- * — the previous layout spent a `ORPHAN_SLOTS` computation on the remainder.
+ * Three, matching the stage grid. Seven tiles leave one on the last row and two
+ * slots spare, which the claim control fills — so the remainder is used rather
+ * than padded, and the page needs no separate block for the timer.
  */
 const DAY_COLUMNS = 3;
 export const FLAME_SIZE = s(26);
 export const COIN_SIZE = s(28);
-const GRAND_COIN = s(44);
 
 const GAP = s(10);
 
@@ -27,7 +27,7 @@ const GAP = s(10);
  * from the mockup's CSS a block at a time, and the result reads as uneven
  * because it is. Three spacings now, and each one means something:
  *
- * - `BLOCK` between blocks: streak, track, claim, advert, bonus.
+ * - `BLOCK` between blocks: streak, track, bonus.
  * - `GAP` within the track, where the tiles and day seven are one group.
  * - The 6 under a heading, from `section.title`, shared with every other screen.
  *
@@ -54,18 +54,30 @@ const ROW_WIDTH = WINDOW_WIDTH - SPACE.screen * 2;
 const ROUNDING_SLACK = 0.5;
 const SLOT = (ROW_WIDTH - GAP * (DAY_COLUMNS - 1) - ROUNDING_SLACK) / DAY_COLUMNS;
 const DAY_SLOT_WIDTH = `${(SLOT / ROW_WIDTH) * 100}%` as const;
+/**
+ * Two slots and the gap between them — the space day seven leaves on the last
+ * row, which the claim control fills.
+ *
+ * Derived rather than written as `66%`: the gap is in dp and the slots are a
+ * percentage, so two thirds of the row is not two slots plus a gap. Guessing it
+ * puts the control a few dp off the tile edges above, which is the kind of
+ * misalignment that reads as sloppy without being obvious enough to find.
+ */
+const CLAIM_SLOT_WIDTH = `${((SLOT * 2 + GAP) / ROW_WIDTH) * 100}%` as const;
 
 /**
- * The washes the two special cards carry, as `Panel`'s `tint` rather than as a
+ * The wash today's tile carries, as `Panel`'s `tint` rather than as a
  * `backgroundColor`.
  *
- * They were background colours in `contentStyle` and neither had ever rendered:
- * that style lands on `Panel`'s `LinearGradient`, which paints over its own
- * background. Today's tile was a plain card with a gold border and the grand row
- * was a plain card with a gold border, where the mockup gives both a lit surface.
+ * It was a background colour in `contentStyle` and had never rendered: that
+ * style lands on `Panel`'s `LinearGradient`, which paints over its own
+ * background. Today's tile was a plain card with a gold border where the
+ * mockup gives it a lit surface.
+ *
+ * `GRAND_TINT` went with the grand row — day seven is a tile like the rest now,
+ * and its 150 against neighbours paying 10 is what marks it out.
  */
 export const TODAY_TINT = alpha('gold', 0.12);
-export const GRAND_TINT = alpha('gold', 0.08);
 
 export const styles = StyleSheet.create({
   /**
@@ -149,7 +161,32 @@ export const styles = StyleSheet.create({
   label: { ...section.title, marginTop: BLOCK },
 
   track: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
+  /**
+   * The claim control, sharing the last row with day seven.
+   *
+   * `flexGrow: 0` alongside the explicit basis, for the reason `theme/grid.ts`
+   * records: an item with a width still grows into a row that has room, and
+   * this row has exactly one tile beside it.
+   */
+  claimSlot: { flexGrow: 0, flexBasis: CLAIM_SLOT_WIDTH },
   daySlot: { flexGrow: 0, flexBasis: DAY_SLOT_WIDTH },
+  /**
+   * The pressable wrapper around today's tile.
+   *
+   * It takes the slot's width itself, because the slot is now its child — a
+   * `Pressable` sized by its content would collapse to the tile's intrinsic
+   * width and the row would stop dividing into three.
+   */
+  claimTile: { flexGrow: 0, flexBasis: DAY_SLOT_WIDTH },
+  /**
+   * The scaled, clipped face.
+   *
+   * `overflow: 'hidden'` is what keeps the burst inside the card's corners —
+   * without it the rings spill out square, the same bug `ControlButton` and
+   * `ScreenHeader` both had to fix. The radius matches `Panel`'s own so the
+   * clip follows the card rather than cutting across it.
+   */
+  claimTileFace: { borderRadius: SPACE.cardRadius, overflow: 'hidden' },
   day: { alignItems: 'center', paddingVertical: s(12), paddingHorizontal: s(6) },
   /**
    * Claimed and future both dim, and they are different things.
@@ -224,39 +261,6 @@ export const styles = StyleSheet.create({
    * The same split `StatsScreen` already uses for its mode cards: `modeCardBox`
    * carries the margin, `modeCard` carries the padding.
    */
-  grandBox: { marginTop: s(10) },
-  grand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: s(14),
-    padding: s(14),
-    borderWidth: 1,
-    borderColor: alpha('gold', 0.45),
-  },
-  grandCoin: {
-    width: GRAND_COIN,
-    height: GRAND_COIN,
-    borderRadius: GRAND_COIN / 2,
-    overflow: 'hidden',
-  },
-  grandText: { flex: 1 },
-  grandLabel: {
-    fontFamily: POPPINS.bold,
-    fontSize: s(9),
-    letterSpacing: s(0.7),
-    color: apothecary.goldLight,
-    includeFontPadding: false,
-  },
-  grandAmount: {
-    fontFamily: POPPINS.bold,
-    fontSize: s(17),
-    color: apothecary.ink,
-    includeFontPadding: false,
-    marginTop: s(2),
-  },
-
-  claim: { marginTop: BLOCK },
-
   /**
    * The rewarded slot, doc §8's highest-value one.
    *
@@ -264,50 +268,24 @@ export const styles = StyleSheet.create({
    * that is not the game paying you — it is an offer — and the palette says so
    * before the label does.
    */
-  advertBox: { marginTop: BLOCK },
-  advert: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: s(14),
-    padding: s(14),
-    borderWidth: 1,
-    borderColor: alpha('blueberryLight', 0.45),
-  },
-  advertIcon: {
-    width: s(42),
-    height: s(42),
-    borderRadius: s(12),
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  advertText: { flex: 1 },
-  advertTitle: {
-    fontFamily: POPPINS.semibold,
-    fontSize: s(14),
-    color: apothecary.ink,
-    includeFontPadding: false,
-  },
-  advertNote: {
-    fontFamily: POPPINS.regular,
-    fontSize: s(11),
-    color: apothecary.inkMuted,
-    includeFontPadding: false,
-    marginTop: s(2),
-  },
-  advertBadge: {
-    fontFamily: POPPINS.bold,
-    fontSize: s(12),
-    color: colours.blueberryLight,
-    includeFontPadding: false,
-    borderWidth: 1,
-    borderColor: alpha('blueberryLight', 0.5),
-    borderRadius: s(9),
-    paddingHorizontal: s(9),
-    paddingVertical: s(4),
-    overflow: 'hidden',
-  },
 
   /** The gap `SettingGroup` cannot carry itself — it has no `marginTop`. */
   spacer: { height: BLOCK },
+
+  /**
+   * What the bonus puzzle pays, and what it counts down.
+   *
+   * Two styles rather than one with a colour prop: gold is the app's "this is
+   * available" register and the muted grey is its "not yet", and the row is
+   * read at a glance from three feet away.
+   */
+  bonusReward: { ...text.rowLabel, color: apothecary.goldLight },
+  /**
+   * The countdown, at full strength — the row's own `spent` opacity does the
+   * dimming. A muted colour here as well compounded with it and left the clock
+   * barely legible, which is the one thing on a spent row worth reading.
+   *
+   * `tabular-nums` so the digits do not jostle as the seconds tick.
+   */
+  bonusWait: { ...text.rowLabel, fontVariant: ['tabular-nums'] },
 });

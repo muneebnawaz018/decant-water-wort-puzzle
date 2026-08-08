@@ -5,9 +5,24 @@ import { alpha, ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
 import { s } from '@/theme/scale';
 
-const RADIUS = SPACE.buttonRadius;
+/**
+ * The card radius, not the button one.
+ *
+ * This control now sits inside the reward track as a two-wide tile, so it has
+ * to corner like the tiles beside it. At `buttonRadius` it read as a button
+ * that had wandered into a grid.
+ */
+const RADIUS = SPACE.cardRadius;
 
 export const styles = StyleSheet.create({
+  /**
+   * Passed down every layer of the control when it is filling a slot.
+   *
+   * All of them, because each is a plain `View` wrapping the next: growing only
+   * the outermost leaves the gradient face at its content height inside a
+   * full-height shadow, which looks like the border has come away from the fill.
+   */
+  grow: { flex: 1 },
   /**
    * Waiting throws no light — but it keeps its drop shadow, so it still sits on
    * the page rather than in it. The old version zeroed both and the button
@@ -41,32 +56,46 @@ export const styles = StyleSheet.create({
     borderRadius: RADIUS - HAIRLINE,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: s(14),
+    paddingVertical: s(13),
+    paddingHorizontal: s(10),
     overflow: 'hidden',
   },
 
   /**
-   * The words in front of the time, well under it.
+   * The waiting layout: a mark, then the caption over the clock.
    *
-   * Three versions bracket this one. Uppercase at two thirds the size read as a
-   * tracked caption that had collided with a clock rather than as a sentence;
-   * matching the clock exactly fixed that and cost the hierarchy, since "Next
-   * in" and the numbers were then equally loud; one step apart was a difference
-   * nobody looking at the screen could name.
-   *
-   * What makes the small version work where the first attempt did not is that
-   * it stayed sentence case and stayed in the same family. Uppercase and
-   * tracking are what turned it into a separate object; size alone does not.
-   * So the gap is wide enough to be obvious — the numbers are nearly twice the
-   * label — and the line still reads as one phrase.
+   * A row rather than a centred stack, because the clock has to stay the widest
+   * thing in the control and a stack would centre a 36dp mark above it with
+   * nothing beside it — which spends the height this control does not have.
    */
-  caption: {
-    fontFamily: POPPINS.medium,
-    fontSize: s(14),
-    letterSpacing: s(0.2),
+  waitRow: { flexDirection: 'row', alignItems: 'center', gap: s(10) },
+  /**
+   * The mark's box.
+   *
+   * Sized in dp rather than left to flex: `LottieView` measures itself to the
+   * composition's own size when its style gives it no resolved width, and this
+   * composition is 200×200 — the same trap `useTapBurst.styles` records, where
+   * a player inflated a 42dp button to three times its size on Android.
+   */
+  brew: { width: s(34), height: s(34) },
+  /** Left-aligned under the mark, so the caption and the clock share an edge. */
+  waitText: { flexShrink: 1 },
+  /**
+   * The caption, small and above the numbers.
+   *
+   * Uppercase and tracked, which the inline version could not be: on one line
+   * with the clock it read as a tracked caption that had collided with a
+   * number. Given its own line it is doing the job captions do everywhere else
+   * in this app — the eyebrow over a value.
+   */
+  waitCaption: {
+    fontFamily: POPPINS.bold,
+    fontSize: s(9),
+    letterSpacing: s(0.8),
+    color: alpha('goldLight', 0.65),
+    includeFontPadding: false,
+    marginBottom: s(1),
   },
-  restCaption: { color: alpha('goldLight', 0.7) },
-  readyCaption: { color: alpha('onGold', 0.75) },
 
   /**
    * The clock, and the claim.
@@ -75,9 +104,18 @@ export const styles = StyleSheet.create({
    * short label some presence, and at 26 it only pulls a running countdown's
    * digits apart. Tracking is a ratio of the glyph, not a constant.
    */
+  /**
+   * Down from 26, because the control is no longer the full width of the page.
+   *
+   * It shares the track's last row with day seven now, so it has two thirds of
+   * a row rather than all of it — about 230dp on the narrowest phone. At 26 the
+   * two longest strings this ever holds, `Claim 150 coins` and a running
+   * `19:39:28`, both ran past that. The ratio to the caption is kept, so the
+   * hierarchy the three earlier attempts landed on survives the resize.
+   */
   label: {
     fontFamily: POPPINS.bold,
-    fontSize: s(26),
+    fontSize: s(21),
     letterSpacing: s(0.2),
   },
   /** Gold on the panel surface: a live clock, not a greyed-out control. */

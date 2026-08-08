@@ -58,6 +58,7 @@ export const GameScreen = memo(function GameScreen({
 }: GameScreenProps) {
   const padding = useScreenPadding();
   const level = useGameStore((state) => state.level);
+  const bonus = useGameStore((state) => state.bonus);
   const board = useGameStore((state) => state.board);
   const selected = useGameStore((state) => state.selected);
   const moves = useGameStore((state) => state.history.length);
@@ -266,7 +267,9 @@ export const GameScreen = memo(function GameScreen({
       <View style={styles.hud}>
         <ChromeIconButton icon="back" onPress={onExit} label="Back" />
         <View style={styles.hudMiddle}>
-          <Text style={styles.hudLevel}>Level {level}</Text>
+          {/* The bonus board has no level number — `level` holds the day index
+              while it is loaded, which would print as "Level 20675". */}
+          <Text style={styles.hudLevel}>{bonus ? "Today's brew" : `Level ${level}`}</Text>
           <Text style={styles.hudMoves}>{plural(moves, 'move')}</Text>
         </View>
         <ChromeIconButton icon="restart" onPress={restart} label="Restart" />
