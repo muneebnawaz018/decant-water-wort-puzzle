@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { readJson, writeJson } from './storage';
+import { EARNINGS, STARTING_COINS } from '@/game/economy';
 
 const KEY = 'economy.v2';
 /** The v1 record, keyed on calendar dates. Read once to carry coins across. */
@@ -23,10 +24,10 @@ const LEGACY_KEY = 'economy.v1';
  * times day one, and 43% of everything the week pays. Breaking a streak on day
  * six has to cost something real or the streak is decoration.
  *
- * Values land on fives and tens because prices do. Anything finer reads as a
- * number that fell out of a formula rather than one somebody chose.
+ * The numbers themselves are in `game/economy.ts`, with every other price and
+ * payout; this is only the name the daily code knows them by.
  */
-export const DAILY_REWARDS = [10, 15, 20, 30, 50, 75, 150] as const;
+export const DAILY_REWARDS = EARNINGS.daily;
 
 /**
  * How long after a claim the next one opens.
@@ -105,7 +106,7 @@ function load(): Stored {
   }
 
   return {
-    coins: Math.max(0, Math.floor(stored.coins ?? 0)),
+    coins: Math.max(0, Math.floor(stored.coins ?? STARTING_COINS)),
     streak: clampStreak(stored.streak),
     lastClaimAt:
       typeof stored.lastClaimAt === 'number' && Number.isFinite(stored.lastClaimAt)

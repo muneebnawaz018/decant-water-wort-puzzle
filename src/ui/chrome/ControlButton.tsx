@@ -4,7 +4,7 @@ import { Pressable, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { apothecary } from '@/theme/apothecary';
-import { gradients } from '@/theme/colors';
+import { gradients, ui } from '@/theme/colors';
 import { s } from '@/theme/scale';
 import { usePressBounce } from '../hooks/usePressBounce';
 import { useTapBurst } from '../hooks/useTapBurst';
@@ -25,11 +25,21 @@ export const ControlButton = memo(function ControlButton({
   label,
   onPress,
   disabled = false,
+  price,
 }: {
   icon: IconName;
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  /**
+   * Coins this press costs, shown as a badge on the button.
+   *
+   * A control that spends the player's balance has to say so before it is
+   * pressed. Undo passes 0 once the move it would take back has already been
+   * paid for, and the badge disappears — the price is the price of *this*
+   * press, not a label on the feature.
+   */
+  price?: number;
 }) {
   // The one place chrome still buzzes: undo, redo, hint and the spare vial are
   // moves on the board, not navigation, and they are pressed with the same
@@ -81,6 +91,20 @@ export const ControlButton = memo(function ControlButton({
               </Animated.View>
             </LinearGradient>
           </View>
+          {/* Drawn only when this press costs. `price` is 0 while the level's
+              free undos last, and a price tag on a free action just makes the
+              player hesitate over nothing. */}
+          {price !== undefined && price > 0 && !disabled ? (
+            <View style={styles.price}>
+              {/* `onGold`, not `ink`. `ink` is #F4ECFF — the text colour for
+                  this app's dark surfaces — and on a gold badge it was
+                  white-on-yellow, which is why the price looked like a smudge
+                  at any size. The palette already carries the ink meant for
+                  gold faces; the Home bump's icon uses the same one. */}
+              <Icon name="coin" size={s(12)} color={ui.onGold} />
+              <Text style={styles.priceValue}>{price}</Text>
+            </View>
+          ) : null}
         </Animated.View>
         <Text style={styles.label}>{label}</Text>
       </View>

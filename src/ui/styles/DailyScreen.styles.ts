@@ -4,7 +4,7 @@ import { apothecary, SPACE } from '@/theme/apothecary';
 import { alpha, colours, ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
 import { s, WINDOW_WIDTH } from '@/theme/scale';
-import { text } from '@/theme/typography';
+import { section } from '@/ui/chrome/styles/section.styles';
 
 /**
  * Days across the reward track.
@@ -19,6 +19,22 @@ export const COIN_SIZE = s(28);
 const GRAND_COIN = s(44);
 
 const GAP = s(10);
+
+/**
+ * The gap between blocks, and the whole of this screen's vertical rhythm.
+ *
+ * There were six values doing this job — 18, 10, 10, 18, 14, 24 — each lifted
+ * from the mockup's CSS a block at a time, and the result reads as uneven
+ * because it is. Three spacings now, and each one means something:
+ *
+ * - `BLOCK` between blocks: streak, track, claim, advert, bonus.
+ * - `GAP` within the track, where the tiles and day seven are one group.
+ * - The 6 under a heading, from `section.title`, shared with every other screen.
+ *
+ * `SPACE.section`, not a new number — this is the same "gap between blocks" the
+ * rest of the app already spends.
+ */
+const BLOCK = SPACE.section;
 
 /**
  * A slot's share of the row, gaps removed first.
@@ -38,6 +54,18 @@ const ROW_WIDTH = WINDOW_WIDTH - SPACE.screen * 2;
 const ROUNDING_SLACK = 0.5;
 const SLOT = (ROW_WIDTH - GAP * (DAY_COLUMNS - 1) - ROUNDING_SLACK) / DAY_COLUMNS;
 const DAY_SLOT_WIDTH = `${(SLOT / ROW_WIDTH) * 100}%` as const;
+
+/**
+ * The washes the two special cards carry, as `Panel`'s `tint` rather than as a
+ * `backgroundColor`.
+ *
+ * They were background colours in `contentStyle` and neither had ever rendered:
+ * that style lands on `Panel`'s `LinearGradient`, which paints over its own
+ * background. Today's tile was a plain card with a gold border and the grand row
+ * was a plain card with a gold border, where the mockup gives both a lit surface.
+ */
+export const TODAY_TINT = alpha('gold', 0.12);
+export const GRAND_TINT = alpha('gold', 0.08);
 
 export const styles = StyleSheet.create({
   /**
@@ -88,8 +116,37 @@ export const styles = StyleSheet.create({
   },
   flameGlyph: { transformOrigin: 'bottom' },
 
-  /** Section eyebrow, the same one Shop and Stats use. */
-  label: { ...text.eyebrow, marginTop: s(18), marginBottom: s(10), marginHorizontal: s(4) },
+  /**
+   * The coin's hot spot, where the mockup's radial gradient peaks.
+   *
+   * Percentages, so one style serves the 28dp tile coin and the 44dp grand one.
+   * Round and offset up-left rather than centred: a highlight in the middle of
+   * a disc reads as a hole, and the whole job of this layer is to say the
+   * surface is curved and lit from somewhere.
+   */
+  coinSpecular: {
+    position: 'absolute',
+    top: '12%',
+    left: '14%',
+    width: '46%',
+    height: '46%',
+    borderRadius: 999,
+    backgroundColor: alpha('goldPale', 0.75),
+  },
+
+  /**
+   * Section eyebrow — now literally the one Shop, Stats and Settings use.
+   *
+   * It claimed to be that and was not: it re-stated `text.eyebrow` with its own
+   * 18/10 margins, while `section.title` puts 6 under a heading. Both appear on
+   * this screen — "7-DAY REWARDS" from here, "BONUS" from `SettingGroup` — so
+   * the page had two heading rhythms twelve dp apart, which is most of what
+   * reads as uneven.
+   *
+   * `marginTop` on top of the shared object rather than baked into it: the gap
+   * *above* a heading is the block rhythm, and that belongs to the page.
+   */
+  label: { ...section.title, marginTop: BLOCK },
 
   track: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
   daySlot: { flexGrow: 0, flexBasis: DAY_SLOT_WIDTH },
@@ -112,7 +169,6 @@ export const styles = StyleSheet.create({
   dayToday: {
     borderWidth: 1,
     borderColor: apothecary.gold,
-    backgroundColor: alpha('gold', 0.1),
   },
   dayNumber: {
     fontFamily: POPPINS.semibold,
@@ -156,15 +212,26 @@ export const styles = StyleSheet.create({
    * Monday. A reward that anchors a week has to look unlike the days leading to
    * it.
    */
+  /**
+   * The two boxes a `Panel` has, and which one a margin belongs in.
+   *
+   * `style` is the outer shadow view; `contentStyle` is the gradient inside it.
+   * A margin in `contentStyle` moves the gradient *within* its own wrapper — so
+   * the wrapper stays flush against whatever is above, and its bare surface
+   * shows through as a band that reads as two cards overlapping. That is what
+   * both of these were doing.
+   *
+   * The same split `StatsScreen` already uses for its mode cards: `modeCardBox`
+   * carries the margin, `modeCard` carries the padding.
+   */
+  grandBox: { marginTop: s(10) },
   grand: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: s(14),
     padding: s(14),
-    marginTop: s(10),
     borderWidth: 1,
     borderColor: alpha('gold', 0.45),
-    backgroundColor: alpha('gold', 0.07),
   },
   grandCoin: {
     width: GRAND_COIN,
@@ -188,7 +255,7 @@ export const styles = StyleSheet.create({
     marginTop: s(2),
   },
 
-  claim: { marginTop: s(18) },
+  claim: { marginTop: BLOCK },
 
   /**
    * The rewarded slot, doc §8's highest-value one.
@@ -197,12 +264,12 @@ export const styles = StyleSheet.create({
    * that is not the game paying you — it is an offer — and the palette says so
    * before the label does.
    */
+  advertBox: { marginTop: BLOCK },
   advert: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: s(14),
     padding: s(14),
-    marginTop: s(14),
     borderWidth: 1,
     borderColor: alpha('blueberryLight', 0.45),
   },
@@ -241,5 +308,6 @@ export const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 
-  spacer: { height: SPACE.block },
+  /** The gap `SettingGroup` cannot carry itself — it has no `marginTop`. */
+  spacer: { height: BLOCK },
 });

@@ -8,7 +8,6 @@ import {
   Path,
   Rect,
   Shader,
-  Skia,
   vec,
   type SkPath,
 } from '@shopify/react-native-skia';
@@ -36,6 +35,8 @@ import {
 import { rgba } from './liquid';
 import { liquidEffect } from './liquidEffect';
 import { useUiValue } from './useUiValue';
+import { vesselHighlight, vesselPath } from './vessel';
+import { DEFAULT_SKIN, skinFor } from '@/theme/skins';
 
 /** How far a selected tube lifts, doc §7. */
 const SELECTION_LIFT = 8;
@@ -55,6 +56,15 @@ interface BoardProps {
   width: number;
   height: number;
   selected: number | null;
+  /**
+   * The tube a hint is pointing *into*, if one is showing.
+   *
+   * Separate from `selected`, which carries the source — a hint arms the source
+   * exactly as a tap would, so the only thing left to draw is where it goes.
+   * Without this the player is shown a lifted tube and left to work out the
+   * destination themselves, which is most of the question they asked.
+   */
+  hintTo?: number | null;
   /** Set while a pour is playing. The board renders mid-pour when present. */
   animation?: PourAnimation | null;
   /** 0 to 1 across the pour. Lives on the UI thread. */
@@ -62,30 +72,15 @@ interface BoardProps {
   /** Draw a glyph on each segment, doc §9. */
   marks?: boolean;
   theme?: Theme;
-}
-
-/**
- * A vial outline: square shoulders at the open mouth, rounded base. A tube
- * rounded on all four corners reads as a pill, not glassware.
- */
-function tubePath(tube: TubeRect, radius: number): SkPath {
-  const { x, y, width, height } = tube;
-  const r = Math.min(radius, width / 2, height / 2);
-
-  // `Skia.PathBuilder`, not `Skia.Path.Make()`: the mutating path methods are
-  // deprecated in Skia 2.x. The builder is chainable and `detach()` hands back
-  // an immutable `SkPath`, which is what the renderer wants anyway — a path
-  // nobody can mutate after the fact cannot drift from the layout it was
-  // measured for.
-  return Skia.PathBuilder.Make()
-    .moveTo(x, y)
-    .lineTo(x + width, y)
-    .lineTo(x + width, y + height - r)
-    .quadTo(x + width, y + height, x + width - r, y + height)
-    .lineTo(x + r, y + height)
-    .quadTo(x, y + height, x, y + height - r)
-    .close()
-    .detach();
+  /**
+   * Which vessel the liquid is held in — the one thing the shop sells.
+   *
+   * Defaulted rather than required so every other caller of `Board` (and the
+   * tests) keeps the glass the game shipped with. Purely a silhouette: capacity,
+   * colours, generation and par are all untouched by it, which is what lets it
+   * be sold at all under spec §4.7.
+   */
+  skin?: string;
 }
 
 export const Board = memo(function Board({
@@ -94,38 +89,26 @@ export const Board = memo(function Board({
   width,
   height,
   selected,
+  hintTo = null,
   animation = null,
   progress,
   marks = false,
   theme = apothecary,
+  skin = DEFAULT_SKIN,
 }: BoardProps) {
+  const vessel = skinFor(skin).vessel;
+
+  // Built once per layout and skin, not once per render. These were being
+  // allocated inline in the tube loop, so every re-render churned one native
+  // SkPath per tube — up to a dozen on a hard board, on every move.
   const paths = useMemo(
-    () => layout.tubes.map((tube) => tubePath(tube, layout.radius)),
-    [layout]
+    () => layout.tubes.map((tube) => vesselPath(tube, vessel)),
+    [layout, vessel]
   );
 
-  // Built once per layout, not once per render. These were being allocated
-  // inline in the tube loop, so every re-render churned one native SkPath per
-  // tube — up to a dozen on a hard board, on every move.
   const highlights = useMemo(
-    () =>
-      layout.tubes.map((tube) =>
-        Skia.PathBuilder.Make()
-          .addRRect(
-            Skia.RRectXY(
-              Skia.XYWHRect(
-                tube.x + tube.width * 0.16,
-                tube.y + layout.segmentHeight * 0.45,
-                tube.width * 0.07,
-                tube.height - layout.segmentHeight
-              ),
-              tube.width * 0.035,
-              tube.width * 0.035
-            )
-          )
-          .detach()
-      ),
-    [layout]
+    () => layout.tubes.map((tube) => vesselHighlight(tube, vessel, layout.segmentHeight)),
+    [layout, vessel]
   );
 
   const geometry = useMemo(
@@ -142,6 +125,7 @@ export const Board = memo(function Board({
     <Canvas style={{ width, height }}>
       {layout.tubes.map((tube, tubeIndex) => {
         const isSelected = tubeIndex === selected;
+        const isHintTarget = tubeIndex === hintTo;
         const path = paths[tubeIndex]!;
 
         // Mid-pour the destination is drawn short: the arriving liquid is
@@ -243,15 +227,26 @@ export const Board = memo(function Board({
             {/* Specular highlight down the left edge. */}
             <Path path={highlights[tubeIndex]!} color={colours.white} opacity={0.5} />
 
-            {/* A bold, dark outline is what reads as drawn rather than
-                rendered. Thin grey hairlines look like a chart. */}
+            {/*
+              A bold, dark outline is what reads as drawn rather than
+              rendered. Thin grey hairlines look like a chart.
+
+              Three states, and the hint's is gold rather than a second accent.
+              A selection and a hint destination can be on screen together — a
+              hint arms the source and marks the target — so they have to be
+              told apart at a glance, and reusing the selection colour for both
+              would say "these two tubes are the same kind of thing" when one is
+              held and the other is a suggestion. Gold is the chrome colour
+              everywhere else in the app, which is the right register for a
+              prompt.
+            */}
             <Path
               path={path}
               style="stroke"
-              strokeWidth={isSelected ? 5 : 3.5}
+              strokeWidth={isSelected || isHintTarget ? 5 : 3.5}
               strokeJoin="round"
-              color={isSelected ? theme.accent : colours.white}
-              opacity={isSelected ? 1 : 0.32}
+              color={isSelected ? theme.accent : isHintTarget ? theme.gold : colours.white}
+              opacity={isSelected || isHintTarget ? 1 : 0.32}
             />
           </>
         );

@@ -1,4 +1,4 @@
-import { coinsFor, starsFor } from '../stars';
+import { coinsFor, coinsForImprovement, starsFor } from '../stars';
 
 /** `par / moves`, the ratio the bands are defined on. */
 const efficiency = (moves: number, par: number) => par / moves;
@@ -72,5 +72,35 @@ describe('coinsFor', () => {
   it('scales with stars', () => {
     expect(coinsFor(1)).toBe(20);
     expect(coinsFor(3)).toBe(60);
+  });
+});
+
+describe('coinsForImprovement', () => {
+  it('pays the full rate for a level never finished', () => {
+    expect(coinsForImprovement(3, 0)).toBe(coinsFor(3));
+  });
+
+  it('pays nothing for a replay that does no better', () => {
+    // The faucet this closes: gentle's early boards are seven moves long and
+    // three-star in seconds, so a flat payout per solve mints coins on a loop.
+    expect(coinsForImprovement(3, 3)).toBe(0);
+    expect(coinsForImprovement(1, 2)).toBe(0);
+  });
+
+  it('pays the difference when a run beats the last one', () => {
+    expect(coinsForImprovement(3, 1)).toBe(coinsFor(2));
+    expect(coinsForImprovement(2, 1)).toBe(coinsFor(1));
+  });
+
+  it('never pays for going backwards', () => {
+    expect(coinsForImprovement(1, 3)).toBe(0);
+  });
+
+  it('adds up to one full payout however many runs it takes', () => {
+    // One star, then two, then three: the same 60 as three-starring it first
+    // time, and not a coin more.
+    const total =
+      coinsForImprovement(1, 0) + coinsForImprovement(2, 1) + coinsForImprovement(3, 2);
+    expect(total).toBe(coinsFor(3));
   });
 });

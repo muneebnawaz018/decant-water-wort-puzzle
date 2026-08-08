@@ -4,7 +4,10 @@ import type { Colour, PourMove, WaterState } from '@/core/types';
 import { optimalMoves } from '@/core/solver';
 import { applyPour, canPour, isSolved } from '@/core/waterCore';
 import type { Difficulty } from '@/game/difficulty';
-import { coinsFor, milestoneBonus, starsFor } from '@/game/stars';
+import { FREE_HINTS, PRICES } from '@/game/economy';
+import { positionKey, suggestPour } from '@/game/hint';
+import { coinsForImprovement, milestoneBonus, starsFor } from '@/game/stars';
+import { forgetFrom, freeUndosFor, undoCharge, withUndoPaid } from '@/game/undoCost';
 import { generateLevel } from '@/game/waterGenerator';
 import { useEconomyStore } from './economyStore';
 import { overlay } from './overlayStore';
@@ -30,6 +33,23 @@ import {
 } from './session';
 import { useSettingsStore } from './settingsStore';
 
+/** What an undo did, so the UI can answer a refusal differently from a success. */
+type UndoOutcome =
+  /**
+   * Taken back. `charged` is 0 when the move was already paid for or the
+   * level's allowance covered it; `freeLeft` is what remains of that allowance.
+   *
+   * `spentAllowance` tells those two zeros apart, and the screen needs it: one
+   * of them used something up and the other did not. Without it, "free undos
+   * used" fired again on every re-undo of a move already paid for — a warning
+   * about a budget, raised by the one action that does not touch the budget.
+   */
+  | { kind: 'undone'; charged: number; freeLeft: number; spentAllowance: boolean }
+  /** Not enough coins. The board is untouched. */
+  | { kind: 'blocked'; price: number }
+  /** Nothing to undo, or a pour is animating. */
+  | { kind: 'ignored' };
+
 export interface GameState {
   level: number;
   difficulty: Difficulty;
@@ -38,6 +58,15 @@ export interface GameState {
   par: number;
   /** Stars for the run just finished, 0 until the level is solved. */
   earned: number;
+  /**
+   * Coins the run just finished actually paid.
+   *
+   * Held rather than recomputed from `earned`, because the two can disagree: a
+   * replay that matches a previous result earns three stars and no coins. The
+   * Complete screen prints this, so what it announces is what landed in the
+   * balance.
+   */
+  earnedCoins: number;
   /** Board as generated, for restart. */
   initial: WaterState;
   history: PourMove[];
@@ -49,6 +78,63 @@ export interface GameState {
   locked: boolean;
   /** Whether the level's one spare vial has been taken. */
   extraTaken: boolean;
+  /**
+   * Depths in `history` whose undo has already been paid for.
+   *
+   * Undo costs coins; redo does not. Taking a move back, putting it forward and
+   * taking it back again is one decision revisited, so only the first undo of a
+   * given move is charged — this is what remembers which ones those were. A
+   * fresh pour at a depth drops the mark there, because that is a new move
+   * rather than the one that was paid for.
+   */
+  paidUndos: number[];
+  /**
+   * How many of this level's free undos have gone.
+   *
+   * Per level and reset by restart, so a board is never harsher for being long.
+   * Counted rather than derived from `paidUndos`: a re-undo of a move already
+   * paid for spends nothing, so the two numbers move independently.
+   */
+  freeUndosUsed: number;
+  /**
+   * Hints taken on this level, free and paid together.
+   *
+   * A count rather than the old boolean because hints no longer run out — the
+   * first `FREE_HINTS` are free and the rest cost `PRICES.hint`, so what has
+   * to be remembered is how far into that the player is.
+   */
+  hintsUsed: number;
+  /**
+   * The pour the last hint pointed at, until the board changes.
+   *
+   * Kept as a move rather than as two tube indices because the destination is
+   * the half the old hint threw away — it set `selected` to the source and
+   * discarded the `to` it had already worked out, leaving the player to guess
+   * where the highlighted tube was meant to go.
+   */
+  hintMove: PourMove | null;
+  /**
+   * The hint already delivered for this exact position, paid or free.
+   *
+   * Separate from `hintMove` because the two clear on different events, and
+   * conflating them was a double-billing bug: `hintMove` is the *display*, and
+   * selecting any vial dismisses it — but selecting a vial does not change the
+   * board, so the answer the player bought is still the answer. This field
+   * clears only where the board actually changes (pour, undo, redo, restart,
+   * spare vial, level load); until then, pressing Hint again re-shows it free.
+   */
+  heldHint: PourMove | null;
+  /**
+   * Positions a hint has already been delivered at, this level.
+   *
+   * The hint flow's `paidUndos`: `heldHint` covers "the pointer is on screen",
+   * this covers "the answer was bought and the board came back". Undo the
+   * hinted pour and the position returns — the player has already seen the
+   * move for it, so asking again is free and spends nothing. Keyed by
+   * position rather than by count because undo/redo can revisit any earlier
+   * position in any order.
+   */
+  paidHints: string[];
   record: ProgressByDifficulty;
 
   loadLevel: (level: number) => void;
@@ -56,13 +142,20 @@ export interface GameState {
   setDifficulty: (difficulty: Difficulty) => void;
   /** Handles a tap on a tube. Returns what the UI should react to. */
   tapTube: (index: number) => TapOutcome;
-  undo: () => void;
+  /**
+   * Takes back the last move, for `UNDO_COST` coins the first time each is
+   * taken back. Returns what the UI should say about it.
+   */
+  undo: () => UndoOutcome;
   /** Replays the most recently undone move. Same shape as `tapTube`'s
    * outcome, so the renderer can animate it exactly like a fresh pour. */
   redo: () => TapOutcome;
   restart: () => void;
-  /** Selects the source of a legal pour. Null when the board is stuck. */
-  hint: () => PourMove | null;
+  /**
+   * Points at a pour on a winning line, for `PRICES.hint` coins once the
+   * level's free one is gone. Returns what the UI should say about it.
+   */
+  hint: () => HintOutcome;
   /** Adds one empty tube. Spec §10's rewarded slot; one per level. */
   addTube: () => boolean;
   nextLevel: () => void;
@@ -70,6 +163,37 @@ export interface GameState {
   /** Progress for the mode being played. */
   progress: () => Progress;
 }
+
+/**
+ * What pressing Hint did, so the screen can answer each case differently.
+ *
+ * Five cases rather than a nullable move, because four of them are refusals
+ * and they do not mean the same thing. "Not enough coins" is a price, "this
+ * board cannot be won" is news the player needs and cannot get anywhere else,
+ * "couldn't find one" is the search giving up without proving anything, and
+ * "not now" is the pour animation still running. Collapsing any two would put
+ * one toast on both.
+ */
+type HintOutcome =
+  /**
+   * A pour on a winning line. Source and destination are both highlighted.
+   * `charged` is 0 for the level's free hint and for re-showing one already
+   * bought and still on the board.
+   */
+  | { kind: 'shown'; move: PourMove; charged: number }
+  /** Not enough coins. Nothing is revealed and nothing is spent. */
+  | { kind: 'blocked'; price: number }
+  /** No winning line exists from here — proved, not guessed. Free. */
+  | { kind: 'stuck' }
+  /**
+   * The search hit its node budget before finishing either way. Free, and
+   * worded differently from `stuck` on screen: "couldn't find one" is not
+   * "there is none", and a paid feature must not dress the first up as the
+   * second.
+   */
+  | { kind: 'unsure' }
+  /** Mid-pour or already solved. Nothing to say. */
+  | { kind: 'ignored' };
 
 export type TapOutcome =
   | { kind: 'ignored' }
@@ -157,14 +281,37 @@ export const useGameStore = create<GameState>((set, get) => {
    *
    * Coins land the moment the board is solved rather than on the Complete
    * screen, so a player who backs out during the win animation keeps them.
+   *
+   * Both halves are paid once. The milestone has `paidBlocks`; the level itself
+   * is guarded by its own previous star count, since a replay that does no
+   * better has earned nothing new.
    */
+  /**
+   * What the last `payFor` handed over, for the state update that follows it.
+   *
+   * A module-level handoff rather than a return value because `payFor` already
+   * returns the record it has to store — and that record is the thing a crash
+   * between the two writes would corrupt, so it keeps the return slot.
+   */
+  let lastPayout = 0;
+
   const payFor = (
     record: ProgressByDifficulty,
     mode: Difficulty,
     level: number,
-    stars: number
+    stars: number,
+    previousStars: number
   ): ProgressByDifficulty => {
-    useEconomyStore.getState().add(coinsFor(stars));
+    /**
+     * A level pays once, and beating your own result pays the difference.
+     *
+     * `previousStars` has to be read *before* the completion is recorded, which
+     * is why it is passed in rather than looked up here — by the time this runs,
+     * `record` already holds the run that just finished.
+     */
+    const earned = coinsForImprovement(stars, previousStars);
+    if (earned > 0) useEconomyStore.getState().add(earned);
+    lastPayout = earned;
 
     const progress = _progressFor(record, mode);
     const block = unpaidBlockFor(progress, level);
@@ -179,12 +326,25 @@ export const useGameStore = create<GameState>((set, get) => {
   };
 
   const persistSession = (): void => {
-    const { difficulty: mode, level, history, extraTaken } = get();
+    const {
+      difficulty: mode,
+      level,
+      history,
+      extraTaken,
+      hintsUsed,
+      paidHints,
+      paidUndos,
+      freeUndosUsed,
+    } = get();
     saveSession({
       difficulty: mode,
       level,
       moves: packMoves(history),
       extraTaken,
+      hintsUsed,
+      paidHints,
+      paidUndos,
+      freeUndosUsed,
     });
   };
 
@@ -200,12 +360,21 @@ export const useGameStore = create<GameState>((set, get) => {
     initial: resumed?.initial ?? first.state,
     par: first.report.lowerBound,
     earned: 0,
+    earnedCoins: 0,
     history: resumed?.history ?? [],
     future: [],
     selected: null,
     solved: false,
     locked: false,
     extraTaken: saved?.extraTaken === true && resumed !== null,
+    // Only meaningful alongside the moves it refers to, so it is dropped with
+    // them when a session fails to restore.
+    paidUndos: resumed !== null ? (saved?.paidUndos ?? []) : [],
+    freeUndosUsed: resumed !== null ? (saved?.freeUndosUsed ?? 0) : 0,
+    hintsUsed: resumed !== null ? (saved?.hintsUsed ?? 0) : 0,
+    hintMove: null,
+    heldHint: null,
+    paidHints: resumed !== null ? (saved?.paidHints ?? []) : [],
     record,
 
     progress: () => progressFor(get().record, get().difficulty),
@@ -225,12 +394,19 @@ export const useGameStore = create<GameState>((set, get) => {
         initial: generated.state,
         par: generated.report.lowerBound,
         earned: 0,
+        earnedCoins: 0,
         history: [],
         future: [],
+        paidUndos: [],
+        freeUndosUsed: 0,
         selected: null,
         solved: false,
         locked: false,
         extraTaken: false,
+        hintsUsed: 0,
+        hintMove: null,
+        heldHint: null,
+        paidHints: [],
         record: next,
       });
       refinePar(level, mode, generated.state);
@@ -254,12 +430,19 @@ export const useGameStore = create<GameState>((set, get) => {
         initial: generated.state,
         par: generated.report.lowerBound,
         earned: 0,
+        earnedCoins: 0,
         history: [],
         future: [],
+        paidUndos: [],
+        freeUndosUsed: 0,
         selected: null,
         solved: false,
         locked: false,
         extraTaken: false,
+        hintsUsed: 0,
+        hintMove: null,
+        heldHint: null,
+        paidHints: [],
       });
       refinePar(level, difficulty, generated.state);
     },
@@ -274,12 +457,12 @@ export const useGameStore = create<GameState>((set, get) => {
       if (selected === null) {
         // Nothing to lift out of an empty tube.
         if (tube.length === 0) return { kind: 'ignored' };
-        set({ selected: index });
+        set({ selected: index, hintMove: null });
         return { kind: 'selected', tube: index };
       }
 
       if (selected === index) {
-        set({ selected: null });
+        set({ selected: null, hintMove: null });
         return { kind: 'deselected', tube: index };
       }
 
@@ -294,7 +477,7 @@ export const useGameStore = create<GameState>((set, get) => {
         // legal whenever the source has anything, so reaching here means the
         // target is full or holds a different colour. Guarded anyway.
         const takeable = board.tubes[index]!.length > 0;
-        set({ selected: takeable ? index : null });
+        set({ selected: takeable ? index : null, hintMove: null });
         return { kind: 'illegal', tube: index, armed: takeable };
       }
 
@@ -311,6 +494,11 @@ export const useGameStore = create<GameState>((set, get) => {
       const stars = nowSolved ? starsFor(moves, get().par) : 0;
 
       set((current) => {
+        // Read before the completion is recorded — afterwards this level's
+        // entry is the run that just finished, and the comparison is lost.
+        const before = _progressFor(current.record, current.difficulty).stars[
+          current.level
+        ];
         let next = nowSolved
           ? recordCompletion(
               current.record,
@@ -321,7 +509,7 @@ export const useGameStore = create<GameState>((set, get) => {
             )
           : current.record;
         if (nowSolved) {
-          next = payFor(next, current.difficulty, current.level, stars);
+          next = payFor(next, current.difficulty, current.level, stars, before ?? 0);
           saveProgress(next);
         }
 
@@ -330,9 +518,17 @@ export const useGameStore = create<GameState>((set, get) => {
           history: [...current.history, applied.move],
           // A new branch: whatever was undone is no longer reachable.
           future: [],
+          // And the marks that went with it. This move sits at a depth that may
+          // already be paid for, but it is not the move that was paid for —
+          // without this, undo once, redo, play something else, and the new
+          // move comes back for free.
+          paidUndos: forgetFrom(current.paidUndos, current.history.length),
           selected: null,
+          hintMove: null,
+          heldHint: null,
           solved: nowSolved,
           earned: stars,
+          earnedCoins: nowSolved ? lastPayout : 0,
           record: next,
         };
       });
@@ -352,8 +548,28 @@ export const useGameStore = create<GameState>((set, get) => {
     },
 
     undo: () => {
-      const { history, future, initial, locked } = get();
-      if (locked || history.length === 0) return;
+      const { history, future, initial, locked, paidUndos, freeUndosUsed, difficulty } =
+        get();
+      if (locked || history.length === 0) return { kind: 'ignored' };
+
+      /**
+       * The charge, before the board moves.
+       *
+       * Undo costs coins and redo does not, so the pair is not symmetrical —
+       * and the asymmetry is the design: a move you have already paid to take
+       * back stays taken back, however many times you change your mind about
+       * it. Only the *first* undo of a given move is billed.
+       *
+       * A player who cannot afford it is refused rather than taken into debt.
+       * That does leave a board they cannot rewind, which is why restart stays
+       * free: there is no fail state here, and being unable to undo must not
+       * become one.
+       */
+      const depth = history.length - 1;
+      const charge = undoCharge(paidUndos, depth, freeUndosUsed, difficulty);
+      if (charge.coins > 0 && !useEconomyStore.getState().spend(charge.coins)) {
+        return { kind: 'blocked', price: charge.coins };
+      }
 
       // Replaying from the start is cheaper to reason about than inverting a
       // pour, and a board is at most a few dozen moves deep.
@@ -366,10 +582,20 @@ export const useGameStore = create<GameState>((set, get) => {
         board,
         history: remaining,
         future: [...future, history[history.length - 1]!],
+        paidUndos: withUndoPaid(paidUndos, depth),
+        freeUndosUsed: freeUndosUsed + (charge.usesAllowance ? 1 : 0),
         selected: null,
+        hintMove: null,
+        heldHint: null,
         solved: false,
       });
       persistSession();
+      return {
+        kind: 'undone',
+        charged: charge.coins,
+        freeLeft: freeUndosFor(difficulty) - freeUndosUsed - (charge.usesAllowance ? 1 : 0),
+        spentAllowance: charge.usesAllowance,
+      };
     },
 
     redo: () => {
@@ -393,6 +619,11 @@ export const useGameStore = create<GameState>((set, get) => {
       const stars = nowSolved ? starsFor(moves, get().par) : 0;
 
       set((current) => {
+        // Read before the completion is recorded — afterwards this level's
+        // entry is the run that just finished, and the comparison is lost.
+        const before = _progressFor(current.record, current.difficulty).stars[
+          current.level
+        ];
         let next = nowSolved
           ? recordCompletion(
               current.record,
@@ -403,7 +634,7 @@ export const useGameStore = create<GameState>((set, get) => {
             )
           : current.record;
         if (nowSolved) {
-          next = payFor(next, current.difficulty, current.level, stars);
+          next = payFor(next, current.difficulty, current.level, stars, before ?? 0);
           saveProgress(next);
         }
 
@@ -412,8 +643,11 @@ export const useGameStore = create<GameState>((set, get) => {
           history: [...current.history, applied.move],
           future: current.future.slice(0, -1),
           selected: null,
+          hintMove: null,
+          heldHint: null,
           solved: nowSolved,
           earned: stars,
+          earnedCoins: nowSolved ? lastPayout : 0,
           record: next,
         };
       });
@@ -437,34 +671,91 @@ export const useGameStore = create<GameState>((set, get) => {
         board: initial,
         history: [],
         future: [],
+        // Restart is free, and it clears the debt with the moves: nothing is
+        // left to take back, so nothing can have been paid to take back. The
+        // allowance comes back with them, for the same reason — this is the
+        // level starting again, not continuing.
+        paidUndos: [],
+        freeUndosUsed: 0,
         selected: null,
+        hintMove: null,
+        heldHint: null,
         solved: false,
         earned: 0,
+        earnedCoins: 0,
       });
       // Not a clear: restart keeps the spare vial, which is the one thing left
       // worth remembering about a board with no moves on it.
       persistSession();
     },
 
+    /**
+     * A hint per press, each one on a winning line, metered after the first.
+     *
+     * The first on each level is free (`FREE_HINTS`) and the rest cost
+     * `PRICES.hint`, so a player who wants the whole board walked for them can
+     * have that — at a rate that runs a real deficit against what the level
+     * pays. An escape valve with a meter: doc §8's `rewarded_hint` slot, with
+     * coins standing in for the ad until phase 2.
+     *
+     * Order matters and is deliberate:
+     *
+     * 1. **Re-show before anything.** A hint still on the board is re-shown
+     *    free — double-tapping the button must not bill twice for one answer.
+     *    `hintMove` clears on every pour, undo and vial, so a stale one can
+     *    never be re-shown against a changed board.
+     * 2. **Search before charging.** The refusals are free by construction:
+     *    coins move only once a move is in hand, so `stuck` and `unsure`
+     *    cannot cost anything and no refund path needs to exist.
+     * 3. **Charge before revealing.** A player who cannot pay learns the
+     *    price, not the move.
+     */
     hint: () => {
-      const { board, locked, solved } = get();
-      if (locked || solved) return null;
+      const { board, locked, solved, hintsUsed, heldHint, paidHints } = get();
+      if (locked || solved) return { kind: 'ignored' };
 
-      for (let from = 0; from < board.tubes.length; from++) {
-        const source = board.tubes[from]!;
-        // A finished tube is a legal source and a terrible suggestion.
-        if (source.length === 0) continue;
-        if (source.length === board.capacity && source.every((c) => c === source[0]))
-          continue;
-
-        for (let to = 0; to < board.tubes.length; to++) {
-          if (from === to) continue;
-          if (!canPour(board, from, to)) continue;
-          set({ selected: from });
-          return { from, to, count: 1 };
-        }
+      // Re-arm, not merely re-return: the player has usually pressed Hint
+      // again because the pointer is gone — they selected something else and
+      // the display cleared. The answer is still bought; put it back on the
+      // board.
+      if (heldHint) {
+        set({ selected: heldHint.from, hintMove: heldHint });
+        return { kind: 'shown', move: heldHint, charged: 0 };
       }
-      return null;
+
+      const search = suggestPour(board);
+      if (search.kind !== 'move') return { kind: search.kind };
+
+      /**
+       * Paid before free, free before priced.
+       *
+       * A position already delivered at is free outright and consumes no
+       * allowance — undo brought the board back, the answer came back with
+       * it. Only a genuinely new position can spend the free hint or coins.
+       * The solver is deterministic, so recomputing at a recorded position
+       * always re-produces the move that was originally delivered.
+       */
+      const key = positionKey(board);
+      const alreadyDelivered = paidHints.includes(key);
+      const price = alreadyDelivered || hintsUsed < FREE_HINTS ? 0 : PRICES.hint;
+      if (price > 0 && !useEconomyStore.getState().spend(price)) {
+        return { kind: 'blocked', price };
+      }
+
+      // The source is *armed*, not just highlighted: the hint points, and the
+      // player still makes the pour. Tapping the marked destination finishes
+      // it, which keeps the move theirs.
+      set({
+        selected: search.move.from,
+        hintMove: search.move,
+        heldHint: search.move,
+        // A re-delivery is not a new hint: the count and the record only move
+        // when a position is answered for the first time.
+        hintsUsed: alreadyDelivered ? hintsUsed : hintsUsed + 1,
+        paidHints: alreadyDelivered ? paidHints : [...paidHints, key],
+      });
+      persistSession();
+      return { kind: 'shown', move: search.move, charged: price };
     },
 
     addTube: () => {
@@ -479,6 +770,11 @@ export const useGameStore = create<GameState>((set, get) => {
         initial: { ...get().initial, tubes: [...get().initial.tubes, []] },
         extraTaken: true,
         selected: null,
+        // A new tube changes what the winning line is, so any hint still on
+        // screen — or held as already-bought — was computed against a board
+        // that no longer exists.
+        hintMove: null,
+        heldHint: null,
       });
       persistSession();
       return true;

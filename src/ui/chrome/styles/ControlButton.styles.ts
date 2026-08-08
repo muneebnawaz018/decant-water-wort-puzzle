@@ -54,4 +54,50 @@ export const styles = StyleSheet.create({
     fontSize: s(11),
     color: apothecary.inkMuted,
   },
+  /**
+   * The price tag, pinned to the button's top-right.
+   *
+   * **It is only drawn when the press actually costs.** Undo's first few on
+   * each level are free, and a price shown against a free action is worse than
+   * no price at all — it makes the player hesitate over something that would
+   * have cost them nothing.
+   *
+   * Gold, like the coin it spends, rather than the red a cost is often painted
+   * in: this is a price, not a warning, and the button is still the thing to
+   * press when it is needed.
+   *
+   * Sized to be read at a glance rather than to be tucked away. The first
+   * version was 9pt with a 9dp coin and was, in practice, an orange smudge —
+   * a number nobody can read is a number that is not being disclosed.
+   *
+   * It sits inside the bounce wrapper, so it presses with the button instead of
+   * hanging still while the face moves under it.
+   */
+  price: {
+    position: 'absolute',
+    top: -s(6),
+    right: -s(10),
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: s(3),
+    paddingLeft: s(5),
+    paddingRight: s(7),
+    paddingVertical: s(3),
+    borderRadius: s(11),
+    backgroundColor: apothecary.gold,
+    // A ring in the board's own ground, so the badge reads as sitting *on* the
+    // button rather than merging into its lit edge. `borderWidth` rather than a
+    // padded background here: the badge has no gradient to misalign, which is
+    // what `HAIRLINE` exists to avoid elsewhere.
+    borderWidth: 2,
+    borderColor: apothecary.bg2,
+  },
+  priceValue: {
+    fontFamily: POPPINS.bold,
+    fontSize: s(12),
+    // `onGold`, the near-black ink this palette prints on gold — not `ink`,
+    // which is #F4ECFF and was rendering the price white on yellow.
+    color: ui.onGold,
+    includeFontPadding: false,
+  },
 });

@@ -12,7 +12,6 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { coinsFor } from '@/game/stars';
 import { useGameStore } from '@/state/gameStore';
 import { apothecary } from '@/theme/apothecary';
 import { colours, ui } from '@/theme/colors';
@@ -71,8 +70,10 @@ export const CompleteScreen = memo(function CompleteScreen({
   const level = useGameStore((state) => state.level);
   const moves = useGameStore((state) => state.history.length);
   const stars = useGameStore((state) => state.earned);
-
-  const reward = coinsFor(stars);
+  // What the run actually paid, not what its stars are worth: a replay that
+  // matches a previous result earns three stars and no coins, and announcing
+  // a payout that never landed is worse than announcing none.
+  const reward = useGameStore((state) => state.earnedCoins);
   const rewardDelay = STAR_START + stars * STAR_DELAY + 150;
 
   return (
@@ -147,13 +148,19 @@ export const CompleteScreen = memo(function CompleteScreen({
             Solved in {plural(moves, 'move')}
           </Text>
 
-          <Animated.View
-            style={styles.reward}
-            entering={FadeIn.duration(500).delay(rewardDelay)}
-          >
-            <View style={styles.coin} />
-            <Text style={styles.rewardText}>+{reward}</Text>
-          </Animated.View>
+          {/* Nothing at all when a replay matched a result already paid for.
+              "+0" is worse than silence: it draws the eye to a reward, then
+              says the run was worth none. The stars above already say how it
+              went, and they are the honest part. */}
+          {reward > 0 ? (
+            <Animated.View
+              style={styles.reward}
+              entering={FadeIn.duration(500).delay(rewardDelay)}
+            >
+              <View style={styles.coin} />
+              <Text style={styles.rewardText}>+{reward}</Text>
+            </Animated.View>
+          ) : null}
 
           <View style={styles.divider} />
 

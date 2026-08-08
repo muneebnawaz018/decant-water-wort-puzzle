@@ -13,6 +13,7 @@ import { nav } from '@/state/navStore';
 import { apothecary } from '@/theme/apothecary';
 import { gradients } from '@/theme/colors';
 import { s } from '@/theme/scale';
+import { compactCoins } from '@/utils';
 import { useTapHandler } from '../hooks/useTapHandler';
 import { useTapScale } from '../hooks/useTapScale';
 import { Icon } from '../Icon';
@@ -78,7 +79,13 @@ export const CoinPill = memo(function CoinPill() {
                 style={StyleSheet.absoluteFill}
               />
             </View>
-            <Text style={styles.value}>{coins}</Text>
+            {/* Compact, because the pill is a fixed-width control in a row with
+              the settings button: a five-figure balance pushed it into that
+              button, and the two-day-old player who first sees 10,000 is
+              exactly the one this breaks for. The full number is spoken to
+              screen readers above — a shortened figure is a layout answer,
+              not the value. */}
+            <Text style={styles.value}>{compactCoins(coins)}</Text>
 
             {/* The affordance, no longer the target. It still springs on press,
                 because the thing that says "tap me" is the thing that should

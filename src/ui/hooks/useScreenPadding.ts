@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { s } from '@/theme/scale';
-import { BUMP_RISE, NAV_BAR_HEIGHT } from '../chrome/styles/NavBar.styles';
+import { BUMP_RISE, NAV_BAR_HEIGHT, NAV_OFFSET } from '../chrome/styles/NavBar.styles';
 import { NAV_FADE } from '../styles/Root.styles';
 
 /**
@@ -51,10 +51,13 @@ export function useScreenPadding(): ScreenPadding {
       top: { paddingTop: insets.top },
       frame: { paddingTop: insets.top, paddingBottom: insets.bottom },
       scrollTailWithNav: {
-        // `BUMP_RISE` as well as the bar: the Home button stands proud of the
-        // bar's top edge, so a tail measured to the bar alone leaves the last
-        // card half under a gold disc.
-        paddingBottom: insets.bottom + SCROLL_TAIL + NAV_BAR_HEIGHT + BUMP_RISE,
+        // Four terms, matching Home's `navSlot`. `BUMP_RISE` because the Home
+        // button stands proud of the bar's top edge, and `NAV_OFFSET` because
+        // `Root` holds the whole bar that far above the safe area — a tail
+        // measured to the bar alone leaves the last card half under a gold
+        // disc, and one that forgets the offset stops ten short.
+        paddingBottom:
+          insets.bottom + SCROLL_TAIL + NAV_BAR_HEIGHT + BUMP_RISE + NAV_OFFSET,
       },
       sides: { paddingLeft: insets.left, paddingRight: insets.right },
     }),

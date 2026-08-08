@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { DEFAULT_DIFFICULTY, isDifficulty, type Difficulty } from '@/game/difficulty';
+import { DEFAULT_SKIN, skinFor } from '@/theme/skins';
 import { readJson, writeJson } from './storage';
 
 export interface Settings {
@@ -16,6 +17,15 @@ export interface Settings {
   colourblind: boolean;
   dailyReminder: boolean;
   difficulty: Difficulty;
+  /**
+   * Which vessel the board is drawn in. Cosmetic; see `theme/skins.ts`.
+   *
+   * Here rather than in `economyStore` beside `owned` on purpose: what you own
+   * is a purchase record and what you have equipped is a preference, and the
+   * two answer different questions. Buying a second skin must not silently
+   * change the board.
+   */
+  skin: string;
 }
 
 /** Spec §7. "Off" is the absence of a track, so it is not in the list. */
@@ -43,6 +53,7 @@ const DEFAULTS: Settings = {
   colourblind: false,
   dailyReminder: false,
   difficulty: DEFAULT_DIFFICULTY,
+  skin: DEFAULT_SKIN,
 };
 
 function load(): Settings {
@@ -57,6 +68,10 @@ function load(): Settings {
     colourblind: stored.colourblind ?? DEFAULTS.colourblind,
     dailyReminder: stored.dailyReminder ?? DEFAULTS.dailyReminder,
     difficulty: isDifficulty(stored.difficulty) ? stored.difficulty : DEFAULT_DIFFICULTY,
+    // Validated, not trusted: the record outlives the build that wrote it, so
+    // a skin that has since been renamed or dropped comes back as the default
+    // rather than as a board with no glass on it.
+    skin: skinFor(stored.skin ?? '').id,
   };
 }
 
@@ -70,6 +85,7 @@ function persist(state: Settings): void {
     colourblind,
     dailyReminder,
     difficulty,
+    skin,
   } = state;
   writeJson(KEY, {
     sound,
@@ -80,6 +96,7 @@ function persist(state: Settings): void {
     colourblind,
     dailyReminder,
     difficulty,
+    skin,
   });
 }
 
@@ -125,6 +142,7 @@ export function currentSettings(): Settings {
     colourblind,
     dailyReminder,
     difficulty,
+    skin,
   } = useSettingsStore.getState();
   return {
     sound,
@@ -135,5 +153,6 @@ export function currentSettings(): Settings {
     colourblind,
     dailyReminder,
     difficulty,
+    skin,
   };
 }

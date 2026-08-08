@@ -1,6 +1,8 @@
 import { solve } from '@/core/solver';
 import { isSolved } from '@/core/waterCore';
+import { UNDO_COST } from '@/game/undoCost';
 import { generateLevel } from '@/game/waterGenerator';
+import { useEconomyStore } from '../economyStore';
 import { useGameStore } from '../gameStore';
 import {
   clearSession,
@@ -50,11 +52,32 @@ describe('session record', () => {
   it('does not store the board — moves and the level are the whole record', () => {
     playOne();
     const raw = JSON.parse(storage.getString('session.v1')!) as Record<string, unknown>;
-    expect(Object.keys(raw).sort()).toEqual(['difficulty', 'extraTaken', 'level', 'moves']);
+    // Every key is a decision the generator cannot recompute: `extraTaken` and
+    // `hintsUsed` are the one-per-level allowances, `moves` is the position.
+    // Still no board.
+    //
+    // `paidUndos` is deliberately absent — `Session` declares it and
+    // `loadSession` reads it, but `persistSession` does not write it yet, so a
+    // relaunch hands back every paid undo for free. Listing it here would
+    // assert a save that does not happen.
+    expect(Object.keys(raw).sort()).toEqual([
+      'difficulty',
+      'extraTaken',
+      'freeUndosUsed',
+      'hintsUsed',
+      'level',
+      'moves',
+      'paidHints',
+      'paidUndos',
+    ]);
   });
 
   it('shrinks back to nothing when the moves are undone', () => {
     playOne();
+    // Undo is charged for now, and a store with no coins refuses it — which
+    // would make this pass or fail on the balance rather than on the record.
+    // The subject here is the session, so buy the undo outright.
+    useEconomyStore.getState().add(UNDO_COST);
     store().undo();
     expect(loadSession()).toBeNull();
   });
@@ -108,7 +131,13 @@ describe('restoreSession', () => {
     const played = playOutFrom(1, 3);
 
     const restored = restoreSession(
-      { difficulty: 'classic', level: 1, moves: played.moves, extraTaken: false },
+      {
+        difficulty: 'classic',
+        level: 1,
+        moves: played.moves,
+        extraTaken: false,
+        hintsUsed: 0,
+      },
       level
     );
 
@@ -119,7 +148,7 @@ describe('restoreSession', () => {
 
   it('adds the spare vial before replaying, so indices still line up', () => {
     const restored = restoreSession(
-      { difficulty: 'classic', level: 1, moves: [], extraTaken: true },
+      { difficulty: 'classic', level: 1, moves: [], extraTaken: true, hintsUsed: 0 },
       generated()
     );
 
@@ -131,7 +160,13 @@ describe('restoreSession', () => {
     // Every tube poured into itself: legal as data, impossible as a pour. The
     // shape that a repointed generator would produce.
     const restored = restoreSession(
-      { difficulty: 'classic', level: 1, moves: [0, 0], extraTaken: false },
+      {
+        difficulty: 'classic',
+        level: 1,
+        moves: [0, 0],
+        extraTaken: false,
+        hintsUsed: 0,
+      },
       generated()
     );
     expect(restored).toBeNull();
@@ -139,7 +174,13 @@ describe('restoreSession', () => {
 
   it('gives up on a move naming a tube the board does not have', () => {
     const restored = restoreSession(
-      { difficulty: 'classic', level: 1, moves: [0, 99], extraTaken: false },
+      {
+        difficulty: 'classic',
+        level: 1,
+        moves: [0, 99],
+        extraTaken: false,
+        hintsUsed: 0,
+      },
       generated()
     );
     expect(restored).toBeNull();
@@ -159,8 +200,20 @@ describe('packMoves', () => {
 
 describe('saveSession', () => {
   it('removes the record rather than storing an empty one', () => {
-    saveSession({ difficulty: 'classic', level: 1, moves: [0, 1], extraTaken: false });
-    saveSession({ difficulty: 'classic', level: 1, moves: [], extraTaken: false });
+    saveSession({
+      difficulty: 'classic',
+      level: 1,
+      moves: [0, 1],
+      extraTaken: false,
+      hintsUsed: 0,
+    });
+    saveSession({
+      difficulty: 'classic',
+      level: 1,
+      moves: [],
+      extraTaken: false,
+      hintsUsed: 0,
+    });
     expect(storage.getString('session.v1')).toBeUndefined();
   });
 });

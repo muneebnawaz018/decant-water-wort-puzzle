@@ -25,7 +25,14 @@ import { SettingGroup, SettingRow } from './chrome/SettingRow';
 import { useClaimTimer } from './hooks/useClaimTimer';
 import { Icon } from './Icon';
 import { dayState } from './rewardTrack';
-import { COIN_SIZE, FLAME_SIZE, styles } from './styles/DailyScreen.styles';
+import {
+  COIN_SIZE,
+  FLAME_SIZE,
+  GRAND_TINT,
+  styles,
+  TODAY_TINT,
+} from './styles/DailyScreen.styles';
+import { EARNINGS } from '@/game/economy';
 
 /**
  * Day seven, and the six that lead to it.
@@ -37,13 +44,8 @@ const WEEK = DAILY_REWARDS.slice(0, -1);
 const FINALE = DAILY_REWARDS[DAILY_REWARDS.length - 1]!;
 const FINALE_INDEX = DAILY_REWARDS.length - 1;
 
-/**
- * What the rewarded ad pays, doc §8's highest-value slot.
- *
- * Named here because Home's chip prints the same figure, and two screens
- * quoting different numbers for one reward is worse than not advertising it.
- */
-const AD_REWARD = 50;
+/** What the rewarded ad pays. From `economy.ts`, which Home's chip reads too. */
+const AD_REWARD = EARNINGS.rewardedAd;
 
 /**
  * The streak card's second line.
@@ -135,7 +137,7 @@ export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScree
         seventh tile it was the same square as the 10-coin Monday, which is the
         layout telling the player the opposite of what the numbers do.
       */}
-      <Panel contentStyle={styles.grand}>
+      <Panel style={styles.grandBox} contentStyle={styles.grand} tint={GRAND_TINT}>
         <View style={styles.grandCoin}>
           <CoinFace />
         </View>
@@ -169,7 +171,7 @@ export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScree
         reason `SoonBadge` exists — what is shown but cannot yet be delivered
         has to say which it is, or it reads as a broken button.
       */}
-      <Panel contentStyle={styles.advert}>
+      <Panel style={styles.advertBox} contentStyle={styles.advert}>
         <View style={styles.advertIcon}>
           <LinearGradient colors={gradients.advert} style={StyleSheet.absoluteFill} />
           <Icon name="video" size={s(21)} color={colours.white} />
@@ -195,15 +197,33 @@ export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScree
   );
 });
 
-/** The coin disc, lit from the upper left. Used at two sizes. */
+/**
+ * The coin disc, lit from the upper left. Used at two sizes.
+ *
+ * The mockup's is a radial gradient — bright at 34%/30%, gold by 62%, bronze at
+ * the rim — and `expo-linear-gradient` has no radial mode. A linear ramp on its
+ * own was what shipped, and at 28dp it read as a flat brown disc: a straight
+ * ramp spends the bottom third of a small circle in the darkest stop, so the
+ * shape is more rim than coin.
+ *
+ * Faked in two layers instead of reaching for Skia, which would mean a native
+ * surface per coin and there are seven on this screen. A diagonal ramp does the
+ * body, and a soft highlight sits where the radial's hot spot would be. What
+ * makes it read as round is the specular, not the ramp — the ramp only has to
+ * get darker towards the far edge.
+ */
 const CoinFace = memo(function CoinFace() {
   return (
-    <LinearGradient
-      colors={gradients.coin}
-      locations={[0, 0.62, 1]}
-      start={{ x: 0.34, y: 0.3 }}
-      style={StyleSheet.absoluteFill}
-    />
+    <>
+      <LinearGradient
+        colors={gradients.coin}
+        locations={[0, 0.55, 1]}
+        start={{ x: 0.15, y: 0 }}
+        end={{ x: 0.85, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={styles.coinSpecular} />
+    </>
   );
 });
 
@@ -290,6 +310,7 @@ const DayTile = memo(function DayTile({
           state === 'future' && styles.dayFuture,
           state === 'today' && styles.dayToday,
         ]}
+        tint={state === 'today' ? TODAY_TINT : undefined}
       >
         <Text style={[styles.dayNumber, state === 'today' && styles.dayNumberToday]}>
           DAY {day}

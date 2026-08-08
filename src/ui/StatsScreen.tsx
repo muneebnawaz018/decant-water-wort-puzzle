@@ -118,7 +118,21 @@ export const StatsScreen = memo(function StatsScreen() {
       <Text style={section.title}>Lifetime</Text>
       <Panel contentStyle={styles.lifetime}>
         <StatRow label="Levels solved" value={String(totals.solved)} />
-        <StatRow label="Stars earned" value={`${totals.stars} / ${totals.solved * 3}`} />
+        {/*
+          A plain count, not `15 / 15`.
+
+          The denominator was `solved * 3` — the stars those levels could have
+          paid — and nothing on the row said so. Two numbers with no labels
+          invite the reading they usually have on a stats screen, which is
+          "15 of the 15 that exist", and that is not a thing this game has: the
+          total keeps growing as you play, so the right-hand number moved every
+          level and a perfect player sat at `n / n` forever.
+
+          The ratio is not lost. It is the row below, where 3.0 is out of three
+          and says the same thing in a form that does not need a second number
+          to be read.
+        */}
+        <StatRow label="Stars earned" value={String(totals.stars)} />
         <StatRow label="Stars per level" value={perLevel.toFixed(1)} />
         {/*
           "Pours in best runs" was read as a lifetime total and it is not one:
@@ -130,8 +144,12 @@ export const StatsScreen = memo(function StatsScreen() {
           the one thing this screen refuses to do: every number on it is
           derived from the progress record, and a counter kept alongside is a
           second thing that can fall out of step with it.
+
+          "Pours at your best" tried to say that and read as a superlative
+          about the player rather than about the runs. "Best winning pours"
+          names the runs it sums, which is what the number is.
         */}
-        <StatRow label="Pours at your best" value={String(totals.pours)} divider={false} />
+        <StatRow label="Best winning pours" value={String(totals.pours)} divider={false} />
       </Panel>
     </ScrollPage>
   );

@@ -1,4 +1,5 @@
 import { solve } from '@/core/solver';
+import { useEconomyStore } from '@/state/economyStore';
 import { useGameStore } from '@/state/gameStore';
 import { useOverlayStore } from '@/state/overlayStore';
 import { useSettingsStore } from '@/state/settingsStore';
@@ -77,6 +78,8 @@ describe('confirmExitLevel', () => {
   // back to the start puts the wording back to untouched.
   it('reads as untouched again once every move has been undone', () => {
     playOne();
+    // Undo spends coins, and a refused undo would leave the move in place.
+    useEconomyStore.setState({ coins: 100 });
     useGameStore.getState().undo();
     const leave = jest.fn();
     confirmExitLevel(leave);

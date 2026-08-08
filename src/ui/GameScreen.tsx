@@ -6,11 +6,14 @@ import { Easing, runOnJS, useSharedValue, withTiming } from 'react-native-reanim
 import { Board, type PourAnimation } from '@/render/Board';
 import { computeLayout, hitTest } from '@/render/layout';
 import { POUR_MS } from '@/render/pour';
+import { FREE_HINTS, PRICES } from '@/game/economy';
+import { undoCharge } from '@/game/undoCost';
+import { useEconomyStore } from '@/state/economyStore';
 import { overlay } from '@/state/overlayStore';
 import { useSettingsStore } from '@/state/settingsStore';
 import { useGameStore, type TapOutcome } from '@/state/gameStore';
 import { s } from '@/theme/scale';
-import { plural } from '@/utils';
+import { compactCoins, plural } from '@/utils';
 import { ChromeIconButton } from './chrome/ScreenHeader';
 import { useScreenPadding } from './hooks/useScreenPadding';
 import { feedbackFor, feedbackWarn } from './feedback';
@@ -21,6 +24,23 @@ import {
   SIDE_PADDING,
   styles,
 } from './styles/GameScreen.styles';
+
+/**
+ * What each hint refusal says, and why they are three messages and not one.
+ *
+ * `stuck` is the useful half of the whole feature: a water sort board can be
+ * poured into a position with no winning line, there is no fail state to
+ * announce it, and nothing else in the game can tell the player. `unsure` looks
+ * the same from the outside and is not the same news — the search gave up
+ * without proving anything, and dressing that up as "there is none" would be
+ * the app lying about a board that may well be winnable. `blocked` is a price,
+ * and prices get their own wording.
+ */
+const HINT_REFUSAL = {
+  stuck: 'No way to win from here — undo, or add a vial',
+  unsure: "Couldn't find a hint for this board",
+  blocked: `A hint costs ${PRICES.hint} coins — not enough`,
+} as const;
 
 interface GameScreenProps {
   width: number;
@@ -41,8 +61,41 @@ export const GameScreen = memo(function GameScreen({
   const board = useGameStore((state) => state.board);
   const selected = useGameStore((state) => state.selected);
   const moves = useGameStore((state) => state.history.length);
+  /**
+   * What the next undo costs, or 0 if that move has already been paid for.
+   *
+   * Derived here rather than read as a flag, because it changes with every
+   * move: the badge has to disappear the moment a redo puts the player back on
+   * a move they have already bought their way past.
+   */
+  const undoPrice = useGameStore((state) =>
+    state.history.length === 0
+      ? 0
+      : undoCharge(
+          state.paidUndos,
+          state.history.length - 1,
+          state.freeUndosUsed,
+          state.difficulty
+        ).coins
+  );
   const undone = useGameStore((state) => state.future.length);
+  /**
+   * What the next hint costs, or 0 while the free one is unspent.
+   *
+   * Zero too while a hint is already on the board — pressing again re-states
+   * what is showing, and charging twice for one answer is the shape of a bug
+   * even when the player has the coins.
+   */
+  const hintPrice = useGameStore((state) =>
+    // `heldHint`, not `hintMove`: selecting a vial dismisses the display but
+    // not the purchase, and the badge must price the press, which re-shows the
+    // held answer free.
+    state.heldHint !== null || state.hintsUsed < FREE_HINTS ? 0 : PRICES.hint
+  );
+  // The destination only; the source arrives through `selected`.
+  const hintTo = useGameStore((state) => state.hintMove?.to ?? null);
   const marks = useSettingsStore((state) => state.colourblind);
+  const skin = useSettingsStore((state) => state.skin);
 
   const boardWidth = width - SIDE_PADDING * 2;
   const boardHeight =
@@ -129,18 +182,76 @@ export const GameScreen = memo(function GameScreen({
     [handleTap]
   );
 
-  const undo = useCallback(() => useGameStore.getState().undo(), []);
+  /**
+   * Undo, which costs coins the first time each move is taken back.
+   *
+   * A refusal answers differently from a success — the same rule the hint
+   * button follows. Being unable to afford it has to feel like the control
+   * declining, not like an undo that did nothing.
+   */
+  const undo = useCallback(() => {
+    const outcome = useGameStore.getState().undo();
+    if (outcome.kind === 'blocked') {
+      feedbackWarn();
+      overlay.toast(`Undo costs ${outcome.price} coins — not enough`);
+      return;
+    }
+    // Silent when the move was already paid for: a charge the player did not
+    // incur should not be announced, and the board moving is the feedback.
+    if (outcome.kind !== 'undone') return;
+    if (outcome.charged > 0) {
+      // What it cost and what is left, in that order. A deduction with no
+      // balance beside it makes the player check the pill at the top of the
+      // screen to find out where they are — and the board is where they are
+      // looking. Read after the charge, so it is the balance they now have.
+      const left = compactCoins(useEconomyStore.getState().coins);
+      overlay.toast(`Undo · −${outcome.charged} coins · ${left} left`);
+      return;
+    }
+    // The last free one is worth announcing; the ones before it are not. A
+    // player told "2 left" after every undo is being nagged about a budget
+    // they have not reached — but arriving at the board's first *charged* undo
+    // with no warning is worse.
+    //
+    // `spentAllowance` is what keeps it to that one moment. Both a free undo
+    // and a re-undo of a move already paid for report `charged: 0`, so on the
+    // flag alone this fired again every time the player rewound the same move
+    // — a warning about a budget, raised by the action that does not touch it.
+    if (outcome.spentAllowance && outcome.freeLeft === 0) {
+      // The balance goes with the price. This is the one moment the player is
+      // told undo has started costing, and the price only means something
+      // against what they have — 10 each is nothing at 4,000 and is the last
+      // two undos at 25. Compact, because a balance is the tail of a sentence
+      // here and `12,480` pushes the line into a second row on a narrow phone.
+      const balance = compactCoins(useEconomyStore.getState().coins);
+      overlay.toast(`Free undos used — ${PRICES.undo} coins each · ${balance} left`);
+    }
+  }, []);
   const redo = useCallback(() => playPour(useGameStore.getState().redo()), [playPour]);
   const restart = useCallback(() => useGameStore.getState().restart(), []);
   const hint = useCallback(() => {
-    // Selecting the source is the hint: the player still chooses where it
-    // goes, so it points rather than plays.
-    if (!useGameStore.getState().hint()) {
-      // The button ticked on the way in. Answer the refusal differently, or
-      // "no hint left" feels identical to a hint being given.
-      feedbackWarn();
-      overlay.toast('No pour available — try undo');
+    // It points rather than plays: the source is armed and the destination
+    // ringed, and the player still makes the pour.
+    const outcome = useGameStore.getState().hint();
+    if (outcome.kind === 'ignored') return;
+
+    if (outcome.kind === 'shown') {
+      // Silent when it was free, and when it was already on the board. A charge
+      // the player did not incur must not be announced.
+      if (outcome.charged > 0) {
+        // The same shape as a charged undo, balance and all — two meters that
+        // read differently would make one of them look broken. Read after the
+        // charge, so it is the balance the player now has.
+        const left = compactCoins(useEconomyStore.getState().coins);
+        overlay.toast(`Hint · −${outcome.charged} coins · ${left} left`);
+      }
+      return;
     }
+
+    // The button ticked on the way in. Answer a refusal differently, or being
+    // turned down feels the same as being helped.
+    feedbackWarn();
+    overlay.toast(HINT_REFUSAL[outcome.kind]);
   }, []);
   const addVial = useCallback(() => {
     // Spec §10 makes this the rewarded-ad slot. The ad is phase 2; the vial
@@ -169,17 +280,25 @@ export const GameScreen = memo(function GameScreen({
             width={boardWidth}
             height={boardHeight}
             selected={selected}
+            hintTo={hintTo}
             animation={pour}
             progress={progress}
             marks={marks}
+            skin={skin}
           />
         </View>
       </GestureDetector>
 
       <View style={styles.controls}>
-        <ControlButton icon="undo" label="Undo" onPress={undo} disabled={moves === 0} />
+        <ControlButton
+          icon="undo"
+          label="Undo"
+          onPress={undo}
+          disabled={moves === 0}
+          price={undoPrice}
+        />
         <ControlButton icon="redo" label="Redo" onPress={redo} disabled={undone === 0} />
-        <ControlButton icon="hint" label="Hint" onPress={hint} />
+        <ControlButton icon="hint" label="Hint" onPress={hint} price={hintPrice} />
         <ControlButton icon="addVial" label="Add vial" onPress={addVial} />
       </View>
     </View>

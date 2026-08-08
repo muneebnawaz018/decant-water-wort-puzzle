@@ -23,6 +23,7 @@ import { useTapHandler } from './hooks/useTapHandler';
 import { Icon } from './Icon';
 import { PAGE_SIZE } from './StagesScreen';
 import { styles } from './styles/HomeScreen.styles';
+import { EARNINGS } from '@/game/economy';
 
 interface HomeScreenProps {
   onPlay: () => void;
@@ -147,7 +148,7 @@ export const HomeScreen = memo(function HomeScreen({
             <RewardChip
               icon="play"
               tint={gradients.advert}
-              title="+50 coins"
+              title={`+${EARNINGS.rewardedAd} coins`}
               detail="Watch a short ad"
               onPress={openDaily}
             />

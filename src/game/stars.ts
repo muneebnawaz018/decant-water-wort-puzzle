@@ -1,3 +1,5 @@
+import { EARNINGS } from './economy';
+
 /**
  * Efficiency a run needs for three stars, as `par / moves`.
  *
@@ -67,9 +69,34 @@ export function starsFor(moves: number, par: number): number {
   return 1;
 }
 
-/** Coins paid for a completion, by star count. */
+/** Coins a run is worth outright, by star count. The rate is in `economy.ts`. */
 export function coinsFor(stars: number): number {
-  return stars * 20;
+  return stars * EARNINGS.coinsPerStar;
+}
+
+/**
+ * Coins for finishing a level, given the best it had been finished in before.
+ *
+ * **A level is paid for once, and improving on it pays the difference.** A first
+ * clear at two stars pays 40; coming back and three-starring it pays the 20 that
+ * was left on the table; replaying it again pays nothing.
+ *
+ * The alternative — paying the full rate on every solve — was what this replaced
+ * and it was an unbounded faucet, not a rounding error. The gentle mode's early
+ * boards are seven moves long and rate three stars in seconds, so a player could
+ * mint 60 coins on a loop by pressing replay, with no cheating involved. That
+ * makes every price in the game notional, including what an undo costs.
+ *
+ * Paying nothing at all for a replay was the simpler fix and is worse: a player
+ * who comes back and turns a scraped one-star into a clean three deserves the
+ * difference, and that is the only reason to replay a level with no fail state.
+ *
+ * `previousStars` is 0 for a level never finished, which makes the first clear
+ * fall out of the same expression rather than needing a case of its own.
+ */
+export function coinsForImprovement(stars: number, previousStars: number): number {
+  const gained = Math.max(0, Math.floor(stars) - Math.max(0, Math.floor(previousStars)));
+  return coinsFor(gained);
 }
 
 /** Levels in a milestone block. Ten, matching the Stages grid's rhythm. */
@@ -77,15 +104,6 @@ export const MILESTONE_SIZE = 10;
 
 /** Most stars a block can hold. */
 const MILESTONE_MAX_STARS = MILESTONE_SIZE * 3;
-
-/** Coins per star in the first block. */
-const MILESTONE_TOP_RATE = 6;
-
-/** Coins per star once the taper bottoms out. */
-const MILESTONE_FLOOR_RATE = 2;
-
-/** Blocks the rate takes to fall one coin. */
-const MILESTONE_TAPER = 2;
 
 /**
  * Coins for finishing a block of ten levels, paid on the stars earned in it.
@@ -95,10 +113,10 @@ const MILESTONE_TAPER = 2;
  * stay a bonus later rather than becoming the main source of income, or the
  * economy ends up paying for elapsed time instead of for playing well.
  *
- * So the rate per star tapers: six coins a star in the first block, falling by
- * one every two blocks to a floor of two. Block one pays up to 180, block nine
- * and everything after it up to 60 — roughly one extra level's worth, on top
- * of the ten levels' own payouts.
+ * So the rate per star tapers, from `milestoneTopRate` down to
+ * `milestoneFloorRate` a step every `milestoneTaper` blocks. At the numbers in
+ * `economy.ts` that is block one paying up to 180 and block nine onward up to
+ * 60 — roughly one extra level's worth on top of the ten levels' own payouts.
  *
  * Driven by stars rather than by levels finished, so a block cleared carefully
  * pays more than a block scraped through. There is no fail state, so every
@@ -110,8 +128,8 @@ export function milestoneBonus(block: number, stars: number): number {
   const earned = Math.max(0, Math.min(MILESTONE_MAX_STARS, Math.floor(stars)));
   if (earned === 0) return 0;
 
-  const steps = Math.floor(Math.max(0, block - 1) / MILESTONE_TAPER);
-  const rate = Math.max(MILESTONE_FLOOR_RATE, MILESTONE_TOP_RATE - steps);
+  const steps = Math.floor(Math.max(0, block - 1) / EARNINGS.milestoneTaper);
+  const rate = Math.max(EARNINGS.milestoneFloorRate, EARNINGS.milestoneTopRate - steps);
   return earned * rate;
 }
 

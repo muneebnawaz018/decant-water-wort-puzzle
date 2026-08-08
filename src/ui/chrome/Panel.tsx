@@ -18,6 +18,21 @@ interface PanelProps {
    */
   contentStyle?: StyleProp<ViewStyle>;
   radius?: number;
+  /**
+   * A wash over the card's own gloss, for a panel that has to read as a
+   * different *kind* of surface — today's reward tile, the grand row.
+   *
+   * It exists because `backgroundColor` in `contentStyle` silently does
+   * nothing: that style lands on the `LinearGradient`, and a gradient paints
+   * over the background of the view it belongs to. Every caller that tried it
+   * got a card identical to the plain one and no warning — the daily track's
+   * gold ring and the grand row's tint were both written that way and neither
+   * had ever appeared on screen.
+   *
+   * Drawn above the gloss and below the children, so it tints the surface
+   * without dimming the text on it.
+   */
+  tint?: string;
 }
 
 /**
@@ -33,6 +48,7 @@ export const Panel = memo(function Panel({
   style,
   contentStyle,
   radius = SPACE.cardRadius,
+  tint,
 }: PanelProps) {
   return (
     <View style={[styles.shadow, { borderRadius: radius }, style]}>
@@ -40,6 +56,12 @@ export const Panel = memo(function Panel({
         colors={[apothecary.surfaceTop, apothecary.surface]}
         style={[styles.fill, { borderRadius: radius - HAIRLINE }, contentStyle]}
       >
+        {tint ? (
+          <View
+            style={[styles.tint, { backgroundColor: tint, borderRadius: radius }]}
+            pointerEvents="none"
+          />
+        ) : null}
         <View
           style={[styles.topHighlight, { borderRadius: radius }]}
           pointerEvents="none"
