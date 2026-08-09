@@ -16,8 +16,6 @@
  * turns these numbers into a path; nothing here knows what a canvas is.
  */
 
-import { SKIN_PRICES } from '@/game/economy';
-
 /**
  * A vessel's silhouette, every value a fraction of the tube's own box.
  *
@@ -43,16 +41,6 @@ export interface Skin {
   /** One line in the shop. What the glass is, not what it costs. */
   blurb: string;
   vessel: Vessel;
-  /**
-   * Price in coins, or `null` for the two that ship unlocked.
-   *
-   * Two free skins rather than one, on purpose: with a single default there is
-   * nothing to switch *between*, so the shop's first job would be selling
-   * before the player has ever seen the feature work. Two means the control is
-   * real from the first launch, and a locked row then reads as more of
-   * something known rather than as a promise.
-   */
-  price: number | null;
 }
 
 /**
@@ -64,29 +52,21 @@ export interface Skin {
 const VIAL: Vessel = { shoulder: 0, base: 0.5, mouth: 1, neck: 0 };
 
 /**
- * A round-bottomed flask: narrow neck, shoulders flaring into a full body.
+ * The catalogue: one vessel, the one every player starts in.
  *
- * The neck is deliberately shallow — 12% of the height, about half a segment.
- * Deeper looked better empty and worse full, because the top segment is the one
- * the player is comparing when they decide where to pour, and squeezing it into
- * a stem makes two segments of one colour hard to read as two.
- */
-const FLASK: Vessel = { shoulder: 0.16, base: 0.5, mouth: 0.5, neck: 0.12 };
-
-/** A straight-walled beaker: rounded lip, flat base. Locked. */
-const BEAKER: Vessel = { shoulder: 0.3, base: 0.12, mouth: 1, neck: 0 };
-
-/** A sealed ampoule: long drawn neck, teardrop body. Locked. */
-const AMPOULE: Vessel = { shoulder: 0.5, base: 0.5, mouth: 0.34, neck: 0.2 };
-
-/**
- * The catalogue, in shop order.
+ * **Nothing is for sale here yet, and the alternatives are gone rather than
+ * greyed out.** The shop shipped four shapes — a flask, a beaker, an ampoule —
+ * with the last two behind a "coming soon" veil and the flask equippable. That
+ * was three promises on a screen that could keep none of them: nothing reads
+ * `economyStore.owned`, so a purchase would have taken the coins and changed
+ * no pixel, and a row that is permanently arriving later teaches a player to
+ * ignore the shop.
  *
- * Prices carry over from the palette skins they replace, and they are a ladder
- * rather than a flat rate because they are priced against what the game pays:
- * The numbers are in `game/economy.ts` with every other price, so the shop can
- * be repriced without opening this file — what lives here is the artwork each
- * price buys.
+ * An array rather than a constant because the shape of this is right and only
+ * its length is temporary. The renderer, the setting and the stored id all work
+ * the same at one entry as at four, so restoring the catalogue is a matter of
+ * adding vessels back — the geometry for the other three is in this file's
+ * history, and the prices are in `game/economy.ts` with everything else.
  */
 export const SKINS: readonly Skin[] = [
   {
@@ -94,37 +74,10 @@ export const SKINS: readonly Skin[] = [
     name: 'Apothecary vial',
     blurb: 'Square shoulders, rounded base',
     vessel: VIAL,
-    price: SKIN_PRICES['skin.vial'] ?? null,
-  },
-  {
-    id: 'skin.flask',
-    name: 'Round flask',
-    blurb: 'Narrow neck, full body',
-    vessel: FLASK,
-    price: SKIN_PRICES['skin.flask'] ?? null,
-  },
-  {
-    id: 'skin.beaker',
-    name: 'Lab beaker',
-    blurb: 'Straight walls, flat base',
-    vessel: BEAKER,
-    price: SKIN_PRICES['skin.beaker'] ?? null,
-  },
-  {
-    id: 'skin.ampoule',
-    name: 'Sealed ampoule',
-    blurb: 'Drawn neck, teardrop body',
-    vessel: AMPOULE,
-    price: SKIN_PRICES['skin.ampoule'] ?? null,
   },
 ];
 
 export const DEFAULT_SKIN = SKINS[0]!.id;
-
-/** The free ones, which every player has without buying anything. */
-export function isFreeSkin(id: string): boolean {
-  return SKINS.some((skin) => skin.id === id && skin.price === null);
-}
 
 /**
  * The skin for an id, falling back to the default.

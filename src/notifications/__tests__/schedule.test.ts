@@ -43,13 +43,32 @@ describe('reward reminders', () => {
   });
 
   it('warns before a streak worth keeping lapses', () => {
-    // 3pm claim, so +44h is 11am — a sociable hour, left where it is.
-    const claim = at(15);
+    // 2pm visit, so +18h is 8am — inside waking hours and left where it is.
+    //
+    // 18 hours out, not 44. A warning at 44 arrives with four hours left and a
+    // whole missed day behind it, which is news of a loss rather than a chance
+    // to avoid one. At 18 there are still six hours to open the app.
+    const claim = at(14);
     const reminders = remindersFor(state({ lastVisitAt: claim, streak: 5 }), claim);
     const streak = reminders.find((r) => r.kind === 'streak')!;
 
-    expect(streak.at).toBe(claim + 44 * HOURS);
+    expect(streak.at).toBe(claim + 18 * HOURS);
     expect(streak.title).toContain('5-day streak');
+  });
+
+  it('warns twice, a heads-up and a last call', () => {
+    // Two, because they do different jobs. The first is something a player can
+    // plan around; the second is six hours from the 36-hour lapse. One warning
+    // has to be one or the other and is wrong for half the cases.
+    const claim = at(14);
+    const warnings = remindersFor(state({ lastVisitAt: claim, streak: 5 }), claim).filter(
+      (r) => r.kind === 'streak'
+    );
+
+    expect(warnings).toHaveLength(2);
+    expect(warnings[0]!.at).toBe(claim + 18 * HOURS);
+    expect(warnings[1]!.at).toBe(claim + 30 * HOURS);
+    expect(warnings[1]!.title).toContain('Last call');
   });
 
   it('drops the streak warning rather than send it too late', () => {
@@ -70,15 +89,44 @@ describe('reward reminders', () => {
 });
 
 describe('come-back nudges', () => {
-  it('schedules two, a day and three days after the app was last open', () => {
-    const played = at(12);
+  it('repeats every twelve hours away from the game', () => {
+    const played = at(9);
     const idle = remindersFor(state({ lastPlayedAt: played }), played);
 
-    // Not twice a day: fourteen notifications a week gets the app muted, and a
-    // muted app cannot be reminded back.
-    expect(idle).toHaveLength(2);
-    expect(idle[0]!.at).toBe(played + 24 * HOURS);
-    expect(idle[1]!.at).toBe(played + 72 * HOURS);
+    // Queued ahead rather than one at a time: they are rebuilt on every
+    // background, so the later ones only ever fire for the player who does not
+    // come back — which is the player this reminder exists for.
+    expect(idle).toHaveLength(4);
+    for (const [index, nudge] of idle.entries()) {
+      expect(nudge.at).toBe(played + 12 * HOURS * (index + 1));
+    }
+  });
+
+  it('does not repeat the same line twice in a row', () => {
+    // Word for word twice in a day reads as a stuck app, not a reminder.
+    const played = at(9);
+    const idle = remindersFor(state({ lastPlayedAt: played }), played);
+
+    for (let i = 1; i < idle.length; i++) {
+      expect(idle[i]!.title).not.toBe(idle[i - 1]!.title);
+    }
+  });
+
+  it('says nothing about the streak or the reward', () => {
+    // Independent by construction: away from the game is true whatever the
+    // rest of the economy is doing, so this one anchors to `lastPlayedAt`
+    // alone. A player mid-streak hears the same line as anyone else.
+    const played = at(9);
+    const alone = remindersFor(state({ lastPlayedAt: played }), played);
+    const midStreak = remindersFor(
+      state({ lastPlayedAt: played, lastVisitAt: at(9), streak: 9 }),
+      played
+    );
+
+    const idle = midStreak.filter((r) => r.kind === 'idle');
+    expect(idle.map((r) => r.title)).toEqual(
+      alone.filter((r) => idle.some((i) => i.at === r.at)).map((r) => r.title)
+    );
   });
 
   it('schedules nothing for someone who has never opened the app', () => {
@@ -114,16 +162,23 @@ describe('come-back nudges', () => {
   });
 
   it('gives way to the reward reminder when they land together', () => {
-    // Claimed and stopped playing within the same session, so both anchors are
-    // 24 hours out. On a lock screen they say the same thing.
-    const moment = at(12);
+    // Visited at 9am and put the phone down at 9pm, so the reward opens and the
+    // nudge is due at the same 9am tomorrow. On a lock screen they say the same
+    // thing, and the one worth keeping is the one offering coins.
+    const visit = at(9);
+    const played = at(21);
     const reminders = remindersFor(
-      state({ lastVisitAt: moment, streak: 1, lastPlayedAt: moment }),
-      moment
+      state({ lastVisitAt: visit, streak: 1, lastPlayedAt: played }),
+      visit
     );
 
-    expect(reminders.filter((r) => r.at < moment + 48 * HOURS)).toHaveLength(1);
-    expect(reminders[0]!.kind).toBe('ready');
+    // The nudge due at that same 9am is dropped, not the reward. Later nudges
+    // are untouched — they clash with nothing.
+    const nine = visit + 24 * HOURS;
+    const together = reminders.filter((r) => Math.abs(r.at - nine) < 3 * HOURS);
+
+    expect(together).toHaveLength(1);
+    expect(together[0]!.kind).toBe('ready');
   });
 });
 

@@ -7,16 +7,36 @@
  * without a native module.
  */
 
+import { VISIT_INTERVAL_MS, VISIT_WINDOW_MS } from '@/game/streak';
+
 const HOUR_MS = 60 * 60 * 1000;
 
-/** The reward becomes claimable 24 hours after the last claim. */
-const VISIT_INTERVAL_MS = 24 * HOUR_MS;
-
-/** The streak lapses 48 hours after the last counted visit. */
-const VISIT_WINDOW_MS = 48 * HOUR_MS;
-
-/** How long before the streak lapses to warn about it. */
-const STREAK_WARNING_LEAD_MS = 4 * HOUR_MS;
+/**
+ * The streak warnings, as **time left before the run lapses**.
+ *
+ * Counted back from the deadline, not forward from the last visit. Those are
+ * the same instant today, and writing it this way is what keeps them the same
+ * instant tomorrow: the deadline is `VISIT_WINDOW_MS` and it now comes from
+ * `game/streak`, so moving the window moves both warnings with it and the copy
+ * stays true. Written as "+18h after the visit", a window change silently turns
+ * "six hours left" into a lie.
+ *
+ * Two of them because they do different jobs. Eighteen hours out is a heads-up
+ * someone can plan around; six is a last call. A single warning has to be one
+ * or the other and is wrong for half the cases.
+ */
+const STREAK_WARNINGS = [
+  {
+    leftBefore: 18 * HOUR_MS,
+    title: (days: number) => `Your ${days}-day streak is running out`,
+    body: 'Open the game today to keep it going.',
+  },
+  {
+    leftBefore: 6 * HOUR_MS,
+    title: (days: number) => `Last call for your ${days}-day streak`,
+    body: 'Around six hours left. Open the game and it carries on.',
+  },
+] as const;
 
 /**
  * Streak length worth defending with its own notification.
@@ -29,14 +49,28 @@ const STREAK_WARNING_LEAD_MS = 4 * HOUR_MS;
 const STREAK_WORTH_WARNING = 3;
 
 /**
- * Quiet away from the game before it says anything.
+ * How long away from the game before it says anything, and how often after.
  *
- * A day, then three days. Not twice a day, which is what the phrase "daily
- * reminder" tempts you into: fourteen notifications a week from a puzzle game
- * gets the whole app muted, and a muted app cannot be reminded back. Two
- * nudges spaced apart is the most a game like this has earned.
+ * Every twelve hours from the moment the app was last closed, and that is the
+ * only thing this reminder knows about. It does not look at the streak, the
+ * reward or the last visit — someone who opens the app daily and never plays a
+ * level is still away from the game, and someone mid-streak who has not played
+ * in a day should hear the same thing as anyone else.
  */
-const IDLE_NUDGES_MS = [24 * HOUR_MS, 72 * HOUR_MS];
+const IDLE_EVERY_MS = 12 * HOUR_MS;
+
+/**
+ * How many come-back nudges to queue at once.
+ *
+ * Four, so two days are covered from a single scheduling pass. They are rebuilt
+ * on every background, so in practice only the first one or two ever fire — the
+ * rest exist for the player who does not come back, which is exactly who this
+ * reminder is for and the only case where nothing re-schedules them.
+ *
+ * Not unlimited. iOS caps pending notifications at 64, and a queue stretching a
+ * week out is a week of "still sorting?" for someone who has quietly moved on.
+ */
+const IDLE_NUDGE_COUNT = 4;
 
 /**
  * How far past its moment a come-back nudge is still worth sending.
@@ -190,39 +224,54 @@ function rewardReminders(state: ReminderState): Reminder[] {
   ];
 
   if (state.streak >= STREAK_WORTH_WARNING) {
-    reminders.push({
-      kind: 'streak',
-      at: state.lastVisitAt + VISIT_WINDOW_MS - STREAK_WARNING_LEAD_MS,
-      expiresAt: state.lastVisitAt + VISIT_WINDOW_MS,
-      title: `Your ${state.streak}-day streak is about to end`,
-      body: 'Open the game in the next few hours to keep it going.',
-    });
+    // The one moment that matters: when the run dies if nothing is done.
+    const lapsesAt = state.lastVisitAt + VISIT_WINDOW_MS;
+
+    for (const warning of STREAK_WARNINGS) {
+      reminders.push({
+        kind: 'streak',
+        at: lapsesAt - warning.leftBefore,
+        // Both expire at the lapse. "About to end" delivered after it ended is
+        // worse than silence, and the waking-hours shift moves times forwards.
+        expiresAt: lapsesAt,
+        title: warning.title(state.streak),
+        body: warning.body,
+      });
+    }
   }
 
   return reminders;
 }
 
-/** The come-back nudges, anchored to the last time the app was open. */
+/**
+ * The come-back nudges: every twelve hours away from the game.
+ *
+ * Anchored to `lastPlayedAt` and nothing else. This is the reminder that has no
+ * opinion about the streak or the reward — it fires because the app has not
+ * been opened, which is true whatever the rest of the economy is doing.
+ *
+ * Alternating copy, so the second one is not the first one again. Two lines
+ * cycled is not variety, but a nudge that arrives word for word twice in a day
+ * reads as a stuck app rather than a reminder.
+ */
+const IDLE_COPY = [
+  { title: 'The vials are settling', body: 'A quiet puzzle is waiting whenever you are.' },
+  { title: 'Still sorting?', body: 'Your shelf is where you left it. No rush.' },
+] as const;
+
 function idleReminders(state: ReminderState): Reminder[] {
-  if (state.lastPlayedAt === null) return [];
-
-  const copy = [
-    {
-      title: 'The vials are settling',
-      body: 'A quiet puzzle is waiting whenever you are.',
-    },
-    { title: 'Still sorting?', body: 'Your shelf is where you left it. No rush.' },
-  ];
-
   const played = state.lastPlayedAt;
+  if (played === null) return [];
 
-  return IDLE_NUDGES_MS.map((after, index) => ({
-    kind: 'idle' as const,
-    at: played + after,
-    expiresAt: played + after + IDLE_STALE_MS,
-    title: copy[index]!.title,
-    body: copy[index]!.body,
-  }));
+  return Array.from({ length: IDLE_NUDGE_COUNT }, (_, index) => {
+    const at = played + IDLE_EVERY_MS * (index + 1);
+    return {
+      kind: 'idle' as const,
+      at,
+      expiresAt: at + IDLE_STALE_MS,
+      ...IDLE_COPY[index % IDLE_COPY.length]!,
+    };
+  });
 }
 
 /**

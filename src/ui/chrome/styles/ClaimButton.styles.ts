@@ -14,6 +14,9 @@ import { s } from '@/theme/scale';
  */
 const RADIUS = SPACE.cardRadius;
 
+/** The coin beside the caption. Cap-height of the caption's own type. */
+export const CAPTION_COIN = s(13);
+
 export const styles = StyleSheet.create({
   /**
    * Passed down every layer of the control when it is filling a slot.
@@ -111,6 +114,44 @@ export const styles = StyleSheet.create({
   },
   /** Left-aligned under the mark, so the caption and the clock share an edge. */
   waitText: { flexShrink: 1 },
+
+  /**
+   * The eyebrow and the prize, on one line.
+   *
+   * `space-between` rather than a gap, so the coin sits at the clock's right
+   * edge underneath it. Aligned to the caption's baseline by centring: the coin
+   * is a glyph of its own size and hanging it off the text's baseline leaves it
+   * riding high on the taller cap.
+   */
+  captionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: s(10),
+    marginBottom: s(2),
+  },
+  captionValue: { flexDirection: 'row', alignItems: 'center', gap: s(3) },
+  captionAmount: {
+    fontFamily: POPPINS.bold,
+    fontSize: s(12),
+    color: apothecary.goldLight,
+    includeFontPadding: false,
+  },
+
+  /**
+   * The clock's own box, and the reason the row stops twitching.
+   *
+   * Poppins is proportionally spaced, so the countdown is a different width at
+   * `23:59:59` than at `11:11:11` — and as a bare sibling in the column it
+   * dragged the caption row's `space-between` back and forth once a second. A
+   * floor under the width means the layout is decided by the widest time the
+   * clock can show rather than by the one it happens to be showing.
+   *
+   * `alignSelf: 'flex-start'` keeps the digits left-aligned against the caption
+   * above them; centring inside the floor would drift them right whenever the
+   * time is narrow, which is the same twitch one level down.
+   */
+  clockBox: { minWidth: s(148), alignSelf: 'flex-start' },
   /**
    * The caption, small and above the numbers.
    *
@@ -127,7 +168,6 @@ export const styles = StyleSheet.create({
     letterSpacing: s(0.8),
     color: alpha('goldLight', 0.65),
     includeFontPadding: false,
-    marginBottom: s(2),
   },
 
   /**

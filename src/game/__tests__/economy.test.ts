@@ -63,22 +63,21 @@ describe('the economy table', () => {
     expect(STARTING_COINS).toBe(0);
   });
 
-  it('prices the cheapest skin above a single day of play', () => {
-    // A cosmetic that a day's play covers is not worth saving for, and the
-    // currency stops meaning anything.
-    const perDay = EARNINGS.coinsPerStar * 3 * 10;
-    const paid = Object.values(SKIN_PRICES).filter((p): p is number => p !== null);
-    expect(Math.min(...paid)).toBeGreaterThan(perDay);
+  it('has nothing priced while one skin ships', () => {
+    // The catalogue was cut back to the free default, so a price here would be
+    // a number for something that cannot be bought.
+    expect(Object.keys(SKIN_PRICES)).toHaveLength(0);
   });
 
-  it('keeps some skins free, so the shop is not a wall', () => {
-    expect(Object.values(SKIN_PRICES).some((p) => p === null)).toBe(true);
-  });
-
-  it('sells a coin pack worth more than a paid skin', () => {
-    // A pack that cannot buy anything in the shop it sits next to is a pack
+  it('keeps any skin price above a day of play and inside a coin pack', () => {
+    // Vacuous today and deliberately kept: it is the rule the next skin has to
+    // land inside. A cosmetic a day's play covers is not worth saving for, and
+    // a coin pack that cannot buy anything in the shop beside it is a pack
     // nobody has a reason to buy.
-    const paid = Object.values(SKIN_PRICES).filter((p): p is number => p !== null);
-    expect(PRODUCTS.coinPackSize).toBeGreaterThan(Math.min(...paid));
+    const perDay = EARNINGS.coinsPerStar * 3 * 10;
+    for (const price of Object.values(SKIN_PRICES)) {
+      expect(price).toBeGreaterThan(perDay);
+      expect(PRODUCTS.coinPackSize).toBeGreaterThan(price);
+    }
   });
 });

@@ -70,34 +70,6 @@ export const styles = StyleSheet.create({
     color: ui.onGold,
   },
 
-  /* ⚠️ TEST JUMP ROW — remove with the block in StagesScreen.tsx. ⚠️ */
-  jumpRow: {
-    flexDirection: 'row',
-    // Stretch, not centre: the button takes its height from the tab styles it
-    // borrows, and the field matches whatever that comes out as. A fixed height
-    // on the field was 2dp off the button and read as a misalignment.
-    alignItems: 'stretch',
-    gap: s(8),
-    paddingHorizontal: SPACE.screen,
-    paddingBottom: SPACE.section,
-  },
-  jumpInput: {
-    flex: 1,
-    borderRadius: s(14),
-    paddingVertical: s(11) - HAIRLINE,
-    paddingHorizontal: s(14),
-    backgroundColor: apothecary.surface,
-    borderWidth: 1,
-    borderColor: ui.edge,
-    fontFamily: POPPINS.semibold,
-    fontSize: s(13),
-    color: apothecary.ink,
-  },
-  jumpButton: { width: s(104) },
-  /** Nothing typed yet. Dimmed rather than recoloured, so it reads as the same
-      button waiting rather than as a different control. */
-  jumpButtonOff: { opacity: 0.4 },
-
   pager: {
     flexDirection: 'row',
     alignItems: 'center',

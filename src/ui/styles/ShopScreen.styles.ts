@@ -30,6 +30,14 @@ export const styles = StyleSheet.create({
     columns: 2,
     phoneWidth: '48%',
   }),
+  /**
+   * The slot's override while the catalogue holds a single vessel.
+   *
+   * A half-width card alone on a row reads as a grid that failed to load its
+   * second item. Full width is the honest shape for one of something, and the
+   * two-column slot above comes back the moment there is a second.
+   */
+  tileSlotSolo: { width: '100%', flexGrow: 0 },
   tile: { padding: SPACE.tile, alignItems: 'center' },
   preview: {
     flexDirection: 'row',

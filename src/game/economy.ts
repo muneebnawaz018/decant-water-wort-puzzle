@@ -263,18 +263,14 @@ export const STARTING_COINS = 0;
 /**
  * Shop prices, by skin id.
  *
- * `null` is free — every player has those without buying anything. A skin's
- * artwork lives with the skin in `theme/skins.ts`; only its price is here, so
- * the shop can be repriced without touching a vessel path.
+ * **Empty, because there is one skin and it is free.** The catalogue was cut
+ * back to the default vessel — see `theme/skins.ts` — so every price here would
+ * be a number for something that cannot be bought.
  *
- * Priced against the earnings above rather than at a flat rate: at ~630 a day
- * the first paid skin is a few days out and the second a few weeks, which is
- * the point of having a currency at all. Nothing is worth buying on day one,
- * and nothing takes a month.
+ * Kept rather than deleted: this file is the one place a coin figure is allowed
+ * to live, and a second shape landing should mean adding a row here, not
+ * reinventing where prices go. The old ladder was 2,500 and 6,000, priced
+ * against the earnings above so the first paid skin sat a few days out and the
+ * second a few weeks.
  */
-export const SKIN_PRICES: Record<string, number | null> = {
-  'skin.vial': null,
-  'skin.flask': null,
-  'skin.beaker': 2500,
-  'skin.ampoule': 6000,
-};
+export const SKIN_PRICES: Record<string, number> = {};

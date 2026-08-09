@@ -42,6 +42,19 @@ interface GlossButtonProps {
   onPress: () => void;
   variant?: Variant;
   disabled?: boolean;
+  /**
+   * Disabled because it *already is* what it says, not because it is dead.
+   *
+   * Both take the press away; only one should look switched off. "Equipped" on
+   * the shop's vessel and the mode you are already in on Stages are states
+   * being reported, so they keep the lit gold face — the same rule the active
+   * stage tab follows, which is disabled and the brightest thing on the screen.
+   * Undo at zero moves is the other kind and stays dimmed.
+   *
+   * Without this the two collapsed: a disabled primary took the dark panel ramp
+   * while its label kept the dark-on-gold ink, and "Equipped" came out unreadable.
+   */
+  on?: boolean;
   style?: StyleProp<ViewStyle>;
   /**
    * Rendered *after* the label — an icon, usually.
@@ -69,6 +82,7 @@ export const GlossButton = memo(function GlossButton({
   onPress,
   variant = 'neutral',
   disabled = false,
+  on = false,
   style,
   trailing,
   size = 'regular',
@@ -98,8 +112,10 @@ export const GlossButton = memo(function GlossButton({
 
   const primary = variant === 'primary';
   const hitSlop = size === 'regular' ? undefined : SMALL_HIT_SLOP;
+  // `on` is lit, however disabled it is — see the prop.
+  const dim = disabled && !on;
   const face = primary
-    ? disabled
+    ? dim
       ? ui.buttonFaceOff
       : ui.buttonFace
     : ([apothecary.surfaceTop, apothecary.surface] as const);
@@ -121,7 +137,7 @@ export const GlossButton = memo(function GlossButton({
             size === 'dialog' && styles.dialogGhost,
             size === 'compact' && styles.compactGhost,
             bounce.style,
-            disabled && styles.disabled,
+            dim && styles.disabled,
           ]}
         >
           {burst.node}
@@ -157,7 +173,9 @@ export const GlossButton = memo(function GlossButton({
           bounce.style,
           // The lit variant drops to the panel surface instead of fading. See
           // `ui.buttonFaceOff`.
-          disabled && (primary ? styles.unlit : styles.disabled),
+          dim && (primary ? styles.unlit : styles.disabled),
+          // Lit but not live — see `on`.
+          disabled && on && styles.settled,
         ]}
       >
         <View
@@ -209,7 +227,7 @@ export const GlossButton = memo(function GlossButton({
               not worth diagnosing when half a box is unambiguous.
             */}
             <LinearGradient
-              colors={primary && !disabled ? gradients.sheen : gradients.sheenSoft}
+              colors={primary && !dim ? gradients.sheen : gradients.sheenSoft}
               style={styles.sheen}
               pointerEvents="none"
             />
@@ -218,6 +236,10 @@ export const GlossButton = memo(function GlossButton({
               <Text
                 style={[
                   primary ? styles.primaryLabel : styles.label,
+                  // A dead primary swaps to the dark panel ramp, and the lit
+                  // face's dark ink goes with it — that pairing is what made
+                  // "Equipped" unreadable before `on` existed.
+                  primary && dim && styles.primaryLabelOff,
                   size === 'dialog' && styles.dialogLabel,
                   size === 'compact' && styles.compactLabel,
                 ]}

@@ -11,11 +11,13 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { apothecary } from '@/theme/apothecary';
 import { gradients, ui } from '@/theme/colors';
+import { Icon } from '../Icon';
 import { usePressBounce } from '../hooks/usePressBounce';
 import { useTapBurst } from '../hooks/useTapBurst';
 import { useTapHandler } from '../hooks/useTapHandler';
-import { styles } from './styles/ClaimButton.styles';
+import { CAPTION_COIN, styles } from './styles/ClaimButton.styles';
 
 /**
  * The waiting mark: a vial filling a drop at a time.
@@ -62,6 +64,7 @@ const BREW = require('../../../assets/lottie/brew.json');
 export const ClaimButton = memo(function ClaimButton({
   label,
   caption,
+  captionAmount,
   onPress,
   waiting,
   fill = false,
@@ -69,6 +72,16 @@ export const ClaimButton = memo(function ClaimButton({
   label: string;
   /** Small line above the label. Omitted when the button is ready to pay. */
   caption?: string;
+  /**
+   * What the next reward pays, shown beside the caption.
+   *
+   * The countdown said when and never what, so the one line on this screen that
+   * could give a player a reason to come back was the one line that did not
+   * name the prize. A number with a coin beside it is that reason, and it
+   * belongs on the caption's row rather than under the clock — the clock is
+   * already the largest thing here and a second number below it competes.
+   */
+  captionAmount?: number;
   onPress: () => void;
   /** Counting down. The button is live either way — it just cannot pay yet. */
   waiting: boolean;
@@ -194,15 +207,40 @@ export const ClaimButton = memo(function ClaimButton({
                   resizeMode="contain"
                   style={styles.brew}
                 />
+                {/*
+                  Three boxes, not one flow: the mark, the caption row, the
+                  clock. Each sized by its own rules.
+
+                  The clock is why. Its text changes every second and Poppins is
+                  proportionally spaced, so `23:59:59` and `11:11:11` are
+                  different widths — laid out as plain siblings, every tick
+                  nudged the caption and the vial beside it. Giving the clock a
+                  box with a floor under its width stops the row resizing
+                  against its own content, and the caption above it is measured
+                  independently rather than against whatever the digits happen to
+                  be.
+                */}
                 <View style={styles.waitText}>
-                  {caption ? <Text style={styles.waitCaption}>{caption}</Text> : null}
-                  <Text
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    style={[styles.label, styles.restLabel]}
-                  >
-                    {label}
-                  </Text>
+                  {caption ? (
+                    <View style={styles.captionRow}>
+                      <Text style={styles.waitCaption}>{caption}</Text>
+                      {captionAmount !== undefined ? (
+                        <View style={styles.captionValue}>
+                          <Icon name="coin" size={CAPTION_COIN} color={apothecary.gold} />
+                          <Text style={styles.captionAmount}>{captionAmount}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  ) : null}
+                  <View style={styles.clockBox}>
+                    <Text
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      style={[styles.label, styles.restLabel]}
+                    >
+                      {label}
+                    </Text>
+                  </View>
                 </View>
               </View>
             ) : (

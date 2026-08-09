@@ -189,7 +189,7 @@ describe('economy', () => {
 
   it('keeps a run through a late visit, inside the grace window', () => {
     visit(T0);
-    // 30 hours: past the day, still inside the 48-hour window.
+    // 30 hours: past the day, still inside the 36-hour window.
     visit(T0 + 30 * HOURS);
     expect(useEconomyStore.getState().streak).toBe(2);
   });

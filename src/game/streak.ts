@@ -22,11 +22,17 @@ export const VISIT_INTERVAL_MS = 24 * 60 * 60 * 1000;
 /**
  * How long a run survives without a visit.
  *
- * Twice the interval, matching the reward timer's own grace and for the same
- * reason: open the app at 9am one day and 8am the next and a strict
+ * Thirty-six hours: the interval plus a twelve-hour grace. Some grace is
+ * needed — open the app at 9am one day and 8am the next and a strict
  * twenty-four hours has already broken the run on a technicality.
+ *
+ * It was a full extra day, and that is too generous to mean anything. At 48
+ * hours a player can skip a calendar day entirely and keep the run, which makes
+ * a "daily" streak a name for something that is not daily. Twelve hours covers
+ * the technicality and nothing else, and it leaves room for the two warnings
+ * the reminders send before it runs out.
  */
-export const VISIT_WINDOW_MS = VISIT_INTERVAL_MS * 2;
+export const VISIT_WINDOW_MS = VISIT_INTERVAL_MS + 12 * 60 * 60 * 1000;
 
 /** Where a streak stands: which rung it is climbing and how far up it is. */
 export interface StreakStanding {

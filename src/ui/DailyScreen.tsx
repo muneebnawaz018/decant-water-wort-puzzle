@@ -246,6 +246,17 @@ export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScree
             // clock the caption has room, and it can name the thing instead of
             // being a preposition the number has to finish.
             caption={waiting ? 'Next reward' : undefined}
+            // What tomorrow pays, beside the caption. The countdown said when
+            // and never what — the one line that could give a player a reason
+            // to come back was the one that did not name the prize.
+            //
+            // `streak % 7` and not `dayIndex`: while the clock is running,
+            // `dayIndex` is *today's* tile, already collected. Tomorrow's visit
+            // takes the streak to `streak + 1`, whose 1-based position on the
+            // track is this.
+            captionAmount={
+              waiting ? DAILY_REWARDS[streak % DAILY_REWARDS.length] : undefined
+            }
             onPress={claim}
             waiting={waiting}
             fill

@@ -33,10 +33,19 @@ const mocked = Notifications as jest.Mocked<typeof Notifications>;
 const scheduled = () => mocked.scheduleNotificationAsync.mock.calls.length;
 
 /**
- * A claim made just now. Anchored to the real clock rather than a fixed date,
- * because `syncReminders` reads `Date.now()` and drops anything already due —
- * a hard-coded date would silently schedule nothing.
+ * A visit made just now, against a pinned clock.
+ *
+ * The clock has to be both fixed *and* at a known local hour. `syncReminders`
+ * reads `Date.now()` and drops anything already due, so a hard-coded past date
+ * schedules nothing — but the real clock is worse: the waking-hours shift moves
+ * a reminder by however far outside 8am–11pm it lands, so how many survive the
+ * merge depended on what time of day the suite happened to run.
+ *
+ * 2pm local. The reward lands at 2pm tomorrow and the streak warning at 8am,
+ * both inside waking hours and six hours apart, so neither is shifted and
+ * neither merges the other away.
  */
+const NOON_ISH = new Date(2026, 2, 1, 14, 0, 0, 0);
 const justClaimed = () => Date.now();
 
 function permission(granted: boolean, canAskAgain = true) {
@@ -45,6 +54,13 @@ function permission(granted: boolean, canAskAgain = true) {
     canAskAgain,
   } as unknown as Notifications.NotificationPermissionsStatus);
 }
+
+beforeAll(() => {
+  jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+  jest.setSystemTime(NOON_ISH);
+});
+
+afterAll(() => jest.useRealTimers());
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -98,8 +114,8 @@ describe('syncReminders', () => {
   it('replaces what is pending rather than adding to it', async () => {
     await syncReminders();
     expect(mocked.cancelAllScheduledNotificationsAsync).toHaveBeenCalled();
-    // A four-day streak: the reward, and the warning that it is about to go.
-    expect(scheduled()).toBe(2);
+    // A four-day streak: the reward, and both warnings before the run lapses.
+    expect(scheduled()).toBe(3);
   });
 
   it('schedules an absolute instant, not a repeating hour', async () => {
@@ -146,7 +162,7 @@ describe('reconcilePermission', () => {
   it('re-syncs when permission is still held', async () => {
     await reconcilePermission();
     expect(useSettingsStore.getState().dailyReminder).toBe(true);
-    expect(scheduled()).toBe(2);
+    expect(scheduled()).toBe(3);
   });
 
   it('does nothing at all when the row is off', async () => {

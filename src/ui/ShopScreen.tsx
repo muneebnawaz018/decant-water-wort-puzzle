@@ -9,7 +9,6 @@ import { GlossButton } from './chrome/GlossButton';
 import { Panel } from './chrome/Panel';
 import { ScrollPage } from './chrome/ScrollPage';
 import { SoonBadge } from './chrome/SoonBadge';
-import { SoonOverlay } from './chrome/SoonOverlay';
 import { SettingGroup } from './chrome/SettingRow';
 import { section } from './chrome/styles/section.styles';
 import { PREVIEW_HEIGHT, styles } from './styles/ShopScreen.styles';
@@ -26,10 +25,11 @@ import { PRODUCTS } from '@/game/economy';
  * purchase that repaints them puts an accessibility guarantee behind a paywall.
  * A silhouette touches none of it.
  *
- * Two ship unlocked and two are locked. The free pair is what makes the feature
- * real on a fresh install: with one default there is nothing to switch between,
- * so the first thing the shop would ever do is ask for money for a control the
- * player has never seen work.
+ * **One vessel, and nothing for sale.** Three more shapes used to sit here, two
+ * of them veiled as "coming soon" — see `theme/skins.ts` for why they went.
+ * The remaining tile is not decoration: it is the glass the board is drawn in,
+ * and showing it is what makes the section mean something the day a second
+ * shape lands.
  */
 export const ShopScreen = memo(function ShopScreen() {
   const equipped = useSettingsStore((state) => state.skin);
@@ -39,7 +39,12 @@ export const ShopScreen = memo(function ShopScreen() {
       <Text style={section.title}>Vial skins</Text>
       <View style={styles.grid}>
         {SKINS.map((skin) => (
-          <SkinTile key={skin.id} skin={skin} equipped={skin.id === equipped} />
+          <SkinTile
+            key={skin.id}
+            skin={skin}
+            equipped={skin.id === equipped}
+            solo={SKINS.length === 1}
+          />
         ))}
       </View>
 
@@ -58,9 +63,12 @@ export const ShopScreen = memo(function ShopScreen() {
 const SkinTile = memo(function SkinTile({
   skin,
   equipped,
+  solo,
 }: {
   skin: Skin;
   equipped: boolean;
+  /** The only vessel in the catalogue, so the card takes the whole row. */
+  solo: boolean;
 }) {
   // Skia draws to a sized surface, so the preview cannot be a flex child that
   // works out its own width. The card measures itself once and hands the
@@ -70,26 +78,15 @@ const SkinTile = memo(function SkinTile({
     setWidth(event.nativeEvent.layout.width);
   }, []);
 
-  const locked = skin.price !== null;
-
   const press = useCallback(() => {
-    if (skin.price !== null) {
-      // Locked skins are previews, not purchases. Nothing spends `owned` yet,
-      // so a Buy here would take the coins and equip nothing.
-      overlay.toast(`${skin.name} arrives in a later update`);
-      return;
-    }
     useSettingsStore.getState().set('skin', skin.id);
     overlay.toast(`${skin.name} equipped`);
   }, [skin]);
 
   return (
-    <View style={styles.tileSlot}>
+    <View style={[styles.tileSlot, solo && styles.tileSlotSolo]}>
       <Panel contentStyle={styles.tile}>
         <View style={styles.preview} onLayout={measure}>
-          {/* Over the artwork only. Veiling the whole card buried the name and
-              the price, which are the part worth reading on a locked row. */}
-          {locked ? <SoonOverlay /> : null}
           <SkinPreview vessel={skin.vessel} width={width} height={PREVIEW_HEIGHT} />
         </View>
 
@@ -99,22 +96,17 @@ const SkinTile = memo(function SkinTile({
         </Text>
 
         {/*
-          The free skins carry the state of the thing rather than a price.
-          "Equipped" is disabled on purpose — a button that is already what it
-          says takes a press and does nothing, and a dead control is silent for
-          free because a disabled `Pressable` never fires `onPress`.
+          The state of the thing rather than a price. "Equipped" is disabled on
+          purpose — a button that is already what it says takes a press and does
+          nothing, and a dead control is silent for free because a disabled
+          `Pressable` never fires `onPress`.
         */}
         <GlossButton
-          label={
-            locked
-              ? `${skin.price!.toLocaleString()} coins`
-              : equipped
-                ? 'Equipped'
-                : 'Equip'
-          }
+          label={equipped ? 'Equipped' : 'Equip'}
           variant={equipped ? 'primary' : 'ghost'}
           onPress={press}
           disabled={equipped}
+          on={equipped}
           size="compact"
           style={styles.buy}
         />

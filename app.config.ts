@@ -41,20 +41,12 @@ const config: ExpoConfig = {
     supportsTablet: true,
     bundleIdentifier: 'com.decant.watersort',
     infoPlist: {
-      // The runtime `<StatusBar hidden />` in App.tsx only applies once React
-      // is drawing. These two hide the bar from the launch screen onward, so
-      // the clock does not sit over the splash vial for the first second and
-      // then vanish.
-      UIStatusBarHidden: true,
+      // `UIStatusBarHidden` is set by the `expo-status-bar` plugin below. This
+      // is the half it does not cover: without it iOS asks each view controller
+      // what the bar should look like and ignores the plist, so the bar comes
+      // back the moment React Native's controller is on screen.
       UIViewControllerBasedStatusBarAppearance: false,
     },
-  },
-  androidStatusBar: {
-    // Same reason as the iOS pair above — hidden from the launch window, not
-    // only once React mounts.
-    hidden: true,
-    translucent: true,
-    barStyle: 'light-content',
   },
   android: {
     backgroundColor: colours.nightDeep,
@@ -69,6 +61,21 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-dev-client',
+    [
+      // Hides the status bar from the launch window onward, on both platforms.
+      //
+      // The runtime `<StatusBar hidden />` in App.tsx only applies once React
+      // is drawing, so without this the clock sits over the splash vial for the
+      // first second and then vanishes.
+      //
+      // This replaces the top-level `androidStatusBar` key, which SDK 57
+      // deprecated to no effect — it warned on every prebuild and set nothing,
+      // so the bar was hidden on iOS and shown on Android's splash. The
+      // plugin's two props are all that survived: `translucent` and
+      // `barStyle` have no meaning behind a bar that is not drawn.
+      'expo-status-bar',
+      { hidden: true, style: 'light' },
+    ],
     [
       'expo-audio',
       {

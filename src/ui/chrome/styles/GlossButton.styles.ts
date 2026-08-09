@@ -258,4 +258,15 @@ export const styles = StyleSheet.create({
    * do is stop the glow.
    */
   unlit: { boxShadow: [] },
+  /**
+   * A primary that is disabled because it already is what it says.
+   *
+   * Lit, but not *live*: it keeps the gold face so the label stays readable —
+   * dark ink needs a bright ground — and gives up the glow and a little
+   * opacity, which is what separates it from the same button you can still
+   * press. Not `disabled`'s 0.42: at that depth gold on the panel loses the
+   * contrast the dark label depends on, which is the bug this whole state came
+   * out of.
+   */
+  settled: { opacity: 0.68, boxShadow: [] },
 });

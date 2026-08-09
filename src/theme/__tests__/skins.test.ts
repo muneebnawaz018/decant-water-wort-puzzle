@@ -1,20 +1,11 @@
-import { DEFAULT_SKIN, isFreeSkin, SKINS, skinFor } from '../skins';
+import { DEFAULT_SKIN, SKINS, skinFor } from '../skins';
 
 describe('the skin catalogue', () => {
-  it('ships exactly two unlocked and two priced', () => {
-    const free = SKINS.filter((skin) => skin.price === null);
-    const paid = SKINS.filter((skin) => skin.price !== null);
-
-    // Two free rather than one is the whole reason this is testable state and
-    // not a constant: with a single default there is nothing to switch
-    // between, so the shop's first act would be to sell a control the player
-    // has never seen work.
-    expect(free).toHaveLength(2);
-    expect(paid).toHaveLength(2);
-  });
-
-  it('defaults to a free skin', () => {
-    expect(isFreeSkin(DEFAULT_SKIN)).toBe(true);
+  it('ships the one default vessel, with nothing for sale', () => {
+    // Three more shapes used to sit here, two of them permanently "coming
+    // soon" — promises a screen that reads no `owned` flag could not keep.
+    expect(SKINS).toHaveLength(1);
+    expect(SKINS[0]!.id).toBe(DEFAULT_SKIN);
   });
 
   it('gives every skin a distinct id', () => {
