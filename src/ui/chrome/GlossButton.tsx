@@ -170,6 +170,10 @@ export const GlossButton = memo(function GlossButton({
       <Animated.View
         style={[
           primary ? styles.primaryShadow : styles.shadow,
+          // The glow is clipped to this view's own corners on Android, so it
+          // has to match the face inside it — see `dialogShadowRadius`.
+          size === 'dialog' && styles.dialogShadowRadius,
+          size === 'compact' && styles.compactShadowRadius,
           bounce.style,
           // The lit variant drops to the panel surface instead of fading. See
           // `ui.buttonFaceOff`.

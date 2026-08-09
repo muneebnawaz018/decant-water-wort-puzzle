@@ -12,10 +12,14 @@ import { Pressable, Text, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,
+  Easing,
   useSharedValue,
+  withRepeat,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 
+import { useEconomyStore } from '@/state/economyStore';
 import type { NavDestination } from '@/state/navStore';
 import { apothecary } from '@/theme/apothecary';
 import { gradients, ui } from '@/theme/colors';
@@ -30,6 +34,7 @@ import {
   navBarWidth,
   NOTCH_CENTRE_Y,
   NOTCH_RADIUS,
+  NOTICE_HALO_START,
   styles,
 } from './styles/NavBar.styles';
 
@@ -105,6 +110,24 @@ export const NavBar = memo(function NavBar({
   const width = navBarWidth(windowWidth, sideInset);
 
   /**
+   * Which destinations have something waiting.
+   *
+   * Read from the fields rather than through `claimable`, for the reason the
+   * rest of this app already follows: a selector returning a store *method*
+   * hands back a stable function identity, so the bar would never re-render
+   * when the thing behind it changed — and a dot that appears only after an
+   * unrelated navigation is worse than no dot.
+   *
+   * Rewards is the only one with a claim to announce today. Shop sells one free
+   * vessel and Stages unlocks in the background; neither has a moment worth
+   * interrupting for, and a bar with a dot on every tab teaches players to
+   * ignore all of them.
+   */
+  const streak = useEconomyStore((state) => state.streak);
+  const claimedOnDay = useEconomyStore((state) => state.claimedOnDay);
+  const dailyWaiting = streak > 0 && claimedOnDay !== streak;
+
+  /**
    * The bar's shape: a rounded rectangle with a circle subtracted from its top
    * edge.
    *
@@ -166,6 +189,7 @@ export const NavBar = memo(function NavBar({
             {...item}
             onNavigate={onNavigate}
             active={item.id === active}
+            notice={item.id === 'daily' && dailyWaiting}
           />
         ))}
       </View>
@@ -219,15 +243,75 @@ const HomeBump = memo(function HomeBump({
   );
 });
 
+/**
+ * The unread mark, breathing.
+ *
+ * **Reanimated, not a Lottie.** The other two marks in this app are Lottie
+ * because they are artwork — a vial filling a drop at a time, a burst of coins —
+ * and neither can be expressed as a transform. This is a circle scaling and
+ * fading, which is two shared values on the UI thread against a native view,
+ * a JSON payload and a redraw target for as long as the bar is mounted. The
+ * bar is mounted on every screen.
+ *
+ * The motion is deliberately small: the dot itself swells about six percent
+ * while a ring pushes out of it and fades. Anything larger on a mark this size
+ * reads as a rendering fault rather than as an invitation, and the bar sits
+ * under every screen in the app — a loud pulse there is something a player has
+ * to learn to ignore.
+ *
+ * One reaction driving both layers rather than one each, the same rule the rack
+ * and the backdrop follow. Cancelled on unmount; nothing in this project loops
+ * unattended.
+ */
+const NoticeDot = memo(function NoticeDot() {
+  const pulse = useSharedValue(0);
+
+  useEffect(() => {
+    pulse.value = withRepeat(
+      withTiming(1, { duration: 1400, easing: Easing.out(Easing.quad) }),
+      -1,
+      false
+    );
+    return () => cancelAnimation(pulse);
+  }, [pulse]);
+
+  // The ring travels out and fades on the way. `withRepeat(..., false)` restarts
+  // rather than reversing, because a ring that shrinks back into the dot reads
+  // as it being sucked in.
+  const halo = useAnimatedStyle(() => ({
+    // Starts at the dot's own size and grows past it. Anything smaller spends
+    // the first half of the cycle hidden behind the mark, which is what made
+    // the first version look like it was not animating at all — by the time the
+    // ring cleared the dot it was already most of the way faded.
+    transform: [{ scale: NOTICE_HALO_START + pulse.value * (1 - NOTICE_HALO_START) }],
+    opacity: 0.55 * (1 - pulse.value),
+  }));
+
+  // The dot's own swell, at a fraction of the ring's travel.
+  const mark = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 + Math.sin(pulse.value * Math.PI) * 0.14 }],
+  }));
+
+  return (
+    <>
+      <Animated.View style={[styles.noticeHalo, halo]} pointerEvents="none" />
+      <Animated.View style={[styles.notice, mark]} pointerEvents="none" />
+    </>
+  );
+});
+
 const NavButton = memo(function NavButton({
   id,
   icon,
   label,
   onNavigate,
   active,
+  notice = false,
 }: NavItem & {
   onNavigate: (destination: NavDestination) => void;
   active: boolean;
+  /** Something is waiting inside. Draws the unread dot on the icon's corner. */
+  notice?: boolean;
 }) {
   const navigate = useCallback(() => onNavigate(id), [onNavigate, id]);
   const onPress = useTapHandler(navigate);
@@ -284,6 +368,13 @@ const NavButton = memo(function NavButton({
           color={active ? apothecary.gold : apothecary.goldLight}
         />
       </Animated.View>
+      {/*
+        Outside the icon slot and outside the pop, both deliberately. The slot
+        clips to its radius, so a dot inside it loses its outer half; and the
+        arrival pop is the tab saying "you are here", which is the one moment
+        the dot is about to stop being true.
+      */}
+      {notice ? <NoticeDot /> : null}
       <Text style={[styles.label, active && styles.labelActive]}>{label}</Text>
     </Pressable>
   );

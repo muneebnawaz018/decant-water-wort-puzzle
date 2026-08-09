@@ -182,27 +182,24 @@ export type IconName = keyof typeof ICONS | keyof typeof MIRRORED;
  * here — nothing scales or transforms the path itself, only the canvas — so
  * one copy per glyph is safe to share.
  */
-const PATHS = new Map<IconName, ReturnType<typeof Skia.Path.MakeFromSVGString>>();
+const PATHS = new Map<keyof typeof ICONS, ReturnType<typeof Skia.Path.MakeFromSVGString>>();
 
+/**
+ * The parsed glyph for a name, mirrored ones included.
+ *
+ * Keyed by the *source* glyph rather than by the icon name, because a mirrored
+ * icon is no longer a path of its own: `prev` and `next` share one `SkPath` and
+ * differ only in the canvas transform below. One entry, one native object.
+ */
 function iconPath(name: IconName) {
-  let path = PATHS.get(name);
+  const source = (
+    name in MIRRORED ? MIRRORED[name as keyof typeof MIRRORED] : name
+  ) as keyof typeof ICONS;
+
+  let path = PATHS.get(source);
   if (path === undefined) {
-    const mirrored = name in MIRRORED;
-    const source = mirrored ? MIRRORED[name as keyof typeof MIRRORED] : name;
-    path = Skia.Path.MakeFromSVGString(ICONS[source as keyof typeof ICONS]);
-    // Reflected about the grid's centre line: x' = 960 - x, y unchanged. The
-    // matrix is stated row-major rather than composed from `translate` and
-    // `scale` calls, whose pre- and post-multiply order is the easiest thing
-    // here to get backwards — and a path mirrored about x = 0 lands entirely
-    // off the canvas, which looks like a missing icon rather than a wrong one.
-    //
-    // Mutating in place is safe: this is a path parsed a line ago and not yet
-    // in `PATHS`, so nothing else holds it. What gets cached is the mirrored
-    // path, which is never transformed again.
-    if (path && mirrored) {
-      path.transform(Skia.Matrix([-1, 0, ICON_VIEWBOX, 0, 1, 0, 0, 0, 1]));
-    }
-    PATHS.set(name, path);
+    path = Skia.Path.MakeFromSVGString(ICONS[source]);
+    PATHS.set(source, path);
   }
   return path;
 }
@@ -219,14 +216,39 @@ export const Icon = memo(function Icon({
   color = apothecary.ink,
 }: IconProps) {
   const path = iconPath(name);
-  // `transform` is a fresh array every render otherwise, which defeats the
-  // memo on the Skia node below it.
-  // Scale first, then lift the 960 grid's negative Y into the canvas. The
-  // translate is in already-scaled space, which is why it is `size` and not
-  // `ICON_VIEWBOX`.
+  const mirrored = name in MIRRORED;
+
+  /**
+   * The canvas transform, which is also where mirroring happens now.
+   *
+   * It used to reflect the `SkPath` itself with `path.transform()`, and Skia
+   * 2.x deprecates that — it warns on every launch and is slated for removal.
+   * Reflecting the canvas instead is not just the migration: it is the better
+   * shape. A mirrored icon stops being a second native object, so `prev` and
+   * `next` share one parsed path, and nothing mutates a path that is about to
+   * be cached and shared.
+   *
+   * The list is outermost-first, so it reads backwards from how the point
+   * moves: `translateY` lifts the 960 grid's negative Y into the canvas, then
+   * `scale` fits it to the box, then — for a mirrored glyph — `scaleX` flips it
+   * about x = 0 and `translateX` slides it back into frame. Without that last
+   * step a mirrored icon lands entirely off-canvas, which looks like a missing
+   * icon rather than a wrong one.
+   *
+   * Memoised because a fresh array every render defeats the memo on the Skia
+   * node below it.
+   */
   const transform = useMemo(
-    () => [{ scale: size / ICON_VIEWBOX }, { translateY: ICON_VIEWBOX }],
-    [size]
+    () =>
+      mirrored
+        ? [
+            { translateX: size },
+            { scaleX: -1 },
+            { scale: size / ICON_VIEWBOX },
+            { translateY: ICON_VIEWBOX },
+          ]
+        : [{ scale: size / ICON_VIEWBOX }, { translateY: ICON_VIEWBOX }],
+    [size, mirrored]
   );
   const canvasStyle = useMemo(() => ({ width: size, height: size }), [size]);
 

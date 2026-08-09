@@ -103,12 +103,30 @@ export const styles = StyleSheet.create({
    * wandering into the card.
    */
   dialogFace: { borderRadius: DIALOG_RADIUS },
+  /**
+   * The shadow box has to corner exactly like the face inside it.
+   *
+   * **Android draws a `boxShadow` around the view's own rounded rect and punches
+   * that rect out of it** — a shadow is not painted under its caster. The
+   * wrappers above are `buttonRadius` (16) while a dialog face is a 21dp pill,
+   * so the punched hole was squarer than the button sitting in it and the
+   * crescent between the two got no glow at all. That reads as a dark notch at
+   * each corner, worst at the pill's caps where the gap is widest. iOS composites
+   * the shadow behind the whole view and shows nothing, which is why it only
+   * ever appeared on one platform.
+   *
+   * Applied to the shadow layer, not the face: the face already carries its own
+   * radius, and the two only have to agree.
+   */
+  dialogShadowRadius: { borderRadius: DIALOG_RADIUS },
   dialogFill: {
     paddingVertical: s(10),
     paddingHorizontal: s(16),
     borderRadius: DIALOG_RADIUS - HAIRLINE,
   },
   compactFace: { borderRadius: s(11) },
+  /** Same rule as `dialogShadowRadius`. */
+  compactShadowRadius: { borderRadius: s(11) },
   compactFill: {
     paddingVertical: s(9),
     paddingHorizontal: s(14),

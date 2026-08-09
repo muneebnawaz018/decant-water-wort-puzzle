@@ -92,6 +92,44 @@ export function navBarWidth(windowWidth: number, sideInset = 0): number {
   return available < NAV_MAX_WIDTH ? available : NAV_MAX_WIDTH;
 }
 
+/** The unread dot. Small enough to be a mark, not a badge with a number in it. */
+const NOTICE_SIZE = s(11);
+
+/**
+ * The halo the dot pushes out.
+ *
+ * Twice the mark, which is as far as it can go before it reaches the icon's own
+ * edge and starts reading as a second shape rather than as the dot's echo.
+ */
+const NOTICE_HALO = NOTICE_SIZE * 2.6;
+
+/**
+ * How far the mark sits outside the icon slot's top-right corner.
+ *
+ * Clear of it, not on it. Hung inside, the dot sat on the active tab's gold
+ * chip and the two rounded shapes read as one badge with a bite out of it —
+ * and the chip is the "you are here" mark, so anything overlapping it is
+ * competing with the thing it is drawn over.
+ */
+const NOTICE_NUDGE = s(5);
+
+/**
+ * The halo's scale at the start of a pulse: exactly the dot's size.
+ *
+ * Exported because the animation needs it and the ratio is a fact about the two
+ * boxes, not a number to pick. Start it any smaller and the ring spends the
+ * bright half of its life hidden behind the mark it is supposed to be leaving.
+ */
+export const NOTICE_HALO_START = NOTICE_SIZE / NOTICE_HALO;
+
+/**
+ * Where the mark's centre sits, measured from the tab's own centre line.
+ *
+ * Half the 40dp icon slot puts it on the slot's right edge; the nudge carries
+ * it clear. One number for both layers, so the ring cannot drift off the dot.
+ */
+const NOTICE_CENTRE_X = s(40) / 2 - NOTICE_SIZE / 2 + NOTICE_NUDGE;
+
 export const styles = StyleSheet.create({
   /**
    * `overflow: 'visible'` is load-bearing — the bump is absolutely positioned
@@ -144,6 +182,74 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconSlotActive: { backgroundColor: alpha('gold', 0.16) },
+
+  /**
+   * The unread dot, hung on the icon's top-right corner.
+   *
+   * A sibling of the icon slot rather than a child of it. `iconSlot` clips to
+   * its own radius — Android needs that or it drops the descendant's rounding
+   * inside a hardware layer — so a dot placed inside would have its outer half
+   * cut off by the very clip that exists for the active tab's chip.
+   *
+   * **`marginLeft` with no `left`, which is the part worth knowing.** An
+   * absolutely positioned child with neither edge set is laid out where its
+   * parent's alignment would have put it — centred here — and the margin then
+   * nudges it from there. So this is an offset from the tab's centre line, not
+   * from its left edge: half the 40dp slot, less the dot's own radius, lands it
+   * on the icon's corner. Anchoring to the tab instead would put it a fifth of
+   * the bar's width away, which is nowhere near the icon it is flagging.
+   */
+  notice: {
+    position: 'absolute',
+    top: -NOTICE_NUDGE,
+    /*
+      `left: '50%'` and pull back half the width — the same form the Home bump
+      uses, and it is the only one that places these predictably.
+
+      A bare `marginLeft` on an absolutely positioned child does *not* offset it
+      by that amount here. With no `left`, the child is laid out where the
+      parent's `alignItems: 'center'` puts it, and centring happens inside the
+      box the margin has already eaten — so a margin of N moves the centre by
+      N/2, and by a different amount for each layer because the dot and the halo
+      are different widths. That is what left the ring sitting up and to the
+      left of the mark instead of around it.
+    */
+    left: '50%',
+    marginLeft: NOTICE_CENTRE_X - NOTICE_SIZE / 2,
+    width: NOTICE_SIZE,
+    height: NOTICE_SIZE,
+    borderRadius: NOTICE_SIZE / 2,
+    backgroundColor: ui.notice,
+    // The bar's own face, so the dot reads as floating above the tab instead of
+    // painted onto the icon it is flagging.
+    borderWidth: s(2),
+    borderColor: ui.noticeRing,
+  },
+
+  /**
+   * The pulse: a ring of the dot's own colour expanding out of it and fading.
+   *
+   * A sibling of the dot, not a child of it. Android clips a view that grows
+   * past its parent's bounds once the parent has a background and a radius —
+   * the same clip `wrap` documents for the Home bump — so a halo nested inside
+   * the mark would have its outer half cut off exactly as it became visible.
+   *
+   * Both are absolutely positioned off the tab's centre line and offset the
+   * same way, which is what keeps them concentric: the halo's own extra radius
+   * is pulled back from the dot's offset rather than stated as a second number.
+   */
+  noticeHalo: {
+    position: 'absolute',
+    // Concentric with the dot: both are placed from the same centre, each
+    // pulling back its own half-width. See `notice` for why `left` is required.
+    top: -NOTICE_NUDGE + NOTICE_SIZE / 2 - NOTICE_HALO / 2,
+    left: '50%',
+    marginLeft: NOTICE_CENTRE_X - NOTICE_HALO / 2,
+    width: NOTICE_HALO,
+    height: NOTICE_HALO,
+    borderRadius: NOTICE_HALO / 2,
+    backgroundColor: ui.notice,
+  },
   label: {
     fontFamily: POPPINS.medium,
     fontSize: s(10),

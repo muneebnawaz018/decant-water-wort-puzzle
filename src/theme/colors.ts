@@ -312,6 +312,22 @@ export const ui = {
   segmentSeam: alpha('black', 0.34),
   ghost: alpha('white', 0.1),
 
+  /**
+   * The "something is waiting for you" dot on a nav tab.
+   *
+   * Red rather than gold, and that is the whole point: the bar is already gold
+   * end to end, so a gold mark on a gold icon is a highlight rather than an
+   * alert. Red is the one hue in this palette that cannot be mistaken for
+   * chrome.
+   *
+   * `noticeRing` is the ground the dot is punched out of. Without it the mark
+   * sits directly on the icon it is flagging and the two read as one shape at
+   * 8dp; the ring is the bar's own face colour, so the dot appears to float
+   * above the tab rather than to be drawn on it.
+   */
+  notice: raw.coral,
+  noticeRing: raw.panel,
+
   // Accent
   accent: raw.accent,
   accentBright: raw.accentBright,
