@@ -146,6 +146,29 @@ export const EARNINGS = {
   milestoneTaper: 2,
 
   /**
+   * The streak ladder, as **total** consecutive days: a week, a fortnight, a
+   * month.
+   *
+   * **The target grows, and that is the point.** A flat seven-day goal is
+   * finished in a week and then means nothing — the number keeps rising with
+   * nothing to rise towards. Seven, then a fortnight, then a month gives a
+   * player who has kept it going something still ahead of them.
+   *
+   * **A milestone is never *reached*, only passed.** Landing on day seven moves
+   * the marker to fourteen rather than filling the bar. A streak is a thing you
+   * keep, not a thing you finish, and a card that says "complete" on the day it
+   * should feel best is an invitation to stop.
+   *
+   * Past the last entry the final gap repeats — 60, 90, and up — so the ladder
+   * never runs out of rungs.
+   *
+   * Distinct from `daily` below, which is what a *day* pays. This is what a
+   * *run* is measured against. Seven appears in both and they are not the same
+   * seven: the reward track cycles weekly whatever tier the streak is on.
+   */
+  streakTiers: [7, 14, 30],
+
+  /**
    * The seven-day claim track.
    *
    * Front-loaded but not flat, so the streak is worth keeping rather than worth

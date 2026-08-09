@@ -84,11 +84,24 @@ describe('session record', () => {
 
   it('keeps the spare vial on a board with no moves on it', () => {
     store().addTube();
-    store().restart();
 
     const saved = loadSession();
     expect(saved?.extraTaken).toBe(true);
     expect(saved?.moves).toEqual([]);
+  });
+
+  /**
+   * Restart used to be the exception here — it kept the vial, so a restarted
+   * board still had a record. It does not any more: restart puts back the
+   * board the level starts with, which leaves no moves and no vial, and
+   * `saveSession` drops a record with neither rather than storing one.
+   */
+  it('leaves nothing behind after a restart', () => {
+    store().addTube();
+    playOne();
+    store().restart();
+
+    expect(loadSession()).toBeNull();
   });
 
   it('clears the moment the level is solved', () => {

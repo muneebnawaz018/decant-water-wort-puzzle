@@ -10,6 +10,7 @@ reload will not pick it up.
 | File            | Where it plays                      | Notes                    |
 | --------------- | ----------------------------------- | ------------------------ |
 | `win.json`      | The win card, and the reward dialog | Generated — see below.   |
+| `brew.json`     | Rewards' countdown, while it waits  | Generated — see below.   |
 | `tap.json`      | Press burst, on dark buttons        | Placeholder.             |
 | `tap-dark.json` | The same, on lit gold faces         | Placeholder.             |
 | `clock.json`    | Daily's countdown button            | LottieFiles, recoloured. |
@@ -19,6 +20,11 @@ to the palette before being committed — gold edge and ticks, pale gold hands, 
 dark face. The recolour is baked into the file rather than applied at runtime
 through `colorFilters`, which matches layers by name and is not equally
 supported on both platforms.
+
+`brew.json` is generated the same way: `python3 script/make-brew.py`. Its frame
+is 110x200 rather than square, so whatever box it is given must carry that
+aspect — `contain` fits a tall frame into a square one by its width, which is
+how it first shipped 18dp tall.
 
 `win.json` is **generated**, not authored: run `python3 script/make-lottie.py`
 to rebuild it, and commit both the script and the JSON. It draws 46 confetti

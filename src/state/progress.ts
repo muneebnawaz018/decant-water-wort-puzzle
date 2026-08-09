@@ -95,7 +95,24 @@ export function recordCompletion(
     ...record,
     [difficulty]: {
       furthestLevel: Math.max(current.furthestLevel, level + 1),
-      currentLevel: current.currentLevel,
+      /**
+       * Finishing a level moves the player on from it.
+       *
+       * It used to hold, on the theory that only opening a level decides where
+       * you are — so solving one and then backing out of the win screen left
+       * Home's Continue card pointing at the board you had just finished.
+       * Pressing *Next* was the only thing that advanced it, which made the
+       * record depend on which of two exits the player took.
+       *
+       * `Math.max` rather than `level + 1`, so replaying an early level does
+       * not drag the player backwards: finishing 3 while sitting on 10 leaves
+       * them on 10.
+       *
+       * Note this is the *last opened* marker, not where the game sends the
+       * player — that is `firstUnsolved`, which is derived from `stars` and
+       * cannot be talked into pointing at a level already finished.
+       */
+      currentLevel: Math.max(current.currentLevel, level + 1),
       best: {
         ...current.best,
         [level]: previous === undefined ? moves : Math.min(previous, moves),
@@ -105,6 +122,30 @@ export function recordCompletion(
       paidBlocks: current.paidBlocks,
     },
   };
+}
+
+/**
+ * The lowest level this mode has not finished — where the player actually is.
+ *
+ * **The frontier, not the last thing opened.** `currentLevel` answers "what did
+ * you open most recently", which is the wrong question for Home: replay level 3
+ * from the Stages grid and it would offer to continue level 3 forever, having
+ * quietly moved the player back thirty levels.
+ *
+ * Scanned from 1 rather than derived from `furthestLevel`, so a gap cannot hide
+ * behind the high-water mark. Gaps should not happen — the grid only unlocks up
+ * to the frontier — but a record survives app versions, and answering "you are
+ * on 40" to someone who never finished 6 is worse than the scan costing a few
+ * dozen lookups.
+ *
+ * Stars are the test of completion. A level with no stars was never finished;
+ * every finished one has at least one, because there is no fail state.
+ */
+export function firstUnsolved(progress: Progress): number {
+  for (let level = 1; level < progress.furthestLevel; level++) {
+    if (!progress.stars[level]) return level;
+  }
+  return progress.furthestLevel;
 }
 
 export function setCurrentLevel(

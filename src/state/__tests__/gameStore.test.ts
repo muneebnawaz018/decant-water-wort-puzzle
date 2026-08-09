@@ -1,6 +1,7 @@
 import { isSolved } from '@/core/waterCore';
 import { solve } from '@/core/solver';
 import { DIFFICULTIES } from '@/game/difficulty';
+import { firstUnsolved } from '../progress';
 import { FREE_HINTS, PRICES } from '@/game/economy';
 import { freeUndosFor } from '@/game/undoCost';
 import { EARNINGS } from '@/game/economy';
@@ -872,5 +873,226 @@ describe('the daily bonus puzzle', () => {
     store().loadLevel(2);
     expect(store().bonus).toBe(false);
     expect(store().level).toBe(2);
+  });
+});
+
+describe('restart and the spare vial', () => {
+  /**
+   * Restart puts back the board the level *starts* with.
+   *
+   * It used to keep the extra vial, which meant a player restarting to try
+   * again from scratch got a thirteenth tube they had not asked for and could
+   * not put away — indistinguishable, from the screen, from a bug.
+   */
+  it('takes the spare vial back', () => {
+    store().loadLevel(1);
+    const tubes = store().board.tubes.length;
+
+    store().addTube();
+    expect(store().board.tubes.length).toBe(tubes + 1);
+
+    store().restart();
+    expect(store().board.tubes.length).toBe(tubes);
+    expect(store().extraTaken).toBe(false);
+  });
+
+  it('offers it again afterwards', () => {
+    store().loadLevel(1);
+    store().addTube();
+    store().restart();
+    expect(store().addTube()).toBe(true);
+  });
+
+  it('restores the generated board exactly, not a trimmed copy of a played one', () => {
+    store().loadLevel(1);
+    const generated = store().board.tubes.map((tube) => [...tube]);
+
+    store().addTube();
+    for (const move of solve(store().board).moves!.slice(0, 4)) {
+      store().tapTube(move.from);
+      store().tapTube(move.to);
+    }
+    store().restart();
+
+    expect(store().board.tubes).toEqual(generated);
+    expect(store().history).toHaveLength(0);
+  });
+
+  it('leaves a board that never took one alone', () => {
+    store().loadLevel(1);
+    const generated = store().board.tubes.map((tube) => [...tube]);
+
+    for (const move of solve(store().board).moves!.slice(0, 2)) {
+      store().tapTube(move.from);
+      store().tapTube(move.to);
+    }
+    store().restart();
+
+    expect(store().board.tubes).toEqual(generated);
+  });
+});
+
+describe('undoing the spare vial', () => {
+  it('puts it back once there are no moves left', () => {
+    store().loadLevel(1);
+    const tubes = store().board.tubes.length;
+    store().addTube();
+
+    expect(store().undo()).toEqual({ kind: 'vialRemoved' });
+    expect(store().board.tubes.length).toBe(tubes);
+    expect(store().extraTaken).toBe(false);
+  });
+
+  it('costs nothing', () => {
+    store().loadLevel(1);
+    useEconomyStore.setState({ coins: 500 });
+    store().addTube();
+
+    store().undo();
+    expect(useEconomyStore.getState().coins).toBe(500);
+  });
+
+  /**
+   * The vial is the *last* step of unwinding, not a shortcut past the moves.
+   * Taking it back while pours reference it would renumber every tube those
+   * moves name.
+   */
+  it('waits until the moves are gone', () => {
+    store().loadLevel(1);
+    useEconomyStore.setState({ coins: 1000 });
+    store().addTube();
+    const [move] = solve(store().board).moves!;
+    store().tapTube(move!.from);
+    store().tapTube(move!.to);
+
+    expect(store().undo()).toMatchObject({ kind: 'undone' });
+    expect(store().extraTaken).toBe(true);
+
+    expect(store().undo()).toEqual({ kind: 'vialRemoved' });
+    expect(store().extraTaken).toBe(false);
+  });
+
+  it('is offered again after being put back', () => {
+    store().loadLevel(1);
+    store().addTube();
+    store().undo();
+    expect(store().addTube()).toBe(true);
+  });
+
+  it('still does nothing on a fresh board', () => {
+    store().loadLevel(1);
+    expect(store().undo()).toEqual({ kind: 'ignored' });
+  });
+});
+
+describe('where the player is after finishing a level', () => {
+  /**
+   * A record whose frontier is `level`: everything below it finished.
+   *
+   * Seeded rather than played, because `firstUnsolved` answers with the
+   * *earliest gap* — and a test that jumps to level 41 without finishing 1-40
+   * leaves forty of them. Real players cannot skip, so the gap is a case only
+   * a test (or a corrupt record) can produce, and it is handled by the scan
+   * rather than papered over here.
+   */
+  const seedFrontier = (level: number) => {
+    const stars: Record<number, number> = {};
+    for (let i = 1; i < level; i++) stars[i] = 3;
+    useGameStore.setState((state) => ({
+      record: {
+        ...state.record,
+        [state.difficulty]: {
+          furthestLevel: level,
+          currentLevel: level,
+          best: {},
+          stars,
+          paidBlocks: [],
+        },
+      },
+    }));
+  };
+
+  const finish = () => {
+    for (const move of solve(store().board).moves!) {
+      store().tapTube(move.from);
+      store().tapTube(move.to);
+    }
+  };
+
+  it('moves on from a level the moment it is solved', () => {
+    seedFrontier(41);
+    store().loadLevel(41);
+    finish();
+
+    // Not when `Next` is pressed — where the player is must not depend on
+    // which exit they took off the win screen.
+    expect(firstUnsolved(store().progress())).toBe(42);
+  });
+
+  it('does not follow the player into a replay of an old level', () => {
+    seedFrontier(60);
+    store().loadLevel(44);
+
+    // Merely opening an old level moves nothing. This is the case that made
+    // reading `currentLevel` wrong: Home would have offered to continue 44.
+    expect(firstUnsolved(store().progress())).toBe(60);
+
+    finish();
+    expect(firstUnsolved(store().progress())).toBe(60);
+  });
+
+  it('picks the earliest gap, not the high-water mark', () => {
+    seedFrontier(51);
+    store().loadLevel(51);
+    finish();
+    store().loadLevel(53);
+    finish();
+
+    // 52 was never finished, so that is where the player is — even though the
+    // record has reached 54.
+    expect(firstUnsolved(store().progress())).toBe(52);
+    store().resumeCurrent();
+    expect(store().level).toBe(52);
+  });
+
+  it('resumes the next level rather than the board just solved', () => {
+    seedFrontier(46);
+    store().loadLevel(46);
+    finish();
+    expect(store().solved).toBe(true);
+
+    // What Home's Continue does. The solved board is still loaded behind the
+    // win screen; continuing has to open what comes next.
+    store().resumeCurrent();
+    expect(store().level).toBe(47);
+    expect(store().solved).toBe(false);
+  });
+
+  it('resumes an unfinished replay rather than jumping to the frontier', () => {
+    seedFrontier(56);
+    // Replay a level already finished, and leave it part-solved.
+    store().loadLevel(55);
+    const [first] = solve(store().board).moves!;
+    store().tapTube(first!.from);
+    store().tapTube(first!.to);
+
+    // A board with moves on it is what "continue" means, wherever it sits.
+    store().resumeCurrent();
+    expect(store().level).toBe(55);
+    expect(store().history).toHaveLength(1);
+  });
+
+  it('leaves a level in progress alone', () => {
+    seedFrontier(48);
+    store().loadLevel(48);
+    const [first] = solve(store().board).moves!;
+    store().tapTube(first!.from);
+    store().tapTube(first!.to);
+
+    // Same level, moves intact: continuing an unfinished board must not
+    // regenerate it and throw the position away.
+    store().resumeCurrent();
+    expect(store().level).toBe(48);
+    expect(store().history).toHaveLength(1);
   });
 });

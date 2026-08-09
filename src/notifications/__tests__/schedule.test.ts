@@ -13,7 +13,7 @@ const at = (hour: number, day = 1, minute = 0) =>
 const hourOf = (ms: number) => new Date(ms).getHours();
 
 const state = (over: Partial<ReminderState> = {}): ReminderState => ({
-  lastClaimAt: null,
+  lastVisitAt: null,
   streak: 0,
   lastPlayedAt: null,
   ...over,
@@ -30,7 +30,7 @@ describe('reward reminders', () => {
 
   it('fires when the reward opens, not at a fixed hour', () => {
     const claim = at(14);
-    const [ready] = remindersFor(state({ lastClaimAt: claim, streak: 1 }), claim);
+    const [ready] = remindersFor(state({ lastVisitAt: claim, streak: 1 }), claim);
     // A 2pm claim must not be answered at 8am with hours still on the clock.
     expect(ready!.at).toBe(claim + 24 * HOURS);
   });
@@ -38,14 +38,14 @@ describe('reward reminders', () => {
   it('leaves a short streak alone', () => {
     // Two notifications for a one-day streak is nagging, and a player who has
     // claimed once has nothing invested to lose.
-    expect(kinds({ lastClaimAt: at(12), streak: 1 }, at(12))).toEqual(['ready']);
-    expect(kinds({ lastClaimAt: at(12), streak: 2 }, at(12))).toEqual(['ready']);
+    expect(kinds({ lastVisitAt: at(12), streak: 1 }, at(12))).toEqual(['ready']);
+    expect(kinds({ lastVisitAt: at(12), streak: 2 }, at(12))).toEqual(['ready']);
   });
 
   it('warns before a streak worth keeping lapses', () => {
     // 3pm claim, so +44h is 11am — a sociable hour, left where it is.
     const claim = at(15);
-    const reminders = remindersFor(state({ lastClaimAt: claim, streak: 5 }), claim);
+    const reminders = remindersFor(state({ lastVisitAt: claim, streak: 5 }), claim);
     const streak = reminders.find((r) => r.kind === 'streak')!;
 
     expect(streak.at).toBe(claim + 44 * HOURS);
@@ -59,7 +59,7 @@ describe('reward reminders', () => {
     // "about to end" delivered after it ended is worse than silence.
     const late = Array.from({ length: 24 }, (_, hour) => {
       const claim = at(hour);
-      const streak = remindersFor(state({ lastClaimAt: claim, streak: 5 }), claim).find(
+      const streak = remindersFor(state({ lastVisitAt: claim, streak: 5 }), claim).find(
         (r) => r.kind === 'streak'
       );
       return streak !== undefined && streak.at >= claim + 48 * HOURS;
@@ -106,7 +106,7 @@ describe('come-back nudges', () => {
     // thing the player has been building.
     const claim = at(16, 1);
     const reminders = remindersFor(
-      state({ lastClaimAt: claim, streak: 7, lastPlayedAt: at(10, 2) }),
+      state({ lastVisitAt: claim, streak: 7, lastPlayedAt: at(10, 2) }),
       claim
     );
 
@@ -118,7 +118,7 @@ describe('come-back nudges', () => {
     // 24 hours out. On a lock screen they say the same thing.
     const moment = at(12);
     const reminders = remindersFor(
-      state({ lastClaimAt: moment, streak: 1, lastPlayedAt: moment }),
+      state({ lastVisitAt: moment, streak: 1, lastPlayedAt: moment }),
       moment
     );
 
@@ -132,7 +132,7 @@ describe('waking hours', () => {
     // Claimed at 3am, so the reward opens at 3am. Waking someone at 3am to
     // say their vials are ready is how notifications get turned off forever.
     const claim = at(3);
-    const [ready] = remindersFor(state({ lastClaimAt: claim, streak: 1 }), claim);
+    const [ready] = remindersFor(state({ lastVisitAt: claim, streak: 1 }), claim);
 
     expect(hourOf(ready!.at)).toBe(8);
     expect(ready!.at).toBeGreaterThan(claim);
@@ -140,7 +140,7 @@ describe('waking hours', () => {
 
   it('rolls a late-evening reminder to the next morning', () => {
     const claim = at(23, 1);
-    const [ready] = remindersFor(state({ lastClaimAt: claim, streak: 1 }), claim);
+    const [ready] = remindersFor(state({ lastVisitAt: claim, streak: 1 }), claim);
 
     expect(hourOf(ready!.at)).toBe(8);
     // Forward, never back: pulling it to the previous 11pm would announce the
@@ -150,7 +150,7 @@ describe('waking hours', () => {
 
   it('leaves a sociable time exactly where it is', () => {
     const claim = at(14, 1, 37);
-    const [ready] = remindersFor(state({ lastClaimAt: claim, streak: 1 }), claim);
+    const [ready] = remindersFor(state({ lastVisitAt: claim, streak: 1 }), claim);
     expect(ready!.at).toBe(claim + 24 * HOURS);
   });
 
@@ -158,7 +158,7 @@ describe('waking hours', () => {
     for (let hour = 0; hour < 24; hour++) {
       const anchor = at(hour);
       const reminders = remindersFor(
-        state({ lastClaimAt: anchor, streak: 5, lastPlayedAt: anchor }),
+        state({ lastVisitAt: anchor, streak: 5, lastPlayedAt: anchor }),
         anchor
       );
 
@@ -174,7 +174,7 @@ describe('waking hours', () => {
     // a burst of notifications at once.
     const anchor = at(2);
     const reminders = remindersFor(
-      state({ lastClaimAt: anchor, streak: 5, lastPlayedAt: anchor }),
+      state({ lastVisitAt: anchor, streak: 5, lastPlayedAt: anchor }),
       anchor
     );
 
@@ -188,7 +188,7 @@ describe('anything already due', () => {
     const claim = at(12, 1);
     // Two days later, never claimed. Both moments have been and gone, and the
     // reward is on the home screen where it can be seen.
-    expect(kinds({ lastClaimAt: claim, streak: 5 }, at(12, 4))).toEqual([]);
+    expect(kinds({ lastVisitAt: claim, streak: 5 }, at(12, 4))).toEqual([]);
   });
 
   it('never schedules anything in the past', () => {
@@ -196,7 +196,7 @@ describe('anything already due', () => {
     for (const hours of [0, 12, 24, 30, 44, 48, 96]) {
       const now = anchor + hours * HOURS;
       const reminders = remindersFor(
-        state({ lastClaimAt: anchor, streak: 5, lastPlayedAt: anchor }),
+        state({ lastVisitAt: anchor, streak: 5, lastPlayedAt: anchor }),
         now
       );
       for (const reminder of reminders) expect(reminder.at).toBeGreaterThan(now);

@@ -14,6 +14,7 @@ import { useBonusStore } from './bonusStore';
 import { useEconomyStore } from './economyStore';
 import { overlay } from './overlayStore';
 import {
+  firstUnsolved,
   loadProgress,
   progressFor,
   markBlockPaid,
@@ -47,6 +48,17 @@ type UndoOutcome =
    * about a budget, raised by the one action that does not touch the budget.
    */
   | { kind: 'undone'; charged: number; freeLeft: number; spentAllowance: boolean }
+  /**
+   * The spare vial put back, on an undo with no moves left to take back.
+   *
+   * Free, and deliberately so. Taking the vial is a one-per-level decision the
+   * player often makes early and regrets — it makes a board easier to finish
+   * and there was no way out of it short of restarting the whole level. Undo is
+   * where "I did not mean that" lives, so it belongs there; charging for it
+   * would be billing someone to *undo* the help they took, which is the one
+   * thing in this economy that has never cost anything.
+   */
+  | { kind: 'vialRemoved' }
   /** Not enough coins. The board is untouched. */
   | { kind: 'blocked'; price: number }
   /** Nothing to undo, or a pour is animating. */
@@ -199,6 +211,8 @@ export interface GameState {
    */
   loadBonus: (now: number) => boolean;
   nextLevel: () => void;
+  /** Opens the level the record says is current. See the implementation. */
+  resumeCurrent: () => void;
   setLocked: (locked: boolean) => void;
   /** Progress for the mode being played. */
   progress: () => Progress;
@@ -258,7 +272,10 @@ export type TapOutcome =
 export const useGameStore = create<GameState>((set, get) => {
   const difficulty = useSettingsStore.getState().difficulty;
   const record = loadProgress();
-  const startLevel = progressFor(record, difficulty).currentLevel;
+  // The frontier, not the last level opened — someone who replayed level 3 and
+  // closed the app should come back to where they actually are. A saved session
+  // overrides this below; it carries its own level.
+  const startLevel = firstUnsolved(progressFor(record, difficulty));
   const first = generateLevel(startLevel, difficulty);
 
   // A level left half-solved comes back as it was left. The stored session is
@@ -487,7 +504,8 @@ export const useGameStore = create<GameState>((set, get) => {
       if (get().difficulty === difficulty) return;
 
       // Each mode remembers where it was left, so switching is not a reset.
-      const level = progressFor(get().record, difficulty).currentLevel;
+      // Each mode keeps its own place, and that place is its frontier.
+      const level = firstUnsolved(progressFor(get().record, difficulty));
       const generated = generateLevel(level, difficulty);
       // Switching modes drops whatever was in progress. Keeping one session
       // per mode would need a record per mode; the level is remembered either
@@ -564,7 +582,7 @@ export const useGameStore = create<GameState>((set, get) => {
       const nowSolved = isSolved(applied.state);
       const moves = get().history.length + 1;
 
-      const stars = nowSolved ? starsFor(moves, get().par) : 0;
+      const stars = nowSolved ? starsFor(moves, get().par, get().hintsUsed) : 0;
 
       set((current) => {
         // Read before the completion is recorded — afterwards this level's
@@ -628,9 +646,35 @@ export const useGameStore = create<GameState>((set, get) => {
     },
 
     undo: () => {
-      const { history, future, initial, locked, paidUndos, freeUndosUsed, difficulty } =
-        get();
-      if (locked || history.length === 0) return { kind: 'ignored' };
+      const {
+        history,
+        future,
+        initial,
+        locked,
+        paidUndos,
+        freeUndosUsed,
+        difficulty,
+        extraTaken,
+      } = get();
+      if (locked) return { kind: 'ignored' };
+
+      /**
+       * With nothing left to take back, undo takes the spare vial back.
+       *
+       * The last step of unwinding a level, and it costs nothing — see
+       * `vialRemoved`. Only reachable at zero moves, which is what makes the
+       * trim safe: the vial is always the last tube, so with no history no move
+       * can name it and every other index is unchanged. That is the same
+       * argument `restart` makes.
+       */
+      if (history.length === 0) {
+        if (!extraTaken) return { kind: 'ignored' };
+
+        const board = { ...initial, tubes: initial.tubes.slice(0, -1) };
+        set({ board, initial: board, extraTaken: false, selected: null, hintMove: null });
+        persistSession();
+        return { kind: 'vialRemoved' };
+      }
 
       /**
        * The charge, before the board moves.
@@ -696,7 +740,7 @@ export const useGameStore = create<GameState>((set, get) => {
       const nowSolved = isSolved(applied.state);
       const moves = get().history.length + 1;
 
-      const stars = nowSolved ? starsFor(moves, get().par) : 0;
+      const stars = nowSolved ? starsFor(moves, get().par, get().hintsUsed) : 0;
 
       set((current) => {
         // Read before the completion is recorded — afterwards this level's
@@ -752,10 +796,34 @@ export const useGameStore = create<GameState>((set, get) => {
     },
 
     restart: () => {
-      const { initial, locked } = get();
+      const { initial, locked, extraTaken } = get();
       if (locked) return;
+
+      /**
+       * The spare vial goes back too.
+       *
+       * Restart used to keep it, on the reasoning that it was the one thing
+       * left worth remembering about a board with no moves on it. On a screen
+       * that is the opposite: restart puts back the board the level *starts*
+       * with, and a player who restarts to try again from scratch is handed a
+       * thirteenth vial they did not ask for and cannot put away. It also reads
+       * as a bug, because there is no way to tell it apart from one.
+       *
+       * `initial` grows when the vial is taken — undo replays from it, so it
+       * has to — which is why this trims rather than reloads. The spare is
+       * always appended last and the history is being cleared in the same
+       * update, so no move can be left naming it and every other tube keeps its
+       * index. Regenerating the level would work too and costs a few
+       * milliseconds of solver time for a board this store already holds.
+       */
+      const board = extraTaken
+        ? { ...initial, tubes: initial.tubes.slice(0, -1) }
+        : initial;
+
       set({
-        board: initial,
+        initial: board,
+        extraTaken: false,
+        board,
         history: [],
         future: [],
         // Restart is free, and it clears the debt with the moves: nothing is
@@ -771,8 +839,9 @@ export const useGameStore = create<GameState>((set, get) => {
         earned: 0,
         earnedCoins: 0,
       });
-      // Not a clear: restart keeps the spare vial, which is the one thing left
-      // worth remembering about a board with no moves on it.
+      // A restarted level has no moves and no spare vial, so there is nothing
+      // left to resume — `saveSession` drops a record with neither rather than
+      // storing one, which is what makes this a clear in practice.
       persistSession();
     },
 
@@ -930,6 +999,30 @@ export const useGameStore = create<GameState>((set, get) => {
     },
 
     nextLevel: () => get().loadLevel(get().level + 1),
+
+    /**
+     * Opens what Continue should open: an unfinished board, or the frontier.
+     *
+     * Two cases, in that order.
+     *
+     * **A board with moves on it and no win yet is what "continue" means**, so
+     * it is handed straight back — regenerating it would throw away a position
+     * the player is in the middle of, including one restored from a session at
+     * launch.
+     *
+     * **Otherwise the first level this mode has not finished.** Not the last
+     * level opened: replaying an old level from the grid would otherwise leave
+     * Home offering to continue it forever. Not the loaded board either, which
+     * after a win is the level that was just solved and is still mounted behind
+     * the Complete screen.
+     */
+    resumeCurrent: () => {
+      const { level, solved, history, record, difficulty } = get();
+      if (history.length > 0 && !solved) return;
+
+      const target = firstUnsolved(_progressFor(record, difficulty));
+      if (level !== target || solved) get().loadLevel(target);
+    },
 
     setLocked: (locked) => set({ locked }),
   };

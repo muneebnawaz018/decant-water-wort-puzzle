@@ -25,6 +25,10 @@ export function useClaimTimer(): {
 } {
   // Subscribed, not read through `getState`: claiming has to re-render this.
   const lastClaimAt = useEconomyStore((state) => state.lastClaimAt);
+  // And so does a visit landing, which is what moves the day on now — without
+  // this the card would keep showing yesterday's countdown until something else
+  // re-rendered it.
+  const streak = useEconomyStore((state) => state.streak);
   const [now, setNow] = useState(() => Date.now());
 
   const store = useEconomyStore.getState();
@@ -45,9 +49,10 @@ export function useClaimTimer(): {
       clearInterval(tick);
       subscription.remove();
     };
-    // `lastClaimAt` restarts the timer after a claim; `remaining > 0` is what
+    // `streak` moves the day on; `lastClaimAt` restarts the timer after a
+    // claim; `remaining > 0` is what
     // decides whether there is anything to tick at all.
-  }, [lastClaimAt, remaining > 0]);
+  }, [lastClaimAt, streak, remaining > 0]);
 
   return { reward, remaining, dayIndex };
 }

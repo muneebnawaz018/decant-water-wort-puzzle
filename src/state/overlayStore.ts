@@ -1,10 +1,29 @@
 import { create } from 'zustand';
 
+import type { IconName } from '@/ui/Icon';
+
 export interface ModalSpec {
   title: string;
   body: string;
   /** Label for the confirming button. */
   confirmLabel?: string;
+  /**
+   * Glyphs for the two action buttons, named rather than passed as nodes.
+   *
+   * A `ModalSpec` is data raised from a handler — `confirmDifficulty`, the
+   * reward dialog — and several of those live outside React entirely. Holding
+   * an `IconName` keeps the spec serialisable and leaves `Overlays` to decide
+   * the size and colour each variant needs, which it already does for the
+   * labels.
+   *
+   * Both optional, because most dialogs are questions rather than offers and a
+   * glyph on `OK` is decoration. The reward dialog is the case that wants them:
+   * its two buttons both pay, so the words alone do not say which is which —
+   * the same problem the Complete screen solved with a video mark on the
+   * doubling offer and a tick on the plain one.
+   */
+  confirmIcon?: IconName;
+  secondaryIcon?: IconName;
   /** Omitted for a single-button acknowledgement. */
   cancelLabel?: string | null;
   onConfirm?: () => void;

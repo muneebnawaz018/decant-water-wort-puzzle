@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, Text, View } from 'react-native';
+import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -40,6 +40,27 @@ interface StagesScreenProps {
  * cannot disagree about where a block starts.
  */
 export const PAGE_SIZE = 30;
+
+/*
+  ⚠️ TEMPORARY TEST AFFORDANCE — REVERT BEFORE SHIPPING. ⚠️
+
+  A level number field under the mode tabs. Type any level, press Play, and it
+  opens — no unlock check, so later levels can be inspected for accuracy without
+  playing up to them.
+
+  It goes through `loadLevel`, the same call the grid tiles make, so the board,
+  the par refinement and the session record all behave exactly as they do in
+  play. What it skips is the lock, which is the whole point and also why it must
+  not ship: `furthestLevel` stays where it was, so the grid still shows the real
+  frontier while the board shows level 900.
+
+  Set the flag to `false`, delete the component and its two style entries, and
+  the screen is back to normal.
+*/
+const TEST_LEVEL_JUMP = true;
+
+/** Beyond this the generator is untested territory; the field refuses it. */
+const TEST_MAX_LEVEL = 9999;
 
 interface Stage {
   level: number;
@@ -159,6 +180,8 @@ export const StagesScreen = memo(function StagesScreen({ onPick }: StagesScreenP
         ))}
       </View>
 
+      {TEST_LEVEL_JUMP ? <JumpToLevel onPick={onPick} /> : null}
+
       <View style={styles.pager}>
         <ChromeIconButton
           icon="prev"
@@ -213,6 +236,60 @@ export const StagesScreen = memo(function StagesScreen({ onPick }: StagesScreenP
 });
 
 const keyExtractor = (stage: Stage) => String(stage.level);
+
+/** ⚠️ Test only. See `TEST_LEVEL_JUMP`. */
+const JumpToLevel = memo(function JumpToLevel({ onPick }: StagesScreenProps) {
+  const [text, setText] = useState('');
+  const target = Number.parseInt(text, 10);
+  const valid = Number.isFinite(target) && target >= 1 && target <= TEST_MAX_LEVEL;
+
+  const go = useCallback(() => {
+    if (!valid) return;
+    // Straight to `loadLevel`, lock and all. `useGameStore.getState()` rather
+    // than a subscription: this is a handler, and the field must not re-render
+    // the grid behind it on every keystroke.
+    useGameStore.getState().loadLevel(target);
+    onPick();
+  }, [valid, target, onPick]);
+
+  return (
+    <View style={styles.jumpRow}>
+      <TextInput
+        style={styles.jumpInput}
+        value={text}
+        onChangeText={setText}
+        // `number-pad`, not `numeric`: no decimal point, no minus sign, and
+        // nothing here accepts either.
+        keyboardType="number-pad"
+        returnKeyType="go"
+        onSubmitEditing={go}
+        placeholder="Level number"
+        placeholderTextColor={apothecary.inkMuted}
+        maxLength={4}
+        accessibilityLabel="Jump to level"
+      />
+      {/* Built from the mode tab's own styles rather than a `GlossButton`, so
+          it matches the gold Hard/Medium/Easy pill sitting directly above it —
+          same height, same radius, same gradient face. */}
+      <Pressable
+        style={styles.jumpButton}
+        onPress={go}
+        disabled={!valid}
+        accessibilityRole="button"
+        accessibilityLabel="Play this level"
+      >
+        <View style={[styles.tab, styles.tabActive, !valid && styles.jumpButtonOff]}>
+          <LinearGradient
+            colors={[apothecary.goldLight, apothecary.gold]}
+            style={styles.tabFace}
+          >
+            <Text style={styles.tabTextActive}>Play</Text>
+          </LinearGradient>
+        </View>
+      </Pressable>
+    </View>
+  );
+});
 
 const ModeTab = memo(function ModeTab({ id, active }: { id: Difficulty; active: boolean }) {
   const info = DIFFICULTY_INFO[id];

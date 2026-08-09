@@ -221,6 +221,16 @@ export const styles = StyleSheet.create({
     paddingVertical: s(11),
     paddingHorizontal: s(16),
     borderRadius: DIALOG_RADIUS,
+    /**
+     * Tighter than the 8 the larger ghosts use.
+     *
+     * A trailing glyph belongs to the label, and at dialog size 8dp let it
+     * drift into no-man's-land between the words and the button's own edge —
+     * it read as a second element sharing the button rather than as part of
+     * the phrase. The label's own trailing letter-space adds to the gap too,
+     * so the drawn distance is always a little more than the number here.
+     */
+    gap: s(5),
   },
   dialogGhostLabel: { fontSize: s(13.5) },
   compactGhost: { paddingVertical: s(10), paddingHorizontal: s(14) },

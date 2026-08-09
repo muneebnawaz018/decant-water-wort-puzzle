@@ -26,6 +26,7 @@ import { GlossButton } from './chrome/GlossButton';
 import { Panel } from './chrome/Panel';
 import { useScreenPadding } from './hooks/useScreenPadding';
 import { Icon } from './Icon';
+import { claimToast } from './rewardTrack';
 import { styles } from './styles/CompleteScreen.styles';
 
 interface CompleteScreenProps {
@@ -46,6 +47,25 @@ interface CompleteScreenProps {
  */
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const WIN_BURST = require('../../assets/lottie/win.json');
+/**
+ * The payout shower, for the doubled bonus.
+ *
+ * A second animation rather than replaying the confetti, because they say
+ * different things: the confetti fired for *finishing the level*, and this
+ * fires for *being paid*. The same burst twice reads as the first one
+ * stuttering.
+ */
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const COIN_SHOWER = require('../../assets/lottie/coins.json');
+
+/**
+ * How long the shower runs, taken from the file itself.
+ *
+ * `op` is its last frame and `fr` its frame rate, so this is the animation's
+ * own length rather than a duration guessed to match it. Regenerate
+ * `coins.json` longer and the screen waits longer with no edit here.
+ */
+const SHOWER_MS = (COIN_SHOWER.op / COIN_SHOWER.fr) * 1000;
 
 /** Spec §6: stars pop in ~230ms apart, reward after them. */
 const STAR_DELAY = 230;
@@ -103,14 +123,62 @@ export const CompleteScreen = memo(function CompleteScreen({
    * separately from the level's own payout, so a failed or skipped ad simply
    * leaves the run's earnings as they were.
    */
+  /** What this run has paid in total, counting the ad bonus if it was taken. */
+  const paid = doubled ? reward * EARNINGS.adMultiplier : reward;
+
   const double = useCallback(() => {
     if (doubled || reward <= 0) return;
     setDoubled(true);
     // `- 1` because the run already paid one share. Doubling adds the
     // difference, not the whole amount again.
     useEconomyStore.getState().add(reward * (EARNINGS.adMultiplier - 1));
-    overlay.toast(`Doubled · +${reward * (EARNINGS.adMultiplier - 1)} coins`);
+
+    /**
+     * What the run is now worth, and what the player now has.
+     *
+     * It used to announce the *bonus* — "Doubled · +60" on a run that paid 60,
+     * which reads as the run having earned 60 when it has earned 120. The
+     * number that matters is what the level paid, not the arithmetic that got
+     * there.
+     *
+     * And the balance with it, because a payout with no balance beside it sends
+     * the player to check the coin pill — the same reason the undo toasts carry
+     * one. Read after the credit, so it is the total they now hold.
+     */
+    const balance = useEconomyStore.getState().coins;
+    overlay.toast(claimToast(reward * EARNINGS.adMultiplier, balance));
+
+    /**
+     * And the card is done — but not this instant.
+     *
+     * The offer is the last thing this screen has to say, so leaving is right:
+     * the coins are paid, the balance is on screen, and what remains is a
+     * receipt for a run the player has finished reading. Leaving it up means a
+     * card whose only live control is now spent.
+     *
+     * The wait is the coin shower. Paying and closing in the same frame threw
+     * the animation away before a single coin had drawn — the player pressed a
+     * button that promised double and got a screen change. `SHOWER_MS` is the
+     * animation's own length at its own frame rate, not a number picked to feel
+     * right; if the file is regenerated longer, this follows it.
+     *
+     * The toast carries the numbers out regardless: the overlay is global and
+     * outlives the screen that raised it.
+     */
   }, [doubled, reward]);
+
+  /**
+   * The timer is owned by an effect, not by the handler that started it.
+   *
+   * A `setTimeout` left running past unmount calls `onHome` on a screen that is
+   * gone — harmless here, and the kind of thing that stops being harmless the
+   * moment the callback does more than navigate.
+   */
+  useEffect(() => {
+    if (!doubled) return;
+    const done = setTimeout(onHome, SHOWER_MS);
+    return () => clearTimeout(done);
+  }, [doubled, onHome]);
 
   return (
     <View style={[styles.root, padding.frame]}>
@@ -131,27 +199,6 @@ export const CompleteScreen = memo(function CompleteScreen({
         entering={FadeIn.duration(260)}
         pointerEvents="none"
       />
-
-      {/*
-        The Lottie burst plays behind the card, once.
-
-        `loop={false}` is the rule for every animation in this folder: a looping
-        Lottie on a mounted screen redraws forever, which is the cost this
-        project already paid once on Home's rack.
-
-        The wrapper carries `pointerEvents`, because `LottieView` does not take
-        it — and it covers the card, so without it the buttons underneath are
-        unreachable.
-      */}
-      <View style={styles.lottie} pointerEvents="none">
-        <LottieView
-          source={WIN_BURST}
-          autoPlay
-          loop={false}
-          resizeMode="cover"
-          style={styles.fill}
-        />
-      </View>
 
       {/*
         The hand-rolled burst stays for now, on top of the Lottie.
@@ -188,13 +235,17 @@ export const CompleteScreen = memo(function CompleteScreen({
               "+0" is worse than silence: it draws the eye to a reward, then
               says the run was worth none. The stars above already say how it
               went, and they are the honest part. */}
-          {reward > 0 ? (
+          {paid > 0 ? (
             <Animated.View
               style={styles.reward}
               entering={FadeIn.duration(500).delay(rewardDelay)}
             >
               <View style={styles.coin} />
-              <Text style={styles.rewardText}>+{reward}</Text>
+              {/* The doubled figure once it has been taken. The card is a
+                  receipt for the run, and after the offer the run paid twice
+                  what the level's stars are worth — leaving the original there
+                  would have the card and the coin pill disagreeing. */}
+              <Text style={styles.rewardText}>+{paid}</Text>
             </Animated.View>
           ) : null}
 
@@ -236,46 +287,96 @@ export const CompleteScreen = memo(function CompleteScreen({
               style={styles.secondaryButton}
             />
             {/*
-              Doubling the payout, where Home used to be.
+              Doubling the payout, in the slot Home used to hold.
 
               Home was the third way to reach a screen the nav bar already
-              carries — the bar shows on this screen — so the slot was spending
-              the win moment on navigation the player has two other routes to.
-              What belongs here is the offer, and this is the moment for it:
-              the coins have just landed and the number is still on screen.
+              carries — the bar shows on this screen — so it spent the win
+              moment on navigation the player has two other routes to. What
+              belongs here is the offer, and this is the moment for it: the
+              coins have just landed and the number is still on screen.
 
-              Named for the outcome rather than the price — "Make it 2X", not
-              "Watch ad". It shares a row with Again, so each button gets about
-              half the card, and the longer wording wrapped to two lines and
-              left the pair at different heights.
+              Ghost, not primary. It was gold, and gold directly under the gold
+              `Level N` button gave the card two things claiming to be the main
+              action — the eye had nowhere to land, and the offer competed with
+              the button that carries the game forward. It sits in the
+              secondary row and should look like the rest of it.
 
-              Only when there is something to double. A replay that matched a
-              previous result pays nothing, and "2X of nothing" is a button
-              that takes a press and changes no number.
+              Disabled when the run paid nothing, which happens on a replay that
+              did not beat its own best. It stays in place rather than swapping
+              back to Home: a button that changes identity between two visits to
+              the same screen is worse than one that is plainly unavailable, and
+              the label already says what there is to double.
+
+              It reports `Doubled` afterwards rather than staying `Make it 2X`
+              while dimmed. A disabled button whose words still offer something
+              reads as broken; one that says what happened is a receipt.
             */}
-            {reward > 0 ? (
-              <GlossButton
-                label={`Make it ${EARNINGS.adMultiplier}X`}
-                variant="primary"
-                size="dialog"
-                trailing={<Icon name="video" size={s(15)} color={ui.onGold} />}
-                onPress={double}
-                disabled={doubled}
-                style={styles.secondaryButton}
-              />
-            ) : (
-              <GlossButton
-                label="Home"
-                variant="ghost"
-                size="dialog"
-                trailing={<Icon name="home" size={s(15)} color={apothecary.goldLight} />}
-                onPress={onHome}
-                style={styles.secondaryButton}
-              />
-            )}
+            <GlossButton
+              label={doubled ? 'Doubled' : `Make it ${EARNINGS.adMultiplier}X`}
+              variant="ghost"
+              size="dialog"
+              trailing={
+                <Icon
+                  name={doubled ? 'check' : 'video'}
+                  size={s(15)}
+                  color={apothecary.goldLight}
+                />
+              }
+              onPress={double}
+              disabled={doubled || reward <= 0}
+              style={styles.secondaryButton}
+            />
           </Animated.View>
         </Panel>
       </Animated.View>
+
+      {/*
+        The Lottie burst plays *over* the card, once.
+
+        It used to sit behind it, and behind is where a full-screen burst is
+        least visible: the card covers the middle of the screen, which is
+        exactly where the confetti comes from, so what showed was the fringe
+        around the edges. The same mistake the reward dialog made — see
+        `Overlays.styles.ts`, where the celebration layer had to be lifted over
+        the modal's scrim for the same reason.
+
+        `loop={false}` is the rule for every animation in this folder: a looping
+        Lottie on a mounted screen redraws forever, which is the cost this
+        project already paid once on Home's rack.
+
+        `pointerEvents` is what makes drawing over the card safe, and it goes on
+        the wrapper because `LottieView` does not take it. Without it this layer
+        covers the buttons and the card cannot be pressed at all.
+
+        Last in the tree rather than given a `zIndex`. Neither this nor the card
+        carries one, so paint order alone decides — and an explicit `zIndex`
+        here would be a number to keep in step with a card that has none.
+      */}
+      <View style={styles.lottie} pointerEvents="none">
+        <LottieView
+          source={WIN_BURST}
+          autoPlay
+          loop={false}
+          resizeMode="cover"
+          style={styles.fill}
+        />
+      </View>
+
+      {/* The payout shower, mounted only once the bonus is taken.
+          Conditionally rather than always-mounted-and-paused: a `LottieView` is
+          a native view whether or not it is playing, and this one is never seen
+          on the runs where the offer is declined. */}
+      {doubled ? (
+        <View style={styles.lottie} pointerEvents="none">
+          <LottieView
+            source={COIN_SHOWER}
+            autoPlay
+            loop={false}
+            resizeMode="cover"
+            style={styles.fill}
+          />
+        </View>
+      ) : null}
     </View>
   );
 });

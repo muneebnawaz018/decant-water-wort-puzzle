@@ -6,6 +6,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { DIFFICULTY_INFO } from '@/game/difficulty';
 import type { NavDestination } from '@/state/navStore';
 import { useGameStore } from '@/state/gameStore';
+import { firstUnsolved } from '@/state/progress';
 import { overlay } from '@/state/overlayStore';
 import { apothecary } from '@/theme/apothecary';
 import { colours, gradients, ui } from '@/theme/colors';
@@ -38,11 +39,23 @@ export const HomeScreen = memo(function HomeScreen({
   onNavigate,
 }: HomeScreenProps) {
   const padding = useScreenPadding();
-  const level = useGameStore((state) => state.level);
   const difficulty = useGameStore((state) => state.difficulty);
   const record = useGameStore((state) => state.record);
 
   const progress = record[difficulty]!;
+  /**
+   * The level Continue opens — and it has to be exactly that, or the card
+   * promises one level and delivers another.
+   *
+   * An unfinished board in hand wins, because that is what continuing means.
+   * Otherwise the mode's first unfinished level. Both halves matter: reading
+   * the *loaded* level offered to continue the board still mounted behind the
+   * win screen, and reading `currentLevel` offered whichever level was opened
+   * last — so replaying level 3 from the grid moved Home back to level 3.
+   */
+  const loaded = useGameStore((state) => state.level);
+  const inProgress = useGameStore((state) => state.history.length > 0 && !state.solved);
+  const level = inProgress ? loaded : firstUnsolved(progress);
   const cleared = Math.max(0, progress.furthestLevel - 1);
   const blockStart = Math.floor((level - 1) / PAGE_SIZE) * PAGE_SIZE;
   const blockDone = Math.min(PAGE_SIZE, Math.max(0, cleared - blockStart));

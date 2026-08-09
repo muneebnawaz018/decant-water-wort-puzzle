@@ -10,10 +10,10 @@
 const HOUR_MS = 60 * 60 * 1000;
 
 /** The reward becomes claimable 24 hours after the last claim. */
-const CLAIM_INTERVAL_MS = 24 * HOUR_MS;
+const VISIT_INTERVAL_MS = 24 * HOUR_MS;
 
-/** The streak lapses 48 hours after the last claim. */
-const STREAK_WINDOW_MS = 48 * HOUR_MS;
+/** The streak lapses 48 hours after the last counted visit. */
+const VISIT_WINDOW_MS = 48 * HOUR_MS;
 
 /** How long before the streak lapses to warn about it. */
 const STREAK_WARNING_LEAD_MS = 4 * HOUR_MS;
@@ -119,8 +119,16 @@ export interface Reminder {
 }
 
 export interface ReminderState {
-  /** When the daily reward was last taken. */
-  lastClaimAt: number | null;
+  /**
+   * When the app was last opened on a *new day* — the visit that counted.
+   *
+   * Both reminders hang off this rather than off the last claim, because the
+   * streak is made of visits now: it lapses 48 hours after the last one, and
+   * the next day's reward unlocks 24 hours after it. Anchoring to the claim
+   * would warn a player who has kept their run going but skipped a reward, and
+   * stay silent for one who claimed and then vanished.
+   */
+  lastVisitAt: number | null;
   streak: number;
   /** When the app was last open. */
   lastPlayedAt: number | null;
@@ -167,15 +175,15 @@ function merge(reminders: Reminder[]): Reminder[] {
   return kept.sort((a, b) => a.at - b.at);
 }
 
-/** The reward and streak reminders, anchored to the last claim. */
+/** The reward and streak reminders, anchored to the last counted visit. */
 function rewardReminders(state: ReminderState): Reminder[] {
-  // Never claimed, so the reward is waiting right now. Nothing to announce.
-  if (state.lastClaimAt === null) return [];
+  // Never opened, so there is no run to keep and nothing to announce.
+  if (state.lastVisitAt === null) return [];
 
   const reminders: Reminder[] = [
     {
       kind: 'ready',
-      at: state.lastClaimAt + CLAIM_INTERVAL_MS,
+      at: state.lastVisitAt + VISIT_INTERVAL_MS,
       title: 'Your daily reward is ready',
       body: 'The vials are waiting. Claim it before the day is out.',
     },
@@ -184,10 +192,10 @@ function rewardReminders(state: ReminderState): Reminder[] {
   if (state.streak >= STREAK_WORTH_WARNING) {
     reminders.push({
       kind: 'streak',
-      at: state.lastClaimAt + STREAK_WINDOW_MS - STREAK_WARNING_LEAD_MS,
-      expiresAt: state.lastClaimAt + STREAK_WINDOW_MS,
+      at: state.lastVisitAt + VISIT_WINDOW_MS - STREAK_WARNING_LEAD_MS,
+      expiresAt: state.lastVisitAt + VISIT_WINDOW_MS,
       title: `Your ${state.streak}-day streak is about to end`,
-      body: 'Claim in the next few hours to keep it going.',
+      body: 'Open the game in the next few hours to keep it going.',
     });
   }
 

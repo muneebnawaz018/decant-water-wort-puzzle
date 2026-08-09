@@ -1,7 +1,7 @@
 import { DIFFICULTY_INFO, type Difficulty } from '@/game/difficulty';
 import { useGameStore } from '@/state/gameStore';
 import { overlay } from '@/state/overlayStore';
-import { progressFor } from '@/state/progress';
+import { firstUnsolved, progressFor } from '@/state/progress';
 import { useSettingsStore } from '@/state/settingsStore';
 import { plural } from '@/utils';
 
@@ -28,7 +28,9 @@ export function confirmDifficultyChange(next: Difficulty): void {
   // The spare vial counts as progress too: taking it is a one-per-level
   // decision, and switching away quietly hands out a fresh one.
   const inProgress = moves > 0 || game.extraTaken;
-  const landing = progressFor(game.record, next).currentLevel;
+  // Must match what `setDifficulty` will actually open, or the modal names one
+  // level and the switch delivers another.
+  const landing = firstUnsolved(progressFor(game.record, next));
   const info = DIFFICULTY_INFO[next];
 
   const where =

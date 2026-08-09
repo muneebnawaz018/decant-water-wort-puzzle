@@ -56,7 +56,11 @@ export const styles = StyleSheet.create({
     borderRadius: RADIUS - HAIRLINE,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: s(13),
+    // Tight vertically, because the waiting state's mark is what sets this
+    // control's height now and it should reach close to the card's edges. The
+    // ready state is a single line and is centred in whatever height the row
+    // gives it, so it is unaffected.
+    paddingVertical: s(8),
     paddingHorizontal: s(10),
     overflow: 'hidden',
   },
@@ -68,16 +72,43 @@ export const styles = StyleSheet.create({
    * thing in the control and a stack would centre a 36dp mark above it with
    * nothing beside it — which spends the height this control does not have.
    */
-  waitRow: { flexDirection: 'row', alignItems: 'center', gap: s(10) },
+  // The gap is wider than the app's usual 8 because the mark is artwork rather
+  // than a glyph: the vial's own frame has no padding, so its gold sits hard
+  // against the caption's first letter at a spacing that reads fine between two
+  // pieces of text.
+  waitRow: { flexDirection: 'row', alignItems: 'center', gap: s(14) },
   /**
    * The mark's box.
    *
    * Sized in dp rather than left to flex: `LottieView` measures itself to the
-   * composition's own size when its style gives it no resolved width, and this
-   * composition is 200×200 — the same trap `useTapBurst.styles` records, where
-   * a player inflated a 42dp button to three times its size on Android.
+   * composition's own size when its style gives it no resolved width — the same
+   * trap `useTapBurst.styles` records, where a player inflated a 42dp button to
+   * three times its size on Android.
+   *
+   * **Tall, matching the composition's own 110×200.** The box was square at 34,
+   * and `contain` fits a tall frame into a square one by shrinking it to the
+   * square's *width* — so the vial drew about 18dp high and read as a gold pill
+   * with a dot over it. Matching the aspect is what lets it fill the tile.
    */
-  brew: { width: s(34), height: s(34) },
+  brew: {
+    width: s(38),
+    height: s(69),
+    /**
+     * Lifted, because the artwork is not centred in its own canvas.
+     *
+     * `brew.json` is 110x200 and the glass sits at y=120 spanning 46 to 194 —
+     * the empty forty units above it are headroom for the drop to fall
+     * through. Flex centres the *box*, so the visible vial hung about 7dp below
+     * the text beside it, which reads as two things that were meant to line up
+     * and did not.
+     *
+     * A transform rather than a margin: the glass has to move without the row's
+     * height changing, and a margin large enough to shift it would also push
+     * the row's own centring around. The number is the composition's imbalance
+     * scaled to the box — (120 - 100) / 200 * 69 — not a value picked by eye.
+     */
+    transform: [{ translateY: -s(7) }],
+  },
   /** Left-aligned under the mark, so the caption and the clock share an edge. */
   waitText: { flexShrink: 1 },
   /**
@@ -90,11 +121,13 @@ export const styles = StyleSheet.create({
    */
   waitCaption: {
     fontFamily: POPPINS.bold,
-    fontSize: s(9),
+    // 11, not 9. Against a 30dp clock the smaller size read as a label the
+    // number had outgrown; the eyebrow should be quiet, not faint.
+    fontSize: s(11),
     letterSpacing: s(0.8),
     color: alpha('goldLight', 0.65),
     includeFontPadding: false,
-    marginBottom: s(1),
+    marginBottom: s(2),
   },
 
   /**
@@ -117,6 +150,12 @@ export const styles = StyleSheet.create({
     fontFamily: POPPINS.bold,
     fontSize: s(21),
     letterSpacing: s(0.2),
+    // Android pads a `Text` box with the font's own ascender and descender
+    // space unless told not to. Flex then centres the *box*, leaving the
+    // visible digits sitting high with the slack below them — which is what
+    // made a perfectly centred control look off. The caption already sets it;
+    // the clock is the bigger type and was the one showing it.
+    includeFontPadding: false,
   },
   /** Gold on the panel surface: a live clock, not a greyed-out control. */
   restLabel: { color: apothecary.goldLight },

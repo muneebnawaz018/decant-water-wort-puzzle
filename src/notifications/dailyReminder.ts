@@ -98,9 +98,9 @@ export async function syncReminders(): Promise<void> {
   if (!currentSettings().dailyReminder) return;
   if (!(await hasPermission())) return;
 
-  const { lastClaimAt, streak } = useEconomyStore.getState();
+  const { lastVisitAt, streak } = useEconomyStore.getState();
   const reminders = remindersFor(
-    { lastClaimAt, streak, lastPlayedAt: lastPlayedAt() },
+    { lastVisitAt, streak, lastPlayedAt: lastPlayedAt() },
     Date.now()
   );
 

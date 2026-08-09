@@ -49,23 +49,37 @@ FPS = 60
 # is already ticking once a second, and a second rhythm running faster than that
 # turns a calm card into a busy one.
 DURATION = 240
-# A square viewport, scaled to whatever box it is dropped into.
-SIZE = 200
-CENTRE = SIZE / 2
+# A *tall* viewport, not a square one, and that is a sizing fix rather than a
+# taste one.
+#
+# The first version drew a 62×108 vial inside a 200×200 frame — nearly two
+# thirds of the composition was empty air above and below it. `resizeMode`
+# `contain` fits the whole frame into its box, empty air included, so a mark
+# given a 34dp box rendered a vial about 18dp tall: a gold pill with a dot over
+# it, unreadable as glassware.
+#
+# The frame now hugs the vial, so the box the component gives it is very nearly
+# the vial's own size. Anything left over is the drop's runway above the glass.
+WIDTH = 110
+HEIGHT = 200
+CENTRE = WIDTH / 2
 
 # --- The vial ---------------------------------------------------------------
 
-VIAL_W = 62
-VIAL_H = 108
-VIAL_TOP = CENTRE - VIAL_H / 2 + 6
+VIAL_W = 76
+VIAL_H = 148
+# Pushed to the bottom of the frame. What is above it is the drop's fall, which
+# needs somewhere to start from — and a vial floating in the middle of its own
+# frame is how the empty air got there the first time.
+VIAL_TOP = HEIGHT - VIAL_H - 6
 VIAL_BOTTOM = VIAL_TOP + VIAL_H
 # Square shoulders, deeply rounded base is the app's own vial (see
 # `theme/skins.ts`), but Lottie's rounded-rectangle primitive carries one radius
 # for all four corners. A middling radius reads closer to the real thing at this
 # size than a fully rounded pill does.
-VIAL_R = 20
+VIAL_R = 26
 
-WALL = 5
+WALL = 7
 
 # How full the glass gets, as a fraction of its inside height. It never fills:
 # a vial that reaches the brim looks finished, and the whole point is that the
@@ -271,7 +285,7 @@ def drop() -> dict:
     descends linearly reads as a dot being moved, which is most of what makes a
     generated animation look generated.
     """
-    start_y = VIAL_TOP - 26
+    start_y = 10
     end_y = VIAL_BOTTOM - 30
 
     fall_start = 0
@@ -302,7 +316,7 @@ def drop() -> dict:
     return shape_layer(
         3,
         "drop",
-        [group([ellipse((11, 14)), fill(GOLD_PALE)])],
+        [group([ellipse((15, 19)), fill(GOLD_PALE)])],
         transform(keyed(positions), opacity),
     )
 
@@ -318,8 +332,8 @@ def ripple() -> dict:
 
     sizes = [
         (land, [6, 4]),
-        (land + 26, [46, 14]),
-        (DURATION, [46, 14]),
+        (land + 26, [58, 16]),
+        (DURATION, [58, 16]),
     ]
     opacity = keyed(
         [
@@ -335,7 +349,7 @@ def ripple() -> dict:
     return shape_layer(
         4,
         "ripple",
-        [group([ring, stroke(GOLD_PALE, 3)])],
+        [group([ring, stroke(GOLD_PALE, 4)])],
         transform([CENTRE, VIAL_BOTTOM - 34, 0], opacity),
     )
 
@@ -346,8 +360,8 @@ def build() -> dict:
         "fr": FPS,
         "ip": 0,
         "op": DURATION,
-        "w": SIZE,
-        "h": SIZE,
+        "w": WIDTH,
+        "h": HEIGHT,
         "nm": "brew",
         "ddd": 0,
         "assets": [],

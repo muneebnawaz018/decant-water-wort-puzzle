@@ -11,12 +11,13 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { standingFor, type StreakStanding } from '@/game/streak';
 import { syncReminders } from '@/notifications/dailyReminder';
 import { DAILY_REWARDS, useEconomyStore } from '@/state/economyStore';
 import { overlay, useOverlayStore } from '@/state/overlayStore';
 import { colours, gradients, ui } from '@/theme/colors';
 import { s } from '@/theme/scale';
-import { countdown, percentWidth, plural } from '@/utils';
+import { countdown, percentWidth } from '@/utils';
 import { ClaimButton } from './chrome/ClaimButton';
 import { Panel } from './chrome/Panel';
 import { ScrollPage } from './chrome/ScrollPage';
@@ -31,15 +32,6 @@ import { claimToast, dayState, offerMessage } from './rewardTrack';
 import { COIN_SIZE, FLAME_SIZE, styles, TODAY_TINT } from './styles/DailyScreen.styles';
 import { EARNINGS } from '@/game/economy';
 
-/**
- * What the week builds to, for the streak card's sentence.
- *
- * The split that used to live here — six days and a finale — went with the
- * grand row. The grid renders `DAILY_REWARDS` whole now, so there is nothing
- * left for the two halves to disagree about.
- */
-const FINALE = DAILY_REWARDS[DAILY_REWARDS.length - 1]!;
-
 /** What the bonus puzzle pays. Flat — see `economy.ts` for why. */
 const BONUS_REWARD = EARNINGS.bonusPuzzle;
 
@@ -51,9 +43,12 @@ const BONUS_REWARD = EARNINGS.bonusPuzzle;
  * the button is the one that has to explain itself, so the card says the thing
  * the button cannot: what the streak is being kept for.
  */
-function streakDetail(claimsLeft: number): string {
-  if (claimsLeft <= 0) return 'Week complete — the track restarts';
-  return `${plural(claimsLeft, 'day')} to the ${FINALE}-coin reward`;
+function streakDetail(standing: StreakStanding): string {
+  if (standing.days <= 0) return 'Open the app tomorrow to start a run';
+  // One line for every day of the run, including the day a milestone is
+  // passed — the marker has already moved to the next one by then, so there is
+  // no "complete" state to word differently and nothing that reads as done.
+  return `Day ${standing.days} of ${standing.target} — keep it going`;
 }
 
 interface DailyScreenProps {
@@ -63,20 +58,22 @@ interface DailyScreenProps {
 /** The seven-day reward track, spec §4.6. */
 export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScreenProps) {
   const streak = useEconomyStore((state) => state.streak);
+  // Derived from the streak rather than selected as a method: a selector
+  // returning a function has a stable identity, so the card would never
+  // re-render when the run advanced. The same rule Home's `lastClaim` follows.
+  const standing = standingFor(streak);
   const { reward, remaining, dayIndex } = useClaimTimer();
   const waiting = reward === null;
 
-  // The tile the track is sitting on. While the timer runs that is the one
-  // just claimed, not the one coming next.
-  const currentIndex = waiting
-    ? (streak - 1 + DAILY_REWARDS.length) % DAILY_REWARDS.length
-    : dayIndex;
-
-  // Claims still to come before the week's biggest reward, today's included
-  // when there is one to make. The tile the track sits on is already claimed
-  // while the timer runs, which is the `waiting` term.
-  const claimsLeft = DAILY_REWARDS.length - currentIndex - (waiting ? 1 : 0);
-  const claimed = DAILY_REWARDS.length - claimsLeft;
+  /**
+   * The tile today's visit landed on.
+   *
+   * One expression now, where it used to need two. The day is decided by the
+   * visit rather than by the claim, so it no longer matters whether the reward
+   * has been taken — `waiting` says only whether *this* tile is still owed, and
+   * `dayState` turns that into claimed-or-today.
+   */
+  const currentIndex = dayIndex;
 
   const claim = useCallback(() => {
     // Still counting down: nothing to offer, so no dialog. The press answers
@@ -99,6 +96,16 @@ export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScree
       title: 'Daily reward',
       body: offerMessage(currentIndex, DAILY_REWARDS),
       confirmLabel: 'Collect',
+      // A coin, not a tick. Both buttons here pay, so the glyphs have to say
+      // *what* is being taken rather than which one confirms — and a tick on
+      // Collect read as "OK" beside an offer that was visibly about money. The
+      // coin is the same mark the balance pill carries, so the dialog names its
+      // payout in the app's own vocabulary.
+      //
+      // The video stays: it is the price of the doubled offer, and the Complete
+      // screen marks the identical bargain the same way.
+      confirmIcon: 'coin',
+      secondaryIcon: 'video',
       // No cancel — the scrim already dismisses, and "decline my coins" is not
       // a choice worth a button. The left slot carries the doubling offer
       // instead, which is a real second answer to the same question.
@@ -177,6 +184,12 @@ export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScree
       <Panel contentStyle={styles.streak}>
         <StreakFlame />
         <View style={styles.streakText}>
+          {/*
+            The run's length, and under it how far up the current rung it is.
+            The bar measures the *tier*, not the reward week: the two are
+            different lengths past tier one, and the bar belongs to the thing
+            the number above it is counting.
+          */}
           <Text style={styles.streakTitle}>
             {streak === 1 ? '1-day streak' : `${streak}-day streak`}
           </Text>
@@ -187,11 +200,11 @@ export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScree
               end={{ x: 1, y: 0 }}
               style={[
                 styles.streakBarFill,
-                { width: percentWidth(claimed, DAILY_REWARDS.length) },
+                { width: percentWidth(standing.days, standing.target) },
               ]}
             />
           </View>
-          <Text style={styles.streakDetail}>{streakDetail(claimsLeft)}</Text>
+          <Text style={styles.streakDetail}>{streakDetail(standing)}</Text>
         </View>
       </Panel>
 
@@ -229,7 +242,10 @@ export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScree
         <View style={styles.claimSlot}>
           <ClaimButton
             label={waiting ? countdown(remaining) : `Claim ${reward} coins`}
-            caption={waiting ? 'Next in' : undefined}
+            // "Next reward" rather than "Next in". On its own line above the
+            // clock the caption has room, and it can name the thing instead of
+            // being a preposition the number has to finish.
+            caption={waiting ? 'Next reward' : undefined}
             onPress={claim}
             waiting={waiting}
             fill

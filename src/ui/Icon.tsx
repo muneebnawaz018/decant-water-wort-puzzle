@@ -121,8 +121,32 @@ const ICONS = {
     'M462-343q-9-4-16-11L249-551q-14-14-13.5-33.5T250-618q14-14 33.5-14t33.5 14l163 164 164-164q14-14 33-13.5t33 14.5q14 14 14 33.5T710-550L514-354q-7 7-16 11t-18 4q-9 0-18-4Z',
   info: 'M512-280.79q12-11.79 12-29.21v-169q0-17.42-11.96-29.21-11.97-11.79-29-11.79Q466-520 454-508.21T442-479v169q0 17.42 11.96 29.21 11.97 11.79 29 11.79Q500-269 512-280.79Zm2-311.72q14-13.52 14-33.49 0-21.95-13.79-35.47Q500.41-675 480.02-675q-21.52 0-34.77 13.53Q432-647.95 432-626.5q0 20.6 14.07 34.05 14.07 13.45 34 13.45T514-592.51ZM480.4-55q-88.87 0-166.12-33.08-77.25-33.09-135.18-91.02-57.93-57.93-91.02-135.12Q55-391.41 55-480.36q0-88.96 33.08-166.29 33.09-77.32 90.86-134.81 57.77-57.48 135.03-91.01Q391.24-906 480.28-906t166.49 33.45q77.44 33.46 134.85 90.81t90.89 134.87Q906-569.34 906-480.27q0 89.01-33.53 166.25t-91.01 134.86q-57.49 57.62-134.83 90.89Q569.28-55 480.4-55Z',
   /** The rewarded-ad slot: a screen with a play head, not a bare triangle. */
+  /**
+   * Softer corners than Material ships.
+   *
+   * The body's own radius is about 94 in this 960 grid, which at 15dp on a
+   * button draws as a near-square — sharp against a row of pill-shaped buttons
+   * and a card cornered at 20.
+   *
+   * Settled at 200, a little under a third of the body's height. Two earlier
+   * attempts looked unchanged on device and neither was a geometry problem —
+   * `Icon` parses each glyph once into a module-level `Map`, so a Fast Refresh
+   * that does not re-execute this file keeps the `SkPath` built at launch. Half
+   * the height, tried next, drew as a lozenge with a dot in it: a play button,
+   * not a screen. **Reload fully when changing one of these** or the next
+   * three edits will each look like nothing happening.
+   *
+   * The play triangle is scaled about 1.15 from Material's, about its own
+   * centre. Rounding the body's corners moved its edges inward, so the same
+   * triangle read smaller inside it — the glyph needs the mark to hold the
+   * middle, not the frame.
+   *
+   * The triangle stays a second sub-path wound the opposite way to the body,
+   * which is what knocks it out of the fill. Redrawing either one in the same
+   * direction fills the icon solid.
+   */
   video:
-    'm426-326 209-136q11-7.36 11-20.18T635-502L426-638q-12-8-24-1t-12 21v272q0 14 12 21t24-1ZM149-135q-39.05 0-66.53-27.48Q55-189.95 55-229v-502q0-39.46 27.47-67.23Q109.95-826 149-826h662q39.46 0 67.23 27.77Q906-770.46 906-731v502q0 39.05-27.77 66.52Q850.46-135 811-135H149Z',
+    'm414-309 232-152q12-8 12-21t-12-21L414-655q-13-9-26-1t-14 23v301q0 15 13 22t27 1ZM255-135q-82.79 0-141.4-58.6Q55-252.21 55-335v-291q0-82.79 58.6-141.4Q172.21-826 255-826h451q82.79 0 141.4 58.6Q906-708.79 906-626v291q0 82.79-58.6 141.4Q788.79-135 706-135H255Z',
   clock:
     'M524-498.45V-648q0-17.67-11.79-29.34-11.79-11.66-29-11.66T454-677.34q-12 11.67-12 29.34v166q0 9 3 16.86 3 7.85 9 15.14l132 137q13.27 13 30.63 12.5Q634-301 647-313t13-30q0-18-13-31L524-498.45ZM480.14-55Q392-55 314.62-88.37q-77.37-33.36-135.11-91.06-57.73-57.7-91.12-135.03Q55-391.78 55-479.89q0-88.11 33.58-165.6 33.59-77.48 91.02-134.91 57.43-57.43 134.82-91.52Q391.81-906 480-906q88.19 0 165.58 34.08 77.39 34.09 134.82 91.52 57.43 57.43 91.52 134.82Q906-568.19 906-480q0 88.19-34.08 165.58-34.09 77.39-91.52 134.82-57.43 57.43-134.77 91.02Q568.28-55 480.14-55Z',
 } as const;

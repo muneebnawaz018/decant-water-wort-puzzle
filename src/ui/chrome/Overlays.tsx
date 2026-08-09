@@ -11,6 +11,10 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { useOverlayStore } from '@/state/overlayStore';
+import { apothecary } from '@/theme/apothecary';
+import { ui } from '@/theme/colors';
+import { s } from '@/theme/scale';
+import { Icon } from '../Icon';
 import { GlossButton } from './GlossButton';
 import { Panel } from './Panel';
 import { styles } from './styles/Overlays.styles';
@@ -101,34 +105,64 @@ const ModalHost = memo(function ModalHost() {
           */}
           <View style={showLeft ? styles.buttons : styles.buttonsSingle}>
             {/*
-              Order depends on what the left slot holds.
+              Two slots, and which button lands in which depends on what the
+              left one holds.
 
-              Against a *cancel* the confirm sits right: the pair reads
-              "back out / go on", and go-on belongs at the end of that line.
-              Against an *offer* it does not. Both buttons pay, one pays more,
-              and the bigger of the two is what the row is steering towards —
-              so the offer takes the right and the plain confirm steps left.
+              Against a *cancel*, confirm sits on the right. The pair reads
+              "back out / go on" and go-on belongs at the end of that line —
+              which is also where every platform dialog puts it, so a Switch on
+              the left is a Cancel where the muscle memory says Confirm.
+
+              Against an *offer*, the roles swap. Both buttons pay and one pays
+              more, so the offer is what the row is steering towards: it takes
+              the right and the primary face, and the plain confirm steps left
+              as a ghost.
             */}
-            <GlossButton
-              label={modal.confirmLabel ?? 'OK'}
-              variant={showSecondary ? 'ghost' : 'primary'}
-              onPress={confirm}
-              size="dialog"
-              style={showLeft ? styles.button : styles.buttonSingle}
-            />
             {showLeft ? (
               <GlossButton
                 label={
                   showSecondary
-                    ? (modal.secondaryLabel ?? 'More')
+                    ? (modal.confirmLabel ?? 'OK')
                     : (modal.cancelLabel ?? 'Cancel')
                 }
-                variant={showSecondary ? 'primary' : 'ghost'}
-                onPress={showSecondary ? secondary : closeModal}
+                variant="ghost"
+                /* The glyph follows the *action*, not the slot. Against an
+                   offer this slot holds confirm and takes `confirmIcon`;
+                   against a question it is Cancel, which carries none — a mark
+                   on "not now" is decoration on a way out. */
+                trailing={
+                  showSecondary && modal.confirmIcon ? (
+                    <Icon
+                      name={modal.confirmIcon}
+                      size={s(15)}
+                      color={apothecary.goldLight}
+                    />
+                  ) : undefined
+                }
+                onPress={showSecondary ? confirm : closeModal}
                 size="dialog"
                 style={styles.button}
               />
             ) : null}
+            <GlossButton
+              label={
+                showSecondary
+                  ? (modal.secondaryLabel ?? 'More')
+                  : (modal.confirmLabel ?? 'OK')
+              }
+              variant="primary"
+              /* `onGold`, because this is the lit face. The same glyph would be
+                 invisible here in the ghost button's pale gold. */
+              trailing={(() => {
+                const name = showSecondary ? modal.secondaryIcon : modal.confirmIcon;
+                return name ? (
+                  <Icon name={name} size={s(15)} color={ui.onGold} />
+                ) : undefined;
+              })()}
+              onPress={showSecondary ? secondary : confirm}
+              size="dialog"
+              style={showLeft ? styles.button : styles.buttonSingle}
+            />
           </View>
         </Panel>
       </Animated.View>

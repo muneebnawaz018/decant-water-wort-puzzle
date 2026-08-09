@@ -20,6 +20,7 @@ import { usePoppins } from './fonts';
 import { hideNativeSplash } from './nativeSplash';
 import { GameScreen } from './GameScreen';
 import { useNotifications } from './hooks/useNotifications';
+import { useVisitStreak } from './hooks/useVisitStreak';
 import { HomeScreen } from './HomeScreen';
 import { ScreenTransition } from './ScreenTransition';
 import { SettingsDrawer } from './chrome/SettingsDrawer';
@@ -76,6 +77,7 @@ export function Root() {
   const [screen, setScreen] = useState<Screen>('splash');
   const fontsReady = usePoppins();
   useNotifications();
+  useVisitStreak();
   const handedOff = useRef(false);
 
   // The native splash stays up until there is a real frame to replace it with.
@@ -112,7 +114,12 @@ export function Root() {
   // One per entry point, so each screen hands over where it is rather than
   // taking a router. Bound here because a screen must not be able to claim it
   // was opened from somewhere it was not.
-  const playFromHome = useCallback(() => showGame('home'), [showGame]);
+  // Home's Continue offers the record's level, so opening it has to load that
+  // level — the board behind the win screen is the one just finished.
+  const playFromHome = useCallback(() => {
+    useGameStore.getState().resumeCurrent();
+    showGame('home');
+  }, [showGame]);
   const playFromStages = useCallback(() => showGame('stages'), [showGame]);
   /**
    * The bonus puzzle, which is a different board rather than a different route.

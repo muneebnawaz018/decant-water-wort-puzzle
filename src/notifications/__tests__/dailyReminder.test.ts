@@ -50,7 +50,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   permission(true);
   useSettingsStore.getState().set('dailyReminder', true);
-  useEconomyStore.setState({ coins: 0, streak: 4, lastClaimAt: justClaimed(), owned: [] });
+  useEconomyStore.setState({ coins: 0, streak: 4, lastVisitAt: justClaimed(), owned: [] });
 });
 
 describe('setup', () => {
@@ -126,7 +126,7 @@ describe('syncReminders', () => {
   });
 
   it('schedules nothing before the first claim', async () => {
-    useEconomyStore.setState({ lastClaimAt: null, streak: 0 });
+    useEconomyStore.setState({ lastVisitAt: null, streak: 0 });
     await syncReminders();
     expect(scheduled()).toBe(0);
   });

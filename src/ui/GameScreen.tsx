@@ -80,6 +80,7 @@ export const GameScreen = memo(function GameScreen({
         ).coins
   );
   const undone = useGameStore((state) => state.future.length);
+  const vialTaken = useGameStore((state) => state.extraTaken);
   /**
    * What the next hint costs, or 0 while the free one is unspent.
    *
@@ -197,6 +198,14 @@ export const GameScreen = memo(function GameScreen({
       overlay.toast(`Undo costs ${outcome.price} coins — not enough`);
       return;
     }
+    // Undo's last step on a level with a spare vial out: the vial goes back,
+    // free. Announced because the board changing shape is a bigger thing than a
+    // pour and the player may not have meant to go that far — and because
+    // nothing else in the app tells them the vial can be put back at all.
+    if (outcome.kind === 'vialRemoved') {
+      overlay.toast('Spare vial put back');
+      return;
+    }
     // Silent when the move was already paid for: a charge the player did not
     // incur should not be announced, and the board moving is the feedback.
     if (outcome.kind !== 'undone') return;
@@ -257,6 +266,10 @@ export const GameScreen = memo(function GameScreen({
   const addVial = useCallback(() => {
     // Spec §10 makes this the rewarded-ad slot. The ad is phase 2; the vial
     // is free for now so the escape hatch exists at all.
+    //
+    // The refusal branch stays, even though the button is disabled once the
+    // vial is taken: `addTube` also declines mid-pour and on a solved board,
+    // which no disabled state covers.
     const added = useGameStore.getState().addTube();
     if (!added) feedbackWarn();
     overlay.toast(added ? 'An empty vial, on the house' : 'Only one spare vial per level');
@@ -297,12 +310,24 @@ export const GameScreen = memo(function GameScreen({
           icon="undo"
           label="Undo"
           onPress={undo}
-          disabled={moves === 0}
+          // Live at zero moves when a spare vial is out — that press is what
+          // puts it back. Without this the only way out of a vial taken by
+          // mistake was restarting the whole level.
+          disabled={moves === 0 && !vialTaken}
           price={undoPrice}
         />
         <ControlButton icon="redo" label="Redo" onPress={redo} disabled={undone === 0} />
         <ControlButton icon="hint" label="Hint" onPress={hint} price={hintPrice} />
-        <ControlButton icon="addVial" label="Add vial" onPress={addVial} />
+        {/* Spent, not merely unhelpful: one vial per level, so the control has
+            nothing left to give. Genuinely disabled rather than greyed, which
+            is what keeps a dead press silent — a disabled `Pressable` never
+            fires `onPress`, so no tick and no toast. */}
+        <ControlButton
+          icon="addVial"
+          label="Add vial"
+          onPress={addVial}
+          disabled={vialTaken}
+        />
       </View>
     </View>
   );
