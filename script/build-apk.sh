@@ -33,6 +33,12 @@
 #   npm run build:apk -- --fast          incremental: no prebuild, no clean
 #   npm run build:apk -- --deps          reinstall node_modules first
 #   npm run build:apk -- --skip-checks   no lint/types/tests
+#   npm run publish:apk                  build it, then upload it for testers
+#
+# `publish:apk` is the same script with `--publish`, not a second pipeline. It
+# builds exactly what `build:apk` builds — an unpublished build and a published
+# one must never be able to differ, which is what a separate release script
+# would eventually allow.
 #
 # `--fast` is the escape hatch and the reason the three older scripts
 # (`android:apk`, `android:apk:all`, `android:aab`) are gone: each was this one
@@ -49,6 +55,7 @@ RUN_CHECKS=1
 CLEAN_DEPS=0
 FAST=0
 BUNDLE=0
+PUBLISH=0
 
 for arg in "$@"; do
   case "$arg" in
@@ -57,6 +64,7 @@ for arg in "$@"; do
     --deps) CLEAN_DEPS=1 ;;
     --fast) FAST=1 ;;
     --skip-checks) RUN_CHECKS=0 ;;
+    --publish) PUBLISH=1 ;;
     *) echo "unknown option: $arg" >&2; exit 2 ;;
   esac
 done
@@ -165,4 +173,53 @@ else
   printf '\n  Install with:  adb install -r <path above>\n'
 fi
 
-printf '  R8 is on in release. Play through a level before sharing.\n\n'
+printf '  R8 is on in release. Play through a level before sharing.\n'
+
+# ---------------------------------------------------------------------------
+# 5. Publishing, if asked.
+#
+# One release, reused forever. GitHub serves the newest release's assets from a
+# fixed path, so overwriting the file inside a release tagged `latest` gives a
+# URL that never changes and always hands back the current build:
+#
+#   https://github.com/<owner>/<repo>/releases/latest/download/decant.apk
+#
+# `--clobber` is what makes it an overwrite rather than an error, and the
+# release is created on first run if it is not there yet. Nothing here tags a
+# commit: the tag is a bucket name, not a version, and moving it would rewrite
+# history every build.
+# ---------------------------------------------------------------------------
+if [ "$PUBLISH" -eq 1 ]; then
+  if [ "$BUNDLE" -eq 1 ]; then
+    echo "refusing to publish an .aab — testers cannot install one" >&2
+    exit 2
+  fi
+
+  command -v gh >/dev/null || { echo 'gh CLI not found: brew install gh' >&2; exit 2; }
+  gh auth status >/dev/null 2>&1 || { echo 'gh not logged in: gh auth login' >&2; exit 2; }
+
+  APK=$(find android/app/build/outputs/apk/release -name '*.apk' | head -1)
+  [ -n "$APK" ] || { echo 'no APK to publish' >&2; exit 1; }
+
+  # Renamed on upload. The asset name is the half of the download URL that has
+  # to stay put, and Gradle's own `app-release.apk` says nothing about which app
+  # it is once it is in someone's downloads folder.
+  cp "$APK" "$PWD/decant.apk"
+
+  step 'Publishing'
+  if ! gh release view latest >/dev/null 2>&1; then
+    gh release create latest \
+      --title 'Latest test build' \
+      --notes 'Rolling build for testers. Always the newest APK; the download link never changes.' \
+      --prerelease
+  fi
+
+  gh release upload latest "$PWD/decant.apk" --clobber
+  rm -f "$PWD/decant.apk"
+
+  SLUG=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
+  printf '\n  https://github.com/%s/releases/latest/download/decant.apk\n' "$SLUG"
+  printf '  Open that on an Android phone. It always serves this build.\n\n'
+else
+  printf '\n'
+fi

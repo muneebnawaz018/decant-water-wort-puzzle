@@ -103,6 +103,7 @@ survive — a config plugin or `app.json` entry is the durable place.
 npm run android                  # debug build, install, launch
 npm run build:apk                # release APK from scratch — sideloadable
 npm run build:aab                # release .aab from scratch — what Play takes
+npm run publish:apk              # the same APK, uploaded for testers
 ```
 
 Both build commands are [`script/build-apk.sh`](../script/build-apk.sh), and
@@ -122,6 +123,35 @@ npm run build:apk -- --fast          # incremental: no prebuild, no clean
 npm run build:apk -- --deps          # reinstall node_modules first
 npm run build:apk -- --skip-checks   # no lint/types/tests
 ```
+
+The flags work on `publish:apk` too — `npm run publish:apk -- --fast` when you
+only changed JS and want the link updated in a couple of minutes.
+
+### Getting a build to a tester
+
+`publish:apk` builds exactly what `build:apk` builds, then pushes the APK to a
+GitHub release tagged `latest`, overwriting
+whatever was there. GitHub serves the newest release's assets from a fixed
+path, so this URL never changes and always hands back the current build:
+
+```text
+https://github.com/muneebnawaz018/decant-water-wort-puzzle/releases/latest/download/decant.apk
+```
+
+Open it on an Android phone and it downloads. Nothing is automatic — GitHub does
+not build anything, a release is a file you attach — so a new build reaches
+testers only when this command is run.
+
+The tag is a bucket name, not a version, and nothing here tags a commit: moving
+a real tag every build rewrites history for a file that is not source.
+
+**These builds are signed with the local debug keystore.** Expo's template
+points the `release` build type at the debug signing config until a real one is
+configured, which has three consequences worth knowing before handing the link
+around: builds from this machine update in place, builds from any _other_
+machine are signed with a different key and testers have to uninstall first, and
+none of them can ever go to Play. A proper upload keystore is needed before CI
+builds or a store submission, and it is the same keystore for both.
 
 There is no separate clean command any more, and `gradlew clean` was never worth
 one. It drops `android/app/build/` and the APKs in it, and leaves `~/.gradle`,

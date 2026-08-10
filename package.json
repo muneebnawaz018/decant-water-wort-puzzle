@@ -56,6 +56,7 @@
     "start:wifi": "script/android-wireless.sh start",
     "build:apk": "script/build-apk.sh",
     "build:aab": "script/build-apk.sh --aab",
+    "publish:apk": "script/build-apk.sh --publish",
     "ios": "expo run:ios --device \"iPhone 17 Pro\"",
     "ios:pad": "expo run:ios --device \"iPad Pro 11-inch (M4)\"",
     "check:all": "node script/check-all.mjs",
