@@ -11,12 +11,11 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { apothecary } from '@/theme/apothecary';
 import { gradients, ui } from '@/theme/colors';
-import { Icon } from '../Icon';
 import { usePressBounce } from '../hooks/usePressBounce';
 import { useTapBurst } from '../hooks/useTapBurst';
 import { useTapHandler } from '../hooks/useTapHandler';
+import { Coin } from './Coin';
 import { CAPTION_COIN, styles } from './styles/ClaimButton.styles';
 
 /**
@@ -226,7 +225,7 @@ export const ClaimButton = memo(function ClaimButton({
                       <Text style={styles.waitCaption}>{caption}</Text>
                       {captionAmount !== undefined ? (
                         <View style={styles.captionValue}>
-                          <Icon name="coin" size={CAPTION_COIN} color={apothecary.gold} />
+                          <Coin size={CAPTION_COIN} />
                           <Text style={styles.captionAmount}>{captionAmount}</Text>
                         </View>
                       ) : null}

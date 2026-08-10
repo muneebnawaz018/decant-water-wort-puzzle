@@ -1,4 +1,4 @@
-import { claimToast, dayState, offerMessage } from '../rewardTrack';
+import { claimToast, dayState, nextRewardIndex, offerMessage } from '../rewardTrack';
 
 const REWARDS = [10, 15, 20, 30, 50, 75, 150] as const;
 
@@ -22,6 +22,20 @@ describe('dayState', () => {
   it('draws the cursor as today only when there is something to claim', () => {
     expect(dayState(3, 3, false)).toBe('today');
     expect(dayState(3, 3, true)).toBe('claimed');
+  });
+});
+
+describe('nextRewardIndex', () => {
+  it('names the day after the one the track sits on', () => {
+    // The bug this exists for: with day one collected, the countdown card was
+    // advertising day one's ten coins as what the wait was for.
+    expect(nextRewardIndex(0, REWARDS.length)).toBe(1);
+    expect(REWARDS[nextRewardIndex(0, REWARDS.length)]).toBe(15);
+  });
+
+  it('wraps day seven back to day one', () => {
+    // The track cycles weekly. There is no eighth day to point at.
+    expect(nextRewardIndex(6, REWARDS.length)).toBe(0);
   });
 });
 

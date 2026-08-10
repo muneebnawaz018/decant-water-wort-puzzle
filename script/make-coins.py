@@ -60,9 +60,13 @@ COINS = 26
 # From `src/theme/colors.ts`. Three golds rather than one: a shower of a single
 # flat colour reads as a pattern, and the face, rim and shadow of a coin are
 # never the same value anyway.
-GOLD_FACE = "#FFDE86"  # goldLight
-GOLD_RIM = "#FFC94B"  # gold
-GOLD_DEEP = "#E0A32B"  # goldDark — the edge caught in shadow
+GOLD_FACE = "#FFC94B"  # gold — the bright face inside the rim
+GOLD_BRONZE = "#E7A32E"  # goldBronze — the rim, the ring and the mark
+GOLD_DEEP = "#B7801C"  # goldDark — the notches cut into the rim
+# The struck mark, matching `ui.onGold` — the same near-black the gold buttons
+# put their labels in. A gold-on-gold mark vanishes at the size these render.
+MARK_INK = "#3A2306"  # ui.onGold — the ink the gold buttons use
+GOLD_SHINE = "#FFEFB4"  # goldPale — the lit edge
 INK = "#3a2306"  # onGold, for the mark stamped on the face
 
 
@@ -93,6 +97,164 @@ def keyed(frames: list[tuple[int, list[float]]]):
     }
 
 
+def face_layers(size: float) -> list[dict]:
+    """The coin's face — the same drawing as `src/ui/chrome/Coin.tsx`.
+
+    Flat two-tone gold with a milled edge: notches cut around a bronze rim, a
+    bright face inside it, a hairline ring, and a `$` in the rim's own gold. No
+    outline and no shading; both were tried and are described in the component.
+
+    Unit for unit with the component — both scale a 60-unit design box by the
+    coin's diameter — so a coin raining down the screen and the one on the
+    balance pill are the same object. There is no shared source the two can be
+    generated from, which is why the numbers are written the same way in both.
+
+    **Topmost first.** Lottie paints the FIRST shape in the list on top, the
+    opposite of SVG and of every drawing API this project otherwise uses. Listed
+    face-first, the inset disc covered the mark and the whole shower rendered as
+    plain gold blobs. Rebuild a frame as SVG after any change in here.
+    """
+    k = size / 60.0
+
+    def pt(x: float, y: float) -> list[float]:
+        return [round(x * k, 2), round(y * k, 2)]
+
+    def stroked(name: str, shapes: list[dict], colour: str, width: float) -> dict:
+        return {
+            "ty": "gr",
+            "nm": name,
+            "it": shapes
+            + [
+                {
+                    "ty": "st",
+                    "c": value(rgba(colour)),
+                    "o": value(100),
+                    "w": value(round(width * k, 2)),
+                    "lc": 2,
+                    "lj": 2,
+                },
+                {
+                    "ty": "tr",
+                    "p": value([0, 0]),
+                    "a": value([0, 0]),
+                    "s": value([100, 100]),
+                    "r": value(0),
+                    "o": value(100),
+                },
+            ],
+        }
+
+    def disc(name: str, radius: float, colour: str) -> dict:
+        return {
+            "ty": "gr",
+            "nm": name,
+            "it": [
+                {
+                    "ty": "el",
+                    "d": 1,
+                    "s": value([round(radius * 2 * k, 2), round(radius * 2 * k, 2)]),
+                    "p": value([0, 0]),
+                },
+                {"ty": "fl", "c": value(rgba(colour)), "o": value(100), "r": 1},
+                {
+                    "ty": "tr",
+                    "p": value([0, 0]),
+                    "a": value([0, 0]),
+                    "s": value([100, 100]),
+                    "r": value(0),
+                    "o": value(100),
+                },
+            ],
+        }
+
+    def line(a: tuple[float, float], b: tuple[float, float]) -> dict:
+        return {
+            "ty": "sh",
+            "d": 1,
+            "ks": {
+                "a": 0,
+                "k": {
+                    "c": False,
+                    "v": [pt(*a), pt(*b)],
+                    "i": [pt(0, 0), pt(0, 0)],
+                    "o": [pt(0, 0), pt(0, 0)],
+                },
+            },
+        }
+
+    # The S, three cubics. Tangents are relative to their vertex, which is the
+    # one thing Lottie's shape format does differently from SVG.
+    s_curve = {
+        "ty": "sh",
+        "d": 1,
+        "ks": {
+            "a": 0,
+            "k": {
+                "c": False,
+                "v": [pt(7.5, -9), pt(-8.5, -8), pt(8.5, 6.5), pt(-7.5, 8)],
+                "i": [pt(0, 0), pt(0, -7.5), pt(0, -7), pt(0, 5.5)],
+                "o": [pt(0, -5.5), pt(0, 6.5), pt(0, 7.5), pt(0, 0)],
+            },
+        },
+    }
+
+    # A step darker than the rim, matching the component: at bronze the mark
+    # sat too close to the face and read as faded rather than struck.
+    mark = stroked("mark", [s_curve, line((0, -16.5), (0, 15.5))], GOLD_DEEP, 4.8)
+
+    # The hairline ring inside the face.
+    ring = {
+        "ty": "gr",
+        "nm": "ring",
+        "it": [
+            {
+                "ty": "el",
+                "d": 1,
+                "s": value([round(41 * k, 2), round(41 * k, 2)]),
+                "p": value([0, 0]),
+            },
+            {
+                "ty": "st",
+                "c": value(rgba(GOLD_BRONZE)),
+                "o": value(100),
+                "w": value(round(1.6 * k, 2)),
+                "lc": 2,
+                "lj": 2,
+            },
+            {
+                "ty": "tr",
+                "p": value([0, 0]),
+                "a": value([0, 0]),
+                "s": value([100, 100]),
+                "r": value(0),
+                "o": value(100),
+            },
+        ],
+    }
+
+    # Notches around the rim. A count rather than a spacing: they have to close
+    # the circle exactly, or the last gap is wider than the rest.
+    #
+    # Eighteen here against the component's twenty-eight, and the difference is
+    # size on disk. Every notch is a separate path in the file, times a coin,
+    # times twenty-six coins: at 28 the shower was 264KB, and these render at a
+    # fraction of the frame's own scale where the extra ones are not resolvable.
+    notches = [
+        line(
+            (math.cos(2 * math.pi * i / 18) * 25.5, math.sin(2 * math.pi * i / 18) * 25.5),
+            (math.cos(2 * math.pi * i / 18) * 30.0, math.sin(2 * math.pi * i / 18) * 30.0),
+        )
+        for i in range(18)
+    ]
+
+    return [
+        mark,
+        ring,
+        disc("face", 25.5, GOLD_FACE),
+        stroked("milling", notches, GOLD_DEEP, 2.6),
+    ]
+
+
 def coin(index: int, rng: random.Random) -> dict:
     """One coin, thrown up and falling back through the frame.
 
@@ -105,7 +267,12 @@ def coin(index: int, rng: random.Random) -> dict:
     # Up and slightly outward, spread across the frame. `-pi` to `0` is upward
     # in Lottie's coordinates, where y grows downward.
     angle = -math.pi / 2 + rng.uniform(-0.55, 0.55)
-    speed = rng.uniform(7.5, 12.5)
+    # Higher than it was (7.5-12.5). Apex is speed squared over twice gravity,
+    # so at the old top end a coin reached about a third of the frame and the
+    # shower stayed in the bottom band — it read as coins nudged rather than
+    # thrown. At 15.5 the fastest reach roughly two thirds of the way up, which
+    # is where the eye already is when a payout is announced.
+    speed = rng.uniform(10.5, 15.5)
 
     x0 = CENTRE + rng.uniform(-190, 190)
     y0 = SIZE + rng.uniform(10, 90)
@@ -148,7 +315,11 @@ def coin(index: int, rng: random.Random) -> dict:
     # that fades from the start never looks thrown, only imagined.
     fade_from = int(DURATION * 0.72)
 
-    size = rng.uniform(34, 58)
+    # Against a 600-unit frame that is scaled to fill the screen, so these are
+    # a fraction of the device's width rather than points. Was 34-58 and read
+    # as saucers: a payout is a lot of coins, not a few big ones, and the size
+    # is what says which. The face keeps every detail at this scale.
+    size = rng.uniform(18, 31)
 
     return {
         "ddd": 0,
@@ -168,55 +339,20 @@ def coin(index: int, rng: random.Random) -> dict:
             "s": keyed([(delay + f, s) for f, s in spins]),
         },
         "ao": 0,
-        "shapes": [
+        # Painted back to front: Lottie draws the LAST shape in the list
+        # underneath, so the body has to come after the face that sits on it.
+        "shapes": face_layers(size)
+        + [
             {
                 "ty": "gr",
-                "nm": "g",
+                "nm": "body",
                 "it": [
-                    # The body: a filled disc with a darker rim, so the coin has
-                    # an edge rather than being a flat dot.
+                    # Gold, with the same near-black outline the UI coin carries.
+                    # A darker gold rim was here and it disappeared against the
+                    # face at these sizes — spec §9 asks for bold dark outlines
+                    # for exactly this reason.
                     {"ty": "el", "d": 1, "s": value([size, size]), "p": value([0, 0])},
-                    {"ty": "fl", "c": value(rgba(GOLD_FACE)), "o": value(100), "r": 1},
-                    {
-                        "ty": "st",
-                        "c": value(rgba(GOLD_DEEP)),
-                        "o": value(100),
-                        "w": value(round(size * 0.09, 1)),
-                        "lc": 1,
-                        "lj": 1,
-                    },
-                    {
-                        "ty": "tr",
-                        "p": value([0, 0]),
-                        "a": value([0, 0]),
-                        "s": value([100, 100]),
-                        "r": value(0),
-                        "o": value(100),
-                    },
-                ],
-            },
-            {
-                "ty": "gr",
-                "nm": "mark",
-                "it": [
-                    # The inner ring. A coin with a plain face reads as a
-                    # counter; one mark is the difference between a disc and
-                    # currency, and a ring survives being 20dp tall where an
-                    # engraved figure would not.
-                    {
-                        "ty": "el",
-                        "d": 1,
-                        "s": value([round(size * 0.46, 1), round(size * 0.46, 1)]),
-                        "p": value([0, 0]),
-                    },
-                    {
-                        "ty": "st",
-                        "c": value(rgba(GOLD_RIM)),
-                        "o": value(100),
-                        "w": value(round(size * 0.10, 1)),
-                        "lc": 1,
-                        "lj": 1,
-                    },
+                    {"ty": "fl", "c": value(rgba(GOLD_BRONZE)), "o": value(100), "r": 1},
                     {
                         "ty": "tr",
                         "p": value([0, 0]),

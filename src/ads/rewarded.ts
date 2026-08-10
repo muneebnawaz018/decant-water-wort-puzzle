@@ -29,7 +29,18 @@ import { rewardedUnitId } from './units';
  * `spare_vial` is the highest-value one in the game — it is asked for at the
  * moment a player is stuck, which is the moment they most want something.
  */
-export type AdSlot = 'spare_vial' | 'double_level_reward' | 'double_daily_reward';
+export type AdSlot =
+  | 'spare_vial'
+  | 'double_level_reward'
+  | 'double_daily_reward'
+  /**
+   * Home's standalone offer: a flat `EARNINGS.rewardedAd` for one watch.
+   *
+   * The only slot the player can reach without having earned anything first,
+   * which makes it the one with no natural limit — the other three are gated by
+   * a board in progress, a level just finished, or a daily claim.
+   */
+  | 'free_coins';
 
 /**
  * How the offer ended.
@@ -46,6 +57,29 @@ export type AdOutcome =
   | 'dismissed'
   /** No ad filled, or the SDK is not there. The app's problem, not theirs. */
   | 'unavailable';
+
+/**
+ * How long an offer may spend loading before it is given up on.
+ *
+ * **The SDK's own wait is not a number this app can rely on.** In flight mode a
+ * request fails almost at once — there is no network to try — but on a weak or
+ * half-connected one it can sit for a long time, and Google documents no ceiling
+ * on it. Without a deadline the promise here simply never settles: the button
+ * stays spinning, the guard below stays closed, and every later offer in the
+ * session is refused by a wait that ended in the player's mind long ago.
+ *
+ * Ten seconds is chosen against what the wait costs, not against what a network
+ * might manage. Past it the player is watching a spinner instead of a puzzle,
+ * and `unavailable` is a truthful answer — the spare vial is granted, the
+ * doubling offers are not, exactly as they are when the auction comes back
+ * empty.
+ *
+ * **It covers the load only.** Once the ad is on screen the clock is the
+ * player's, and a timer firing under a full-screen advert would resolve the
+ * offer while they are still watching it — paying nothing for an ad they went on
+ * to finish.
+ */
+const LOAD_TIMEOUT_MS = 10_000;
 
 /**
  * Whether a slot pays anyway when no ad could be shown.
@@ -81,11 +115,77 @@ function paysWithoutAd(slot: AdSlot): boolean {
  * Resolves rather than rejects on failure. An ad that does not fill is an
  * ordinary Tuesday, not an exception, and a `try/catch` around every offer
  * would push that decision back out to the callers this file exists to spare.
+ *
+ * **One offer at a time, app-wide.** A second call while an ad is loading or on
+ * screen resolves `dismissed` immediately, paying nothing. Two things force
+ * this: AdMob cannot present two rewarded ads at once, and — the reason it
+ * lives here rather than in each screen — an offer is asynchronous, so the
+ * button that opened it is still enabled while the ad loads. Two fast taps
+ * would otherwise run two offers to completion and pay the bonus twice, and
+ * every caller would have to grow its own in-flight flag to stop it.
+ *
+ * `dismissed` rather than `unavailable`, because `unavailable` grants the spare
+ * vial: a duplicate tap must not be a way to conjure a second one.
  */
+let offerInFlight = false;
+
 export async function showRewarded(slot: AdSlot): Promise<AdOutcome> {
-  const shown = await present(slot);
-  if (shown !== 'unavailable') return shown;
-  return paysWithoutAd(slot) ? 'earned' : 'unavailable';
+  if (offerInFlight) return 'dismissed';
+  offerInFlight = true;
+  setLoading(true);
+
+  try {
+    const shown = await present(slot, () => setLoading(false));
+    if (shown !== 'unavailable') return shown;
+    return paysWithoutAd(slot) ? 'earned' : 'unavailable';
+  } finally {
+    // `finally`, so a throw from the SDK cannot leave the app unable to ever
+    // show another ad — the failure mode that turns a bad frame into a dead
+    // rewarded slot for the rest of the session. Same for the veil: a stuck
+    // spinner over a live screen is worse than no spinner at all.
+    offerInFlight = false;
+    setLoading(false);
+  }
+}
+
+/**
+ * Whether an ad is being fetched right now, and a way to be told when that
+ * changes.
+ *
+ * **The load is the only part worth a spinner.** It is the one stretch where the
+ * player has pressed something and the screen has nothing to show for it, and on
+ * a slow connection it is seconds long — which without a spinner reads as a dead
+ * button, and a dead button gets pressed again. Once the ad is up it covers the
+ * screen and speaks for itself, so this goes false the moment `show` is called
+ * rather than when the offer settles.
+ *
+ * A subscription rather than a store field, because `src/ads` is the boundary
+ * the UI sits above: this module knowing about zustand would put the dependency
+ * the wrong way round, and every screen would import an ad concept to render a
+ * spinner. `AdVeil` is the only reader.
+ */
+type LoadingListener = (loading: boolean) => void;
+
+let adLoading = false;
+const loadingListeners = new Set<LoadingListener>();
+
+function setLoading(value: boolean): void {
+  if (adLoading === value) return;
+  adLoading = value;
+  for (const listener of loadingListeners) listener(value);
+}
+
+/** Whether an ad is being fetched. The snapshot half of the subscription. */
+export function isAdLoading(): boolean {
+  return adLoading;
+}
+
+/** Listen for the fetch starting and ending. Returns its own unsubscribe. */
+export function subscribeToAdLoading(listener: LoadingListener): () => void {
+  loadingListeners.add(listener);
+  return () => {
+    loadingListeners.delete(listener);
+  };
 }
 
 /**
@@ -103,8 +203,11 @@ export async function showRewarded(slot: AdSlot): Promise<AdOutcome> {
  * events and several of them can arrive for one offer — `EARNED_REWARD` is
  * always followed by `CLOSED`, and an error can land after either. First one
  * wins; the rest are dropped along with the listeners.
+ *
+ * `onShown` fires when the ad reaches the screen, which is where the spinner
+ * ends. See `LOAD_TIMEOUT_MS` for the other half of the same clock.
  */
-function present(slot: AdSlot): Promise<AdOutcome> {
+function present(slot: AdSlot, onShown: () => void): Promise<AdOutcome> {
   return new Promise((resolve) => {
     const ad = RewardedAd.createForAdRequest(rewardedUnitId(), {
       // Which ad, from the app's own vocabulary. AdMob reports on it, so the
@@ -118,12 +221,29 @@ function present(slot: AdSlot): Promise<AdOutcome> {
     const settle = (outcome: AdOutcome) => {
       if (done) return;
       done = true;
+      clearTimeout(deadline);
       unsubscribe();
       resolve(outcome);
     };
 
+    /**
+     * Giving up on a load that is taking too long.
+     *
+     * Note what `settle` does with it: the listeners come off, so an ad that
+     * finally loads a minute later has nothing left to show it. That matters
+     * more than the timeout itself — without the unsubscribe, a slow request
+     * would eventually present a full-screen advert over whatever the player
+     * had moved on to, which is the one placement this project rules out.
+     */
+    const deadline = setTimeout(() => settle('unavailable'), LOAD_TIMEOUT_MS);
+
     const unsubscribe = ad.addAdEventsListener(({ type }) => {
       if (type === RewardedAdEventType.LOADED) {
+        // The wait is over on both counts: the spinner comes down and the
+        // deadline stops running, because from here the time being spent is
+        // the player's own.
+        clearTimeout(deadline);
+        onShown();
         ad.show();
         return;
       }

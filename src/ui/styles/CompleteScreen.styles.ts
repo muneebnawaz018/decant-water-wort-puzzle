@@ -5,6 +5,9 @@ import { alpha, ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
 import { s } from '@/theme/scale';
 
+/** The payout coin. Bigger than the pill's, because this is the announcement. */
+export const REWARD_COIN = s(22);
+
 export const styles = StyleSheet.create({
   /**
    * A dimmed board with a card on it, not a screen of its own.
@@ -86,12 +89,7 @@ export const styles = StyleSheet.create({
     borderRadius: s(14),
     backgroundColor: alpha('gold', 0.14),
   },
-  coin: {
-    width: s(18),
-    height: s(18),
-    borderRadius: s(9),
-    backgroundColor: apothecary.gold,
-  },
+
   rewardText: {
     fontFamily: POPPINS.semibold,
     fontSize: s(16),
@@ -107,6 +105,26 @@ export const styles = StyleSheet.create({
    * the next level takes the full width as the only primary button, and Replay
    * drops to a ghost beside Home.
    */
+  /**
+   * The dismiss cross, pinned to the card's top-right.
+   *
+   * Absolute, so it is out of the centred column the card lays its content in —
+   * anything in that flow pushes the stars off centre, and the stars are the
+   * one thing on this card that has to look placed.
+   *
+   * No background disc. The corner is empty, the glyph is muted, and a chip
+   * around it would compete with the three real buttons below; `hitSlop` on the
+   * Pressable gives it the touch area a bare 15dp glyph cannot.
+   */
+  close: {
+    position: 'absolute',
+    top: s(12),
+    right: s(12),
+    // Above the stars, which straddle the card's top edge and overlap this
+    // corner's row. Without it the outer star swallows the press.
+    zIndex: 1,
+  },
+
   next: { alignSelf: 'stretch', marginTop: s(22) },
   secondary: { flexDirection: 'row', gap: s(10), alignSelf: 'stretch', marginTop: s(10) },
   secondaryButton: { flex: 1 },

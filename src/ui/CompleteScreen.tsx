@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -23,12 +23,14 @@ import { fract, plural } from '@/utils';
 import LottieView from 'lottie-react-native';
 
 import { GlossButton } from './chrome/GlossButton';
+import { Coin } from './chrome/Coin';
 import { Panel } from './chrome/Panel';
 import { useScreenPadding } from './hooks/useScreenPadding';
+import { useTapHandler } from './hooks/useTapHandler';
 import { Icon } from './Icon';
 import { claimToast } from './rewardTrack';
 import { showRewarded } from '@/ads/rewarded';
-import { styles } from './styles/CompleteScreen.styles';
+import { REWARD_COIN, styles } from './styles/CompleteScreen.styles';
 
 interface CompleteScreenProps {
   onHome: () => void;
@@ -113,6 +115,10 @@ export const CompleteScreen = memo(function CompleteScreen({
    * buttons wide.
    */
   const [doubled, setDoubled] = useState(false);
+
+  // The cross goes home, the same place the bonus puzzle's Done button goes.
+  // Through `useTapHandler` so it ticks like every other control here.
+  const closeCard = useTapHandler(onHome);
 
   /**
    * Pay the bonus, once the ad has been earned.
@@ -230,6 +236,28 @@ export const CompleteScreen = memo(function CompleteScreen({
         entering={ZoomIn.springify().damping(14).mass(0.6)}
       >
         <Panel contentStyle={styles.card}>
+          {/*
+            The way out, in the corner every dismissable card puts one.
+
+            The card has three buttons and none of them is "leave" — `Level N`
+            goes forward, `Again` goes round, and the offer pays. Backing out
+            meant the nav bar, which is hidden on this screen, or the hardware
+            back button, which is Android only. So on iOS a player who wanted
+            neither the next level nor a replay had to take one of them.
+
+            Absolutely positioned rather than in the flow: the card is a centred
+            column and anything in that flow shifts the stars off centre.
+          */}
+          <Pressable
+            style={styles.close}
+            onPress={closeCard}
+            hitSlop={s(12)}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          >
+            <Icon name="close" size={s(15)} color={apothecary.inkMuted} />
+          </Pressable>
+
           <View style={styles.stars}>
             {[0, 1, 2].map((index) => (
               <CompleteStar key={index} index={index} earned={index < stars} />
@@ -255,7 +283,7 @@ export const CompleteScreen = memo(function CompleteScreen({
               style={styles.reward}
               entering={FadeIn.duration(500).delay(rewardDelay)}
             >
-              <View style={styles.coin} />
+              <Coin size={REWARD_COIN} />
               {/* The doubled figure once it has been taken. The card is a
                   receipt for the run, and after the offer the run paid twice
                   what the level's stars are worth — leaving the original there
@@ -377,13 +405,26 @@ export const CompleteScreen = memo(function CompleteScreen({
         />
       </View>
 
-      {/* The payout shower, mounted only once the bonus is taken.
-          Conditionally rather than always-mounted-and-paused: a `LottieView` is
-          a native view whether or not it is playing, and this one is never seen
-          on the runs where the offer is declined. */}
-      {doubled ? (
+      {/*
+        The payout shower.
+
+        It runs whenever coins actually move: once when the card opens on a run
+        that paid, and again when the offer doubles it. Both are the same event
+        from the player's side — a number going up — and the confetti above says
+        something different, that the *level* is finished. A run that paid
+        nothing (a replay that did not beat its own best) gets neither.
+
+        `key` restarts it. Without one the second play is the same mounted
+        `LottieView` already sitting on its last frame, so doubling showed
+        nothing at all.
+
+        Mounted conditionally rather than always-mounted-and-paused: a
+        `LottieView` is a native view whether or not it is playing.
+      */}
+      {paid > 0 ? (
         <View style={styles.lottie} pointerEvents="none">
           <LottieView
+            key={doubled ? 'doubled' : 'first'}
             source={COIN_SHOWER}
             autoPlay
             loop={false}

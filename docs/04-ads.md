@@ -214,11 +214,47 @@ middle of a calm puzzle is a rating complaint waiting to happen.
 
 ---
 
-## 10. Before the first real impression
+## 10. Offline, and slow
+
+Two different failures, and only one of them looks like one.
+
+**Flight mode is the easy case.** There is no network to try, so the request
+fails almost immediately and `showRewarded` resolves `unavailable`. The spare
+vial is granted anyway — it is the escape hatch on a board that cannot be
+finished, and an empty ad inventory must never be what leaves someone stuck. The
+doubling offers are not: they sit on top of coins already banked, so a failed
+offer costs the player nothing they had.
+
+**A weak connection is the one that bites.** The request neither fills nor
+fails, and Google publishes no ceiling on how long it will sit there. Left
+alone, the promise never settles: the button spins forever, the one-offer-at-a-
+time guard stays closed, and every later ad in the session is refused by a wait
+that ended in the player's mind minutes ago.
+
+So `LOAD_TIMEOUT_MS` in `rewarded.ts` caps the load at ten seconds. Two details
+matter more than the number:
+
+- **It covers the load only.** Once the ad is on screen the clock belongs to the
+  player, and a timer firing under a full-screen advert would pay nothing for an
+  ad they went on to finish.
+- **Giving up unsubscribes.** An ad that finally arrives a minute later has
+  nothing left to show it. Without that, a slow request would eventually put a
+  full-screen advert over whatever the player had moved on to — the one
+  placement §9 rules out.
+
+While the fetch runs, `AdVeil` covers the screen: three gold dots and "Loading
+ad", mounted once in `Overlays` because the three slots are raised from three
+different places and the daily one closes its own dialog on the way out. It
+waits 400ms before appearing, so a fast fill and a flight-mode failure are both
+invisible rather than a spinner flashing for two frames.
+
+---
+
+## 11. Before the first real impression
 
 - [ ] Company AdMob account, app added under it
-- [ ] App IDs in `app.config.ts`, rewarded unit in `units.ts`
-- [ ] `LIVE_ADS_ENABLED = true`
+- [ ] All four IDs in `.env` — two App IDs, two rewarded units
+- [ ] `EXPO_PUBLIC_ADMOB_LIVE=true`, then `npm run prebuild`
 - [ ] Test devices registered in AdMob
 - [ ] Play / App Store listing live and **linked in AdMob** — until then, fill
       rate is poor and the numbers will mislead you

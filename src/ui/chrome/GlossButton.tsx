@@ -1,6 +1,14 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import LottieView from 'lottie-react-native';
 import { memo, useCallback, type ReactNode } from 'react';
-import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -15,6 +23,26 @@ import { useTapHandler } from '../hooks/useTapHandler';
 import { styles } from './styles/GlossButton.styles';
 
 type Variant = 'primary' | 'neutral' | 'ghost';
+
+/**
+ * The glint that crosses a lit face — `script/make-gleam.py`.
+ *
+ * The same treatment as the level tile on Home, on the buttons rather than
+ * beside them, and for the same reason: gold in this app means *reward* or
+ * *press me*, and gold that sits perfectly still reads as neither.
+ *
+ * **A wide composition, not the square one the tile uses.** `resizeMode` fits a
+ * frame into the box it is given, and Play is roughly 300x60 against the badge's
+ * 100x100 — `cover` would blow that up three times and leave only the middle
+ * fifth visible, sparkles and all. `gleam.json` is 300x64 to begin with, which
+ * also survives being dropped into a 140dp dialog button: `cover` scales by
+ * height there and trims the ends, costing a sparkle rather than the composition.
+ *
+ * Nothing clips it here either. `styles.face` already carries `borderRadius` and
+ * `overflow: 'hidden'`, so the button's own corner does the masking.
+ */
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const GLEAM = require('../../../assets/lottie/gleam.json');
 
 /**
  * Touch area added back to the shrunken sizes.
@@ -147,6 +175,11 @@ export const GlossButton = memo(function GlossButton({
               size === 'dialog' && styles.dialogGhostLabel,
               size === 'compact' && styles.smallGhostLabel,
             ]}
+            // One line, always. A label is a fixed-height thing sitting beside
+            // a trailing glyph, and the moment it wraps the button grows and
+            // the glyph stops lining up with the words it belongs to. "Level
+            // 20676" on the win card is the case that found this.
+            numberOfLines={1}
           >
             {label}
           </Text>
@@ -235,6 +268,30 @@ export const GlossButton = memo(function GlossButton({
               style={styles.sheen}
               pointerEvents="none"
             />
+            {/*
+              The glint, on lit faces only.
+
+              Not on a dead one: `dim` is a button that cannot do its job, and a
+              highlight travelling across it says the opposite. Not on a
+              `neutral` or `ghost` face either — those are dark panel surfaces,
+              and a white sweep across one reads as a rendering artefact rather
+              than as polish.
+
+              `on` keeps it, deliberately. That face is lit and reporting a state
+              it is proud of ("Equipped", the mode you are already in), which is
+              exactly the thing worth a glint.
+            */}
+            {primary && !dim ? (
+              <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                <LottieView
+                  source={GLEAM}
+                  autoPlay
+                  loop
+                  resizeMode="cover"
+                  style={StyleSheet.absoluteFill}
+                />
+              </View>
+            ) : null}
             {burst.node}
             <View style={styles.content}>
               <Text
@@ -247,6 +304,8 @@ export const GlossButton = memo(function GlossButton({
                   size === 'dialog' && styles.dialogLabel,
                   size === 'compact' && styles.compactLabel,
                 ]}
+                // See the ghost label above: never two lines.
+                numberOfLines={1}
               >
                 {label}
               </Text>

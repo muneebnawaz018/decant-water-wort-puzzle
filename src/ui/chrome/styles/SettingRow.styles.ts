@@ -56,7 +56,26 @@ export const styles = StyleSheet.create({
     backgroundColor: ui.well,
   },
   rowLabel: { ...text.rowLabel, flex: 1 },
-  chevron: { fontSize: s(18), color: apothecary.inkMuted },
+  /**
+   * The trailing `›`.
+   *
+   * `lineHeight` and `includeFontPadding` are not decoration. `alignItems:
+   * 'center'` centres each child's **box**, and a text box is the font's full
+   * ascent-to-descent, not the ink inside it. `›` is a small glyph sitting high
+   * in a tall box, so a centred box leaves visibly off-centre ink — the row
+   * reads as misaligned even though every child is centred correctly.
+   *
+   * Pinning the line height to the glyph size collapses the box onto the mark,
+   * and `includeFontPadding: false` drops the extra leading Android adds on top
+   * of that. iOS ignores the second one, which is why the drift showed there
+   * less.
+   */
+  chevron: {
+    fontSize: s(18),
+    lineHeight: s(18),
+    includeFontPadding: false,
+    color: apothecary.inkMuted,
+  },
 
   track: {
     width: s(46),

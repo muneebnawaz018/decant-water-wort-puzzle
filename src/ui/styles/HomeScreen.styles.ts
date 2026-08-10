@@ -109,7 +109,24 @@ export const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: ui.wellDeep,
   },
-  barFill: { height: '100%', borderRadius: s(4) },
+  barFill: { height: '100%', borderRadius: s(4), overflow: 'hidden' },
+  /**
+   * The band that runs along the fill.
+   *
+   * Three times the fill's width, so `useMercury` can translate it in percent
+   * and carry it clear of both edges at any fill length — see the hook. A pale
+   * wash rather than a hard edge: the fill is 6dp tall, and anything sharper
+   * reads as a defect in the bar rather than as light on it.
+   */
+  mercury: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: '33.333%',
+    left: 0,
+    backgroundColor: alpha('white', 0.42),
+    transform: [{ skewX: '-20deg' }],
+  },
   /**
    * The card's only affordance, and it was reading as a decoration — a 34dp
    * disc holding a 12dp glyph, at the wash opacity used for inert chips.
@@ -135,6 +152,15 @@ export const styles = StyleSheet.create({
   chips: { flexDirection: 'row', gap: s(12) },
   chipPress: { flex: 1 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: s(10), padding: s(11) },
+  /**
+   * The mark inside the tile, inset from it.
+   *
+   * `contain` fits the whole 100x100 composition into the box, and both marks
+   * throw something past their own artwork — the gift's sparks, the advert's
+   * ring. Filling the tile edge to edge would have those clipped by the tile's
+   * rounded corner at exactly the moment they are brightest.
+   */
+  chipMark: { width: '86%', height: '86%' },
   chipIcon: {
     width: s(36),
     height: s(36),

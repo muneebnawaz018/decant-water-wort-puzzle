@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { memo, useCallback, useEffect, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -20,6 +20,7 @@ import { colours, gradients, ui } from '@/theme/colors';
 import { s } from '@/theme/scale';
 import { countdown, percentWidth, plural } from '@/utils';
 import { ClaimButton } from './chrome/ClaimButton';
+import { Coin } from './chrome/Coin';
 import { Panel } from './chrome/Panel';
 import { ScrollPage } from './chrome/ScrollPage';
 import { SettingGroup, SettingRow } from './chrome/SettingRow';
@@ -29,7 +30,7 @@ import { useTapBurst } from './hooks/useTapBurst';
 import { useTapHandler } from './hooks/useTapHandler';
 import { useTapScale } from './hooks/useTapScale';
 import { Icon } from './Icon';
-import { claimToast, dayState, offerMessage } from './rewardTrack';
+import { claimToast, dayState, nextRewardIndex, offerMessage } from './rewardTrack';
 import { COIN_SIZE, FLAME_SIZE, styles, TODAY_TINT } from './styles/DailyScreen.styles';
 import { EARNINGS } from '@/game/economy';
 
@@ -213,7 +214,9 @@ export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScree
 
           const balance = useEconomyStore.getState().coins;
 
-          overlay.celebrate(() => {
+          // Coins, not confetti. The player watched a video on the promise of
+          // a payout, so the animation that marks it should be the payout.
+          overlay.coins(() => {
             overlay.closeModal();
             overlay.toast(claimToast(paid * EARNINGS.adMultiplier, balance));
           });
@@ -293,10 +296,16 @@ export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScree
             // and never what — the one line that could give a player a reason
             // to come back was the one that did not name the prize.
             //
-            // `dayIndex` is already the tile the *next* claim pays: while the
-            // clock is running, today's has been collected and the store
-            // computes the index from the streak that claim will produce.
-            captionAmount={waiting ? DAILY_REWARDS[dayIndex] : undefined}
+            // Not `dayIndex`. The store's `nextDayIndex` means "the day the
+            // claim available now pays", and while the clock is running that
+            // claim has already been taken — so the card advertised the coins
+            // it had just handed over. `currentIndex` is the tile the track
+            // sits on; tomorrow is the one after it.
+            captionAmount={
+              waiting
+                ? DAILY_REWARDS[nextRewardIndex(currentIndex, DAILY_REWARDS.length)]
+                : undefined
+            }
             onPress={claim}
             waiting={waiting}
             fill
@@ -342,36 +351,6 @@ const BonusRow = memo(function BonusRow({ onPlay }: { onPlay: () => void }) {
         {available ? `+${BONUS_REWARD}` : countdown(remaining)}
       </Text>
     </SettingRow>
-  );
-});
-
-/**
- * The coin disc, lit from the upper left. Used at two sizes.
- *
- * The mockup's is a radial gradient — bright at 34%/30%, gold by 62%, bronze at
- * the rim — and `expo-linear-gradient` has no radial mode. A linear ramp on its
- * own was what shipped, and at 28dp it read as a flat brown disc: a straight
- * ramp spends the bottom third of a small circle in the darkest stop, so the
- * shape is more rim than coin.
- *
- * Faked in two layers instead of reaching for Skia, which would mean a native
- * surface per coin and there are seven on this screen. A diagonal ramp does the
- * body, and a soft highlight sits where the radial's hot spot would be. What
- * makes it read as round is the specular, not the ramp — the ramp only has to
- * get darker towards the far edge.
- */
-const CoinFace = memo(function CoinFace() {
-  return (
-    <>
-      <LinearGradient
-        colors={gradients.coin}
-        locations={[0, 0.55, 1]}
-        start={{ x: 0.15, y: 0 }}
-        end={{ x: 0.85, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={styles.coinSpecular} />
-    </>
   );
 });
 
@@ -473,8 +452,8 @@ const DayTile = memo(function DayTile({
         <Text style={[styles.dayNumber, state === 'today' && styles.dayNumberToday]}>
           DAY {day}
         </Text>
-        <View style={[styles.dayCoin, { width: COIN_SIZE, height: COIN_SIZE }]}>
-          <CoinFace />
+        <View style={styles.dayCoin}>
+          <Coin size={COIN_SIZE} />
         </View>
         <Text style={styles.dayAmount}>{amount}</Text>
       </Panel>

@@ -27,6 +27,36 @@ const BURSTS = {
 
 export type BurstTone = keyof typeof BURSTS;
 
+/**
+ * The last frame of each burst, read off the composition it belongs to.
+ *
+ * **`play(0)` does not mean "play from the start" on Android, and that is not a
+ * guess — it is what the view manager does.** The JS layer defaults the second
+ * argument to `-1`, and the Android side only takes the restart path when *both*
+ * frames are given:
+ *
+ * ```kotlin
+ * val withCustomFrames = startFrame != -1 && endFrame != -1
+ * ...
+ * if (withCustomFrames) view.playAnimation() else view.resumeAnimation()
+ * ```
+ *
+ * `resumeAnimation` picks up wherever the player happens to be, so a burst that
+ * has already run sits at its last frame and a press produces nothing. iOS
+ * restarts from the given frame either way, which is exactly why this looked
+ * like a rendering problem on one platform rather than an argument problem on
+ * both.
+ *
+ * Passing a real end frame puts Android on `setMinAndMaxFrame` +
+ * `playAnimation`, which always starts at the minimum. Read from the JSON's own
+ * `op` rather than written down, so replacing an animation cannot leave a stale
+ * number behind that silently truncates it.
+ */
+const LAST_FRAME: Record<BurstTone, number> = {
+  light: BURSTS.light.op,
+  dark: BURSTS.dark.op,
+};
+
 export interface TapBurst {
   /** Render inside the button's clipped face, above the fill. */
   node: ReactNode;
@@ -55,8 +85,10 @@ export function useTapBurst(tone: BurstTone = 'light'): TapBurst {
   const lottie = useRef<LottieView>(null);
 
   const fire = useCallback(() => {
-    lottie.current?.play(0);
-  }, []);
+    // Both frames, always. See `LAST_FRAME` — one argument is a no-op on
+    // Android once the burst has played through.
+    lottie.current?.play(0, LAST_FRAME[tone]);
+  }, [tone]);
 
   /**
    * Clear the player on mount, and again the moment a burst ends.

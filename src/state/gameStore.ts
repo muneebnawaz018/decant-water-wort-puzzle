@@ -1062,11 +1062,18 @@ export const useGameStore = create<GameState>((set, get) => {
      * the Complete screen.
      */
     resumeCurrent: () => {
-      const { level, solved, history, record, difficulty } = get();
-      if (history.length > 0 && !solved) return;
+      const { level, solved, history, record, difficulty, bonus } = get();
+      // A part-played board is resumed as it stands — unless it is the daily
+      // bonus, which is not on the ladder. Home offers to continue the *mode*,
+      // and the bonus puzzle has its own row on the Rewards screen; resuming it
+      // from here would hand back a board the card never named.
+      if (!bonus && history.length > 0 && !solved) return;
 
       const target = firstUnsolved(_progressFor(record, difficulty));
-      if (level !== target || solved) get().loadLevel(target);
+      // `bonus` forces the load even when the numbers agree. A bonus level is
+      // seed-derived and can land on the target by coincidence, and skipping
+      // the load would leave that board on screen under the right title.
+      if (bonus || level !== target || solved) get().loadLevel(target);
     },
 
     setLocked: (locked) => set({ locked }),

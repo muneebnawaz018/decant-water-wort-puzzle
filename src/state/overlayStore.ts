@@ -60,8 +60,22 @@ export interface ModalSpec {
  * without something changing the second would not remount the player — it would
  * show the tail of the first.
  */
+type CelebrationKind =
+  /** Confetti. "This is finished" — a level solved, a week completed. */
+  | 'confetti'
+  /**
+   * Coins raining up from the bottom. "You have been paid."
+   *
+   * A separate animation rather than the confetti again, because they answer
+   * different questions. Every rewarded ad ends in this one: the player watched
+   * a video on the promise of coins, and the coins arriving is the whole point
+   * of the transaction — confetti would celebrate the ad.
+   */
+  | 'coins';
+
 interface CelebrationSpec {
   id: number;
+  kind: CelebrationKind;
   /** Run once the burst finishes. Where the reward dialog is raised. */
   onDone?: () => void;
 }
@@ -93,8 +107,8 @@ export interface OverlayState {
 
   showModal: (spec: ModalSpec) => void;
   closeModal: () => void;
-  /** Plays the burst. `onDone` fires when it finishes, not when it starts. */
-  celebrate: (onDone?: () => void) => void;
+  /** Plays a burst. `onDone` fires when it finishes, not when it starts. */
+  celebrate: (kind: CelebrationKind, onDone?: () => void) => void;
   /** Clears it, and runs whatever was queued behind it. */
   endCelebration: () => void;
   showToast: (message: string) => void;
@@ -117,8 +131,8 @@ export const useOverlayStore = create<OverlayState>((set, get) => ({
 
   showModal: (spec) => set({ modal: spec }),
   closeModal: () => set({ modal: null }),
-  celebrate: (onDone) =>
-    set({ celebration: { id: (get().celebration?.id ?? 0) + 1, onDone } }),
+  celebrate: (kind, onDone) =>
+    set({ celebration: { id: (get().celebration?.id ?? 0) + 1, kind, onDone } }),
   endCelebration: () => {
     const done = get().celebration?.onDone;
     // Cleared before the callback runs, so a callback that raises another
@@ -137,6 +151,15 @@ export const overlay = {
   modal: (spec: ModalSpec) => useOverlayStore.getState().showModal(spec),
   toast: (message: string) => useOverlayStore.getState().showToast(message),
   drawer: () => useOverlayStore.getState().openDrawer(),
-  celebrate: (onDone?: () => void) => useOverlayStore.getState().celebrate(onDone),
+  celebrate: (onDone?: () => void) =>
+    useOverlayStore.getState().celebrate('confetti', onDone),
+  /**
+   * The payout shower, for every place an ad or a claim pays out.
+   *
+   * Separate from `celebrate` rather than a second argument at the call sites,
+   * because "coins landed" is a thing several unrelated handlers want to say
+   * and none of them should have to know the kind exists.
+   */
+  coins: (onDone?: () => void) => useOverlayStore.getState().celebrate('coins', onDone),
   closeModal: () => useOverlayStore.getState().closeModal(),
 };

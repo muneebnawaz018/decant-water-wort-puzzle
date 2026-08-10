@@ -1082,6 +1082,27 @@ describe('where the player is after finishing a level', () => {
     expect(store().history).toHaveLength(1);
   });
 
+  it('does not resume the daily bonus board', () => {
+    seedFrontier(50);
+    expect(store().loadBonus(new Date('2026-08-08T12:00:00').getTime())).toBe(true);
+
+    // Part-play it, which is what makes this the case worth pinning: by every
+    // other measure — moves on the board, not solved — this is a level to
+    // continue.
+    const [first] = solve(store().board).moves!;
+    store().tapTube(first!.from);
+    store().tapTube(first!.to);
+
+    // Home offers to continue the *mode*. The bonus puzzle is off the ladder,
+    // pays its own coins and unlocks nothing, and its level number is a
+    // seed-derived five-digit thing that lands in a badge sized for two.
+    store().resumeCurrent();
+
+    expect(store().bonus).toBe(false);
+    expect(store().level).toBe(firstUnsolved(store().progress()));
+    expect(store().history).toHaveLength(0);
+  });
+
   it('leaves a level in progress alone', () => {
     seedFrontier(48);
     store().loadLevel(48);

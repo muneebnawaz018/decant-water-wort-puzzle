@@ -129,24 +129,6 @@ export const styles = StyleSheet.create({
   flameGlyph: { transformOrigin: 'bottom' },
 
   /**
-   * The coin's hot spot, where the mockup's radial gradient peaks.
-   *
-   * Percentages, so one style serves the 28dp tile coin and the 44dp grand one.
-   * Round and offset up-left rather than centred: a highlight in the middle of
-   * a disc reads as a hole, and the whole job of this layer is to say the
-   * surface is curved and lit from somewhere.
-   */
-  coinSpecular: {
-    position: 'absolute',
-    top: '12%',
-    left: '14%',
-    width: '46%',
-    height: '46%',
-    borderRadius: 999,
-    backgroundColor: alpha('goldPale', 0.75),
-  },
-
-  /**
    * Section eyebrow — now literally the one Shop, Stats and Settings use.
    *
    * It claimed to be that and was not: it re-stated `text.eyebrow` with its own
@@ -215,13 +197,8 @@ export const styles = StyleSheet.create({
     includeFontPadding: false,
   },
   dayNumberToday: { color: apothecary.goldLight },
-  dayCoin: {
-    width: COIN_SIZE,
-    height: COIN_SIZE,
-    borderRadius: COIN_SIZE / 2,
-    marginVertical: s(7),
-    overflow: 'hidden',
-  },
+  /** Spacing only. The disc itself is `chrome/Coin`, which owns its own shape. */
+  dayCoin: { marginVertical: s(7) },
   dayAmount: {
     fontFamily: POPPINS.bold,
     fontSize: s(14),

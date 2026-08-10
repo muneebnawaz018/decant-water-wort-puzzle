@@ -5,6 +5,12 @@ import { ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
 import { s } from '@/theme/scale';
 /**
+ * The coin's diameter. Exported because `Coin` takes its size as a prop, and
+ * the pill's own width is computed from it below.
+ */
+export const COIN_SIZE = s(18);
+
+/**
  * The pill's drawn width, for a header that has to leave room for it.
  *
  * Summed from the parts rather than measured: `ScreenHeader` centres its title
@@ -14,7 +20,7 @@ import { s } from '@/theme/scale';
  * The balance's `minWidth` is what makes this a constant at all — without it
  * the pill would be a digit wider at 1000 coins.
  */
-export const COIN_PILL_WIDTH = s(2) * 2 + s(6) * 2 + s(18) + s(6) * 2 + s(28) + s(20);
+export const COIN_PILL_WIDTH = s(2) * 2 + s(6) * 2 + COIN_SIZE + s(6) * 2 + s(28) + s(20);
 
 export const styles = StyleSheet.create({
   pill: {
@@ -47,12 +53,7 @@ export const styles = StyleSheet.create({
     paddingVertical: s(5),
     overflow: 'hidden',
   },
-  coin: {
-    width: s(18),
-    height: s(18),
-    borderRadius: s(9),
-    overflow: 'hidden',
-  },
+
   value: {
     fontFamily: POPPINS.bold,
     fontSize: s(14),

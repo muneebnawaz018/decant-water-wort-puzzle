@@ -15,17 +15,28 @@ import { apothecary } from '@/theme/apothecary';
 import { ui } from '@/theme/colors';
 import { s } from '@/theme/scale';
 import { Icon } from '../Icon';
+import { AdVeil } from './AdVeil';
 import { GlossButton } from './GlossButton';
 import { Panel } from './Panel';
 import { styles } from './styles/Overlays.styles';
 
 /**
- * The same placeholder the win screen uses — three gold dots until there is
- * real artwork. One file for both, so a celebration looks the same wherever it
- * is earned; see `assets/lottie/README.md`.
+ * The two bursts, keyed by what they mean.
+ *
+ * `confetti` is "this is finished" — a level solved, a week completed.
+ * `coins` is "you have been paid", and it is what every rewarded ad ends with:
+ * the player watched a video on the promise of coins, so the animation that
+ * marks it should be the coins arriving rather than a celebration of the ad.
+ *
+ * Both are required at module scope so Metro resolves them once and the same
+ * parsed source is handed to every play. See `assets/lottie/README.md`.
  */
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const WIN_BURST = require('../../../assets/lottie/win.json');
+/* eslint-disable @typescript-eslint/no-require-imports */
+const BURSTS = {
+  confetti: require('../../../assets/lottie/win.json'),
+  coins: require('../../../assets/lottie/coins.json'),
+} as const;
+/* eslint-enable @typescript-eslint/no-require-imports */
 
 /** Spec §4.10: toast auto-dismisses after ~1.8s. */
 const TOAST_MS = 1800;
@@ -41,8 +52,11 @@ export const Overlays = memo(function Overlays() {
     <>
       <ModalHost />
       <ToastHost />
-      {/* Last, so the burst is above both. It is the loudest thing the app
-          ever shows and it lasts 1.6 seconds. */}
+      {/* Over the modal, because the daily offer is raised from a dialog's own
+          button and takes the dialog down with it. */}
+      <AdVeil />
+      {/* Last, so the burst is above all of them. It is the loudest thing the
+          app ever shows and it lasts 1.6 seconds. */}
       <CelebrationHost />
     </>
   );
@@ -195,7 +209,7 @@ const CelebrationHost = memo(function CelebrationHost() {
         // A nonce, not the content: two claims in a row are identical, and
         // without this the second would resume the first rather than restart.
         key={celebration.id}
-        source={WIN_BURST}
+        source={BURSTS[celebration.kind]}
         autoPlay
         loop={false}
         resizeMode="cover"

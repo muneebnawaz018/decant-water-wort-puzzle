@@ -25,6 +25,27 @@ export function dayState(index: number, currentIndex: number, waiting: boolean):
 }
 
 /**
+ * The tile the *following* claim pays, given the one the track sits on.
+ *
+ * Only meaningful while the timer is running, which is the one moment the
+ * distinction matters. `economyStore.nextDayIndex` answers "which day does the
+ * claim available now pay", and once today's has been collected that is the day
+ * just collected — so the countdown card was advertising 10 coins on the
+ * evening of the day it had already paid 10 coins.
+ *
+ * Wraps at the end of the week, because the track does: day seven is followed
+ * by day one, not by an eighth day.
+ *
+ * Optimistic by design. If the player lets the run lapse instead of coming
+ * back, the next claim pays day one rather than this. That is the right thing
+ * to show — the number is what they get *if they return in time*, which is the
+ * whole reason the card names it.
+ */
+export function nextRewardIndex(currentIndex: number, length: number): number {
+  return (currentIndex + 1) % length;
+}
+
+/**
  * What the claim dialog offers, before anything is paid.
  *
  * Pre-claim wording on purpose. The dialog is the offer and Collect is the
