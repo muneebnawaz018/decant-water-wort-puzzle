@@ -1,5 +1,6 @@
 import { solve } from '@/core/solver';
 import { DIFFICULTIES } from '../difficulty';
+import { GENERATOR_VERSION } from '../generatorVersion';
 import { paramsForLevel, MAX_COLOURS } from '../levelParams';
 import { generateLevel } from '../waterGenerator';
 
@@ -73,11 +74,19 @@ describe('determinism', () => {
     // Not arbitrary: this is the value the generator produced when the seeding
     // scheme was frozen. A change here means saved progress now points at a
     // different puzzle, and needs a deliberate migration — not a re-recording.
+    //
+    // The migration exists and has a handle: bump `GENERATOR_VERSION`, which
+    // makes `loadProgress` drop every stored `best` (they measured boards that
+    // no longer exist) while keeping levels, stars and paid bonuses, and makes
+    // `loadSession` retire any level in progress. THEN re-record the
+    // fingerprint below, with the bump in the same commit. The pair moves
+    // together or the stamp is a lie.
     const fingerprint = generateLevel(30, 'classic')
       .state.tubes.map((tube) => tube.join(''))
       .join('|');
 
     expect(fingerprint).toBe('30|2221|10|3010||3231');
+    expect(GENERATOR_VERSION).toBe(1);
   });
 
   it('does not drift when levels are generated out of order', () => {

@@ -330,56 +330,72 @@ export const useGameStore = create<GameState>((set, get) => {
   };
 
   /**
-   * Pays for a finished level, and for the block of ten it may have completed.
-   *
-   * Returns the record to store, which is the point of doing it here: the
-   * milestone has to be marked paid in the same write that records the level,
-   * or a crash between the two hands the bonus out twice.
-   *
-   * Coins land the moment the board is solved rather than on the Complete
-   * screen, so a player who backs out during the win animation keeps them.
-   *
-   * Both halves are paid once. The milestone has `paidBlocks`; the level itself
-   * is guarded by its own previous star count, since a replay that does no
-   * better has earned nothing new.
-   */
-  /**
-   * What the last `payFor` handed over, for the state update that follows it.
-   *
-   * A module-level handoff rather than a return value because `payFor` already
-   * returns the record it has to store — and that record is the thing a crash
-   * between the two writes would corrupt, so it keeps the return slot.
+   * What the last settled completion handed over, for the state update that
+   * follows it.
    */
   let lastPayout = 0;
 
+  /**
+   * Everything a finished level pays — the level's own coins and the block of
+   * ten it may have completed — computed against the record. **No coins move
+   * here.** The caller persists the returned record and then calls `settleUp`,
+   * in that order, and the order is the point: the paid mark and the level's
+   * own result land on disk in one write *before* the wallet is touched. A
+   * crash in the gap forfeits a payout; the other way round, the mark is lost
+   * after the coins moved, and replaying the level mints the bonus again —
+   * and that gap a player can aim for by killing the app on the win frame.
+   * `payBonus` makes the same trade for the same reason.
+   *
+   * Both halves still pay once. The milestone has `paidBlocks`; the level
+   * itself is guarded by its own previous star count, since a replay that does
+   * no better has earned nothing new. `previousStars` has to be read *before*
+   * the completion is recorded, which is why it is passed in rather than
+   * looked up here — by the time this runs, `record` already holds the run
+   * that just finished.
+   */
   const payFor = (
     record: ProgressByDifficulty,
     mode: Difficulty,
     level: number,
     stars: number,
     previousStars: number
-  ): ProgressByDifficulty => {
-    /**
-     * A level pays once, and beating your own result pays the difference.
-     *
-     * `previousStars` has to be read *before* the completion is recorded, which
-     * is why it is passed in rather than looked up here — by the time this runs,
-     * `record` already holds the run that just finished.
-     */
+  ): {
+    record: ProgressByDifficulty;
+    earned: number;
+    bonus: number;
+    block: number | null;
+  } => {
     const earned = coinsForImprovement(stars, previousStars);
-    if (earned > 0) useEconomyStore.getState().add(earned);
-    lastPayout = earned;
 
     const progress = _progressFor(record, mode);
     const block = unpaidBlockFor(progress, level);
-    if (block === null) return record;
+    const bonus = block === null ? 0 : milestoneBonus(block, starsInBlock(progress, block));
 
-    const bonus = milestoneBonus(block, starsInBlock(progress, block));
-    if (bonus <= 0) return record;
+    return {
+      record: block !== null && bonus > 0 ? markBlockPaid(record, mode, block) : record,
+      earned,
+      bonus,
+      block,
+    };
+  };
 
-    useEconomyStore.getState().add(bonus);
-    overlay.toast(`Block ${block} complete · +${bonus} coins`);
-    return markBlockPaid(record, mode, block);
+  /**
+   * The coins `payFor` computed, paid once the marked record is on disk.
+   *
+   * Landing them the moment the board is solved rather than on the Complete
+   * screen, so a player who backs out during the win animation keeps them.
+   */
+  const settleUp = (paid: {
+    earned: number;
+    bonus: number;
+    block: number | null;
+  }): void => {
+    lastPayout = paid.earned;
+    if (paid.earned > 0) useEconomyStore.getState().add(paid.earned);
+    if (paid.block !== null && paid.bonus > 0) {
+      useEconomyStore.getState().add(paid.bonus);
+      overlay.toast(`Block ${paid.block} complete · +${paid.bonus} coins`);
+    }
   };
 
   /**
@@ -606,8 +622,17 @@ export const useGameStore = create<GameState>((set, get) => {
           // which on a bonus board is the day index.
           if (current.bonus) lastPayout = payBonus();
           else {
-            next = payFor(next, current.difficulty, current.level, stars, before ?? 0);
+            const paid = payFor(
+              next,
+              current.difficulty,
+              current.level,
+              stars,
+              before ?? 0
+            );
+            next = paid.record;
+            // Mark first, coins second — see `payFor` for why this order.
             saveProgress(next);
+            settleUp(paid);
           }
         }
 
@@ -691,7 +716,11 @@ export const useGameStore = create<GameState>((set, get) => {
        */
       const depth = history.length - 1;
       const charge = undoCharge(paidUndos, depth, freeUndosUsed, difficulty);
-      if (charge.coins > 0 && !useEconomyStore.getState().spend(charge.coins)) {
+      // Affordability is checked here; the coins move only after the paid mark
+      // is on disk, below. Deduct-first had a crash window in the hostile
+      // direction — coins gone, mark lost, and the same undo billed again on
+      // relaunch. This way round the window hands out a free undo instead.
+      if (charge.coins > 0 && useEconomyStore.getState().coins < charge.coins) {
         return { kind: 'blocked', price: charge.coins };
       }
 
@@ -714,6 +743,9 @@ export const useGameStore = create<GameState>((set, get) => {
         solved: false,
       });
       persistSession();
+      // The mark is saved; now the wallet. Cannot refuse — the balance was
+      // checked above and nothing here runs concurrently.
+      if (charge.coins > 0) useEconomyStore.getState().spend(charge.coins);
       return {
         kind: 'undone',
         charged: charge.coins,
@@ -764,8 +796,17 @@ export const useGameStore = create<GameState>((set, get) => {
           // which on a bonus board is the day index.
           if (current.bonus) lastPayout = payBonus();
           else {
-            next = payFor(next, current.difficulty, current.level, stars, before ?? 0);
+            const paid = payFor(
+              next,
+              current.difficulty,
+              current.level,
+              stars,
+              before ?? 0
+            );
+            next = paid.record;
+            // Mark first, coins second — see `payFor` for why this order.
             saveProgress(next);
+            settleUp(paid);
           }
         }
 
@@ -903,7 +944,10 @@ export const useGameStore = create<GameState>((set, get) => {
        */
       const alreadyDelivered = paidHints.includes(key);
       const price = alreadyDelivered || hintsUsed < FREE_HINTS ? 0 : PRICES.hint;
-      if (price > 0 && !useEconomyStore.getState().spend(price)) {
+      // Checked here, deducted after `persistSession` below — the same order
+      // as undo, and for the same reason: a crash between the wallet and the
+      // record must err toward a free hint, never a double bill.
+      if (price > 0 && useEconomyStore.getState().coins < price) {
         return { kind: 'blocked', price };
       }
 
@@ -924,6 +968,7 @@ export const useGameStore = create<GameState>((set, get) => {
         hintLine: { ...get().hintLine, ...search.line },
       });
       persistSession();
+      if (price > 0) useEconomyStore.getState().spend(price);
       return { kind: 'shown', move: search.move, charged: price };
     },
 

@@ -58,3 +58,9 @@ docs/decant-handoff/
 # raw audio downloads, for whenever real sound effects land. Large, and never
 # shipped: `script/prepare-sounds.py` cuts them down to what the app uses.
 assets/audio/source/
+
+# AdMob account IDs, per environment. The committed `.env.example` documents the
+# names; the real values belong to whoever owns the AdMob account. Not secret —
+# any APK exposes them — but account-specific, so they do not belong in git.
+.env
+.env.local

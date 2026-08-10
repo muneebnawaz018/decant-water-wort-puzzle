@@ -22,23 +22,29 @@ export function useClaimTimer(): {
   remaining: number;
   /** Which day of the seven-day track the next claim pays. */
   dayIndex: number;
+  /**
+   * Milliseconds left to collect before the run resets to day one. Zero unless
+   * a reward is waiting and the streak is still on the line.
+   */
+  lapseIn: number;
 } {
-  // Subscribed, not read through `getState`: claiming has to re-render this.
+  // Subscribed, not read through `getState`: claiming has to re-render this,
+  // and the claim is the only thing that moves any of these numbers now.
   const lastClaimAt = useEconomyStore((state) => state.lastClaimAt);
-  // And so does a visit landing, which is what moves the day on now — without
-  // this the card would keep showing yesterday's countdown until something else
-  // re-rendered it.
-  const streak = useEconomyStore((state) => state.streak);
   const [now, setNow] = useState(() => Date.now());
 
   const store = useEconomyStore.getState();
   const remaining = store.timeUntilClaim(now);
   const reward = store.claimable(now);
   const dayIndex = store.nextDayIndex(now);
+  const lapseIn = store.timeUntilLapse(now);
 
   useEffect(() => {
     setNow(Date.now());
-    if (remaining <= 0) return;
+    // Ticking while a reward is waiting too, which the countdown-only version
+    // did not: the deadline on the card is live, and a run that lapses while
+    // the screen is open has to stop claiming it can still be saved.
+    if (remaining <= 0 && lapseIn <= 0) return;
 
     const tick = setInterval(() => setNow(Date.now()), 1000);
     const subscription = AppState.addEventListener('change', (state) => {
@@ -49,10 +55,9 @@ export function useClaimTimer(): {
       clearInterval(tick);
       subscription.remove();
     };
-    // `streak` moves the day on; `lastClaimAt` restarts the timer after a
-    // claim; `remaining > 0` is what
-    // decides whether there is anything to tick at all.
-  }, [lastClaimAt, streak, remaining > 0]);
+    // `lastClaimAt` restarts both clocks; the two booleans decide whether
+    // there is anything to tick at all.
+  }, [lastClaimAt, remaining > 0, lapseIn > 0]);
 
-  return { reward, remaining, dayIndex };
+  return { reward, remaining, dayIndex, lapseIn };
 }

@@ -9,6 +9,7 @@ import { POUR_MS } from '@/render/pour';
 import { FREE_HINTS, PRICES } from '@/game/economy';
 import { undoCharge } from '@/game/undoCost';
 import { useEconomyStore } from '@/state/economyStore';
+import { showRewarded } from '@/ads/rewarded';
 import { overlay } from '@/state/overlayStore';
 import { useSettingsStore } from '@/state/settingsStore';
 import { useGameStore, type TapOutcome } from '@/state/gameStore';
@@ -264,15 +265,35 @@ export const GameScreen = memo(function GameScreen({
     overlay.toast(HINT_REFUSAL[outcome.kind]);
   }, []);
   const addVial = useCallback(() => {
-    // Spec §10 makes this the rewarded-ad slot. The ad is phase 2; the vial
-    // is free for now so the escape hatch exists at all.
-    //
-    // The refusal branch stays, even though the button is disabled once the
-    // vial is taken: `addTube` also declines mid-pour and on a solved board,
-    // which no disabled state covers.
-    const added = useGameStore.getState().addTube();
-    if (!added) feedbackWarn();
-    overlay.toast(added ? 'An empty vial, on the house' : 'Only one spare vial per level');
+    /*
+      Doc §10's rewarded slot, and the highest-value one in the game: it is
+      asked for at the moment a player is stuck.
+
+      Through `showRewarded` rather than straight to the store, so the ad, when
+      it lands, needs no change here. It resolves `earned` today because there
+      is nothing to watch, and `paysWithoutAd` keeps it resolving `earned`
+      whenever no ad fills — a board with no way out is not something an empty
+      auction is allowed to create.
+
+      `void` and not `await`: the handler answers the press, and the store call
+      is already guarded against a board that moved underneath it.
+    */
+    void showRewarded('spare_vial').then((outcome) => {
+      if (outcome === 'dismissed') {
+        feedbackWarn();
+        overlay.toast('No vial — the ad was closed early');
+        return;
+      }
+
+      // The refusal branch stays, even though the button is disabled once the
+      // vial is taken: `addTube` also declines mid-pour and on a solved board,
+      // which no disabled state covers.
+      const added = useGameStore.getState().addTube();
+      if (!added) feedbackWarn();
+      overlay.toast(
+        added ? 'An empty vial, on the house' : 'Only one spare vial per level'
+      );
+    });
   }, []);
 
   return (

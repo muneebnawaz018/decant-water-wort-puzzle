@@ -19,6 +19,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { claimPhase } from '@/game/streak';
 import { useEconomyStore } from '@/state/economyStore';
 import type { NavDestination } from '@/state/navStore';
 import { apothecary } from '@/theme/apothecary';
@@ -122,10 +123,13 @@ export const NavBar = memo(function NavBar({
    * vessel and Stages unlocks in the background; neither has a moment worth
    * interrupting for, and a bar with a dot on every tab teaches players to
    * ignore all of them.
+   *
+   * `Date.now()` at render rather than a ticking clock: the bar re-renders on
+   * every navigation and on every claim, which is often enough for a mark that
+   * appears once a day. A timer here would wake the whole app to move a dot.
    */
-  const streak = useEconomyStore((state) => state.streak);
-  const claimedOnDay = useEconomyStore((state) => state.claimedOnDay);
-  const dailyWaiting = streak > 0 && claimedOnDay !== streak;
+  const lastClaimAt = useEconomyStore((state) => state.lastClaimAt);
+  const dailyWaiting = claimPhase(lastClaimAt, Date.now()) !== 'waiting';
 
   /**
    * The bar's shape: a rounded rectangle with a circle subtracted from its top

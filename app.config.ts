@@ -50,6 +50,19 @@ const config: ExpoConfig = {
   },
   android: {
     backgroundColor: colours.nightDeep,
+    /**
+     * The OS's default, made a decision. Auto Backup ships the MMKV file to
+     * the player's Google Drive, so a new phone restores their progress —
+     * which is the whole promise of a save. iCloud does the same on iOS with
+     * nothing to declare.
+     *
+     * What rides along is the daily-reward record, so restoring an old backup
+     * re-opens claimed days. Accepted, the same way winding the device clock
+     * forward is: the prize is coins, the coins buy cosmetics, and defending
+     * either needs a trusted clock the app does not have. Set here rather
+     * than in `AndroidManifest.xml`, which prebuild regenerates.
+     */
+    allowBackup: true,
     adaptiveIcon: {
       backgroundColor: colours.nightDeep,
       foregroundImage: './assets/android-icon-foreground.png',
@@ -90,6 +103,56 @@ const config: ExpoConfig = {
         recordAudioAndroid: false,
         enableBackgroundRecording: false,
         enableBackgroundPlayback: false,
+      },
+    ],
+    [
+      /**
+       * AdMob. The plugin writes the App ID into `AndroidManifest.xml` and
+       * `Info.plist`, which is the one thing the SDK cannot be told at runtime
+       * — it is read before any JavaScript runs, and a missing or mismatched
+       * value crashes the app at launch rather than failing an ad request.
+       *
+       * **From `.env`, and from nowhere else.** No ID is written in this file,
+       * not even a test one. They belong to whoever owns the AdMob account,
+       * and that changes when the company's account takes over at launch — a
+       * handover that should be a `.env` edit, never a commit. Copy
+       * `.env.example` to `.env`; it ships with Google's public test IDs
+       * already filled in, so a fresh clone builds and serves ads marked
+       * "Test Ad" without touching anything.
+       *
+       * There is deliberately no fallback here. A default written into the
+       * config is a second place an ID can come from, and the one time that
+       * matters is the one time it is wrong — a release quietly built on test
+       * IDs earns nothing and looks fine. Missing `.env` fails the build
+       * instead, which is loud, early, and fixable in one command.
+       *
+       * Ad *unit* IDs are not here: those are read at run time and live in
+       * `src/ads/units.ts`.
+       */
+      'react-native-google-mobile-ads',
+      {
+        androidAppId: process.env.ADMOB_ANDROID_APP_ID,
+        iosAppId: process.env.ADMOB_IOS_APP_ID,
+        /**
+         * Delays SDK start-up until `MobileAds().initialize()` is called.
+         *
+         * Off by default, meaning the SDK initialises during app launch and
+         * does network work on the critical path to the first frame — on the
+         * one screen this project spends real effort keeping seamless. It also
+         * means the SDK would start before the EU consent form has been
+         * answered, which is the wrong order.
+         */
+        delayAppMeasurementInit: true,
+        /**
+         * iOS asks for tracking permission through the SDK's own prompt rather
+         * than a separate `expo-tracking-transparency` install.
+         *
+         * The wording matters: Apple rejects generic strings, and a puzzle
+         * game asking to "track you" with no reason given is the prompt every
+         * player denies.
+         */
+        userTrackingUsageDescription:
+          'This lets Decant show ads that are relevant to you. Rewards work either way.',
       },
     ],
     'expo-asset',

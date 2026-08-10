@@ -64,6 +64,9 @@ describe('session record', () => {
       'difficulty',
       'extraTaken',
       'freeUndosUsed',
+      // Which puzzles the moves belong to. Stamped by `saveSession` itself
+      // rather than carried on `Session` — see `GENERATOR_VERSION`.
+      'gen',
       'hintsUsed',
       'level',
       'moves',
@@ -133,6 +136,41 @@ describe('session record', () => {
       storage.set('session.v1', JSON.stringify(bad));
       expect(loadSession()).toBeNull();
     }
+  });
+
+  it('retires a record written against boards that no longer exist', () => {
+    // The replay-legality check catches most of a repointed generator; this
+    // catches the moves that happen to be legal on the *new* board too, which
+    // would otherwise replay into a position nobody was ever in.
+    storage.set(
+      'session.v1',
+      JSON.stringify({
+        difficulty: 'classic',
+        level: 1,
+        moves: [0, 1],
+        extraTaken: false,
+        hintsUsed: 0,
+        gen: -1,
+      })
+    );
+    expect(loadSession()).toBeNull();
+  });
+
+  it('accepts a record from before the stamp existed', () => {
+    // Absent means the record predates stamping, which is read as current —
+    // discarding a position over a bookkeeping addition is the key-bump
+    // mistake this codebase keeps refusing to make.
+    storage.set(
+      'session.v1',
+      JSON.stringify({
+        difficulty: 'classic',
+        level: 1,
+        moves: [0, 1],
+        extraTaken: false,
+        hintsUsed: 0,
+      })
+    );
+    expect(loadSession()).not.toBeNull();
   });
 });
 

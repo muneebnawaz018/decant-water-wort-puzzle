@@ -20,6 +20,7 @@ import { usePoppins } from './fonts';
 import { hideNativeSplash } from './nativeSplash';
 import { GameScreen } from './GameScreen';
 import { useNotifications } from './hooks/useNotifications';
+import { useAds } from './hooks/useAds';
 import { useVisitStreak } from './hooks/useVisitStreak';
 import { HomeScreen } from './HomeScreen';
 import { ScreenTransition } from './ScreenTransition';
@@ -78,6 +79,7 @@ export function Root() {
   const fontsReady = usePoppins();
   useNotifications();
   useVisitStreak();
+  useAds();
   const handedOff = useRef(false);
 
   // The native splash stays up until there is a real frame to replace it with.

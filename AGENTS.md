@@ -260,26 +260,31 @@ since are the only thing that cannot be recomputed; replaying them onto a fresh
 board reproduces the position exactly. A snapshot would be bigger, would
 duplicate what the generator already knows, and could drift out of step with it.
 
-The record is `{ difficulty, level, moves, extraTaken }` and the moves are flat
-`[from, to, from, to, …]`. `count` is deliberately absent — `applyPour` decides
-it, so storing it only invites a saved number and a replayed number to
-disagree. A worst-case board (51 moves, the longest over levels 1–1000) is a
-hundred small integers, which is why it can be rewritten on every pour rather
-than batched. MMKV is synchronous, so the write lands before the frame does; an
-AppState listener would not run at all when the process is killed.
+The record is `{ difficulty, level, moves, extraTaken, hintsUsed, paidHints,
+paidUndos, freeUndosUsed }` and the moves are flat `[from, to, from, to, …]`.
+`count` is deliberately absent — `applyPour` decides it, so storing it only
+invites a saved number and a replayed number to disagree. A worst-case board
+(51 moves, the longest over levels 1–1000) is a hundred small integers, which
+is why it can be rewritten on every pour rather than batched. MMKV is
+synchronous, so the write lands before the frame does; an AppState listener
+would not run at all when the process is killed. `saveSession` also stamps
+`gen: GENERATOR_VERSION` — see the storage section below.
 
 Lifecycle: written after every pour, undo, redo, restart and spare vial;
 cleared the moment the level is solved, and when another level or another mode
 is opened. A record with no moves and no spare vial is deleted rather than
 stored, so an opened-and-abandoned level leaves nothing behind.
 
-Two guards, both tested. `loadSession` validates every field, because the
-record outlives the app version that wrote it. And `restoreSession` returns
-null — start the level clean — if any saved move is not legal from the position
-before it. That is the escape hatch for determinism being load-bearing: change
-the curve, a salt, the generator or the RNG and level N is a different puzzle,
-so the moves stop making sense. Losing your place is acceptable; a board the
-game cannot reason about is not.
+Three guards, all tested. `loadSession` validates every field, because the
+record outlives the app version that wrote it, and refuses a record whose
+`gen` stamp is not the current `GENERATOR_VERSION`. And `restoreSession`
+returns null — start the level clean — if any saved move is not legal from the
+position before it. That is the escape hatch for determinism being
+load-bearing: change the curve, a salt, the generator or the RNG and level N
+is a different puzzle, so the moves stop making sense. The stamp covers the
+remainder the replay check cannot: moves that happen to be legal on the new
+board would replay into a position nobody was ever in. Losing your place is
+acceptable; a board the game cannot reason about is not.
 
 The spare vial is appended before the replay rather than at the move it was
 taken. It lands at the end, so no earlier move can name it and every tube a
@@ -293,6 +298,55 @@ Undo and redo are both in. `history` and `future` in `gameStore`; a fresh pour
 empties `future`, because that is a new branch and the undone moves are no
 longer reachable. Redo returns the same `poured` outcome a tap does, so it runs
 the full pour animation rather than snapping the board.
+
+### Storage keys and migrations
+
+Six live keys, one MMKV instance (`decant`), all through `src/state/storage.ts`:
+`progress.v4`, `settings.v3`, `economy.v3`, `session.v1`, `bonus.v1`,
+`played.v1`, and whatever legacy key a store is still migrating from. An app
+update never loses data on its own — MMKV's file sits in app-private storage,
+which both platforms keep across store updates. What loses data is key bumps
+and generator changes, so both are governed:
+
+- **Additive change → same key, optional field.** Every `load()` validates
+  field by field, so a missing field defaults and an old record still reads.
+  `hintUsed` → `hintsUsed` and `paidUndos` on `session.v1` are the pattern: no
+  bump, nobody's position discarded. A bump is only for a field whose
+  _meaning_ changed — economy v2's `streak` counted claims, not visits, and
+  carrying the number would invent a history.
+- **Key bump → migrate, write, then delete the old key, in that order.** A
+  crash mid-migration leaves both records and the next launch migrates again.
+  The delete is not hygiene: `readJson` drops a corrupt record and returns the
+  fallback, so a legacy key left on disk is what a corrupt current record
+  silently resurrects — a build-old wallet, or a `paidBlocks` list empty
+  enough to pay every milestone again. Keys nothing migrates from any more
+  (`progress.v1`, `settings.v1`/`v2`, `economy.v1`) are removed on sight at
+  `storage.ts` import.
+- **The generator is versioned: `GENERATOR_VERSION` in
+  `src/game/generatorVersion.ts`.** No board is stored anywhere, so the curve,
+  the salts, the generator and the RNG are the save format. `saveProgress` and
+  `saveSession` stamp the constant; on mismatch `loadProgress` keeps levels,
+  stars and `paidBlocks` — still true of the new boards — and drops `best`,
+  the one field that measured the old ones, while `loadSession` retires the
+  record. Bump it in the same commit that re-records the level-30 fingerprint
+  in `difficulty.test.ts`, never one without the other. This matters double
+  once expo-updates ships level-gen fixes OTA: the fingerprint test is the
+  tripwire, the stamp is what makes tripping it survivable.
+- **Cross-store writes order mark before money** — see the milestone section.
+- **`storage.ts` opens MMKV in a try/catch** and falls back to an in-memory
+  store: every record is validated and rebuildable, so one session without
+  persistence beats a crash on the launch path before any screen exists.
+- **Backups are on, on purpose** — `allowBackup` is set explicitly in
+  `app.config.ts` (the manifest is prebuild output; edits there evaporate).
+  A restored backup carries the daily-reward record, so restoring an old one
+  re-opens claimed days; accepted for the same reason clock-winding is.
+- **Skin ids are save format too** — `settings.skin` holds one, `economy.owned`
+  will hold a list, and `skins.test.ts` pins the ids. Add ids freely; renaming
+  or removing one needs a rename map in the load paths first, or a player's
+  purchase orphans silently.
+- One accepted gap: `bonus.v1` keys its cooldown to the local calendar day, so
+  crossing timezones can stretch a wait or open a second puzzle in one local
+  day. Coins-only stakes, same acceptance as device-clock winding.
 
 Perf rules being followed in the UI, worth keeping:
 
@@ -493,6 +547,113 @@ nothing on screen. They preview instead of selling until the board honours a
 skin. The real-money rows are marked for the same reason: spec §10 puts the
 store SDK in phase 2.
 
+### Purchasing (phase 2 — decided, not built)
+
+The SDK is **RevenueCat** (`react-native-purchases`), not a hand-rolled IAP
+layer, and the deciding product is `Remove ads forever`. It is a permanent
+entitlement that switches off the app's actual revenue stream, so a faked one
+costs money indefinitely — and telling a real receipt from a fake needs
+server-side validation, which this app has no server to do. RevenueCat is that
+server without building one; hand-rolling with a client-only library would
+mean trusting the device outright or standing up a backend the whole
+architecture avoids. Free until $2.5k/month tracked revenue, then 1% — a good
+problem. It needs the native build this project already requires, and adds a
+purchase-history disclosure to both stores' privacy forms.
+
+The rules that outrank any SDK:
+
+- **The store receipt is the ledger; MMKV is a cache.** The opposite of every
+  other record in the app, and the reason a purchase survives uninstall,
+  "Clear data" and a new phone when nothing else does.
+- **`Remove ads` must never be written into `economyStore.owned`.** It is read
+  from RevenueCat's own cached `CustomerInfo` and nowhere else. Mirroring it
+  into MMKV creates two answers that disagree the moment they can: this app
+  ships `allowBackup: true`, so a reinstalled Android device can restore
+  `economy.v3` — entitlement flag included — from Google Drive while
+  RevenueCat, which has just minted a fresh anonymous App User ID, says the
+  player owns nothing. One source per fact. `owned` keeps only what coins
+  bought.
+- **Reinstall recovery is automatic, with the button as the backstop.** This
+  is the case that decides whether a paying player is treated properly, so it
+  gets two mechanisms rather than one.
+
+  A fresh install mints a _new_ anonymous App User ID that owns nothing, so
+  the entitlement is absent until the device receipt is synced. RevenueCat
+  documents `restorePurchases` as user-triggered only and warns against
+  calling `syncPurchases` on every launch — it adds latency and can alias
+  users together unintentionally — but explicitly sanctions triggering a sync
+  **once per subscriber**, which is exactly this. So:
+
+  > On launch, read the cached `CustomerInfo`. If no entitlement **and** no
+  > recovery sync has run for the current App User ID, call `syncPurchases`
+  > once and record the ID it ran for.
+
+  The flag is keyed on the App User ID, not on "have we ever synced" — this
+  app ships `allowBackup: true`, so a reinstalled Android device can restore
+  an MMKV flag from Google Drive alongside a RevenueCat ID that is brand new.
+  Keyed on the ID, that restored flag does not match and the sync still runs.
+
+  Nobody loses access to anything. An anonymous ID restoring a receipt owned
+  by another anonymous ID **merges (aliases)** the two rather than transferring
+  between them, so the old profile keeps its entitlement as well.
+
+  A `Restore purchases` row is **built as part of this work** — it does not
+  exist today, having been removed rather than badged when there was nothing
+  to restore. It goes back in the drawer's **More** group beside `Rate us`,
+  calls `restorePurchases`, and is not optional: both stores require a visible
+  way to recover a non-consumable, and it is the guaranteed path when the
+  automatic sync is refused or the device is offline. It needs to be findable
+  by someone who is annoyed and looking for it.
+
+  **None of this is proven until it is tested on both stores.** The acceptance
+  run, with a Play licence tester and an iOS sandbox account, in release
+  builds — IAP does not work against debug signing:
+
+  1. Buy `Remove ads`, confirm ads stop.
+  2. Uninstall, reinstall, launch, **touch nothing**: ads must still be off.
+  3. Repeat, but press `Restore purchases` instead — same result.
+  4. Same store account on a second device: same two checks.
+  5. Buy again while already owning it: the store must answer "already owned"
+     and land on the entitlement rather than charging twice.
+  6. Airplane mode on a fresh install: no crash, no ads (none can be fetched),
+     and the entitlement arrives once the network does.
+
+- **Entitlements do not cross platforms.** The receipt belongs to the Play or
+  Apple account, so Android → iOS loses the purchase. Say so on the purchase
+  row rather than in a support reply.
+
+  **No login, and that is the decision, not an omission.** Accounts are the
+  only thing that would carry a purchase across platforms, and they are the
+  one feature that would cost this app its shape: a backend it does not have,
+  Apple's in-app account-deletion requirement (5.1.1(v)), Sign in with Apple
+  alongside any third-party login, a wider privacy policy, and a login wall on
+  a casual puzzle game. The gap is covered two cheaper ways — the stores
+  refuse to double-charge for a non-consumable, so a player who never finds
+  the Restore row and presses Buy again lands on their entitlement anyway
+  (test this with a licence tester, it is the common path); and a genuine
+  platform switcher gets a promotional entitlement granted by hand from the
+  RevenueCat dashboard. Revisit only if switchers show up as a real number
+  there, which is a problem worth having.
+
+- Nothing waits on the entitlement check at launch. Spec §8 puts the first
+  interstitial at the fourth level completion, which is minutes of runway, and
+  a reinstall with no network shows no ads anyway because none can be fetched
+  — the offline failure mode cancels itself out.
+- **Grant before acknowledging, dedup by purchase token.** Money has already
+  moved, so the coin pack's grant must happen at least once: an unacknowledged
+  purchase is redelivered on next launch, which makes a crash between charge
+  and grant self-heal. Android auto-refunds anything unacknowledged after
+  three days, so the acknowledge is revenue, not tidiness.
+- **Coin packs are consumable and not restorable** — once granted they are
+  ordinary coins in `economy.v3`, and spent coins must not resurrect on
+  reinstall. `Remove ads` is the restorable one.
+- **`PRODUCTS` in `game/economy.ts` stays display-only.** The store quotes the
+  real localised price at runtime; never charge from a number in this repo.
+- Blocked on accounts, in order: store listing (the name check), Play Console
+  and App Store Connect products, RevenueCat project keys. The SDK is not
+  installed until those exist — a keyless dependency is dead weight knip would
+  rightly flag.
+
 Shared chrome is in `src/ui/chrome/`: `Backdrop`, `Panel`, `GlossButton`,
 `Wordmark`, `CoinPill`, `NavBar`, `HeroRack`, `Overlays`.
 
@@ -585,7 +746,13 @@ worth roughly one extra level on top of the ten levels' own payouts.
 `paidBlocks` on the progress record is what stops a replay claiming a bonus
 twice. It has to be stored: whether a block is _complete_ can be read off
 `stars`, but whether it has been _paid_ cannot. The mark and the level's own
-record go into one write, so a crash between them cannot pay twice.
+record go into one write, so a crash between them cannot pay twice — and the
+coins move only after that write lands. Coins live under a different key, and
+MMKV has no cross-key transaction, so the order is the guarantee: a crash in
+the gap forfeits a payout rather than minting it again on the replay, which is
+the same trade `payBonus` makes and the one a player cannot farm by killing
+the app on the win frame. Undo and hint charges run the same way round —
+affordability checked, mark persisted, then the wallet.
 
 A block is paid on whichever level completes it, not on the highest-numbered
 one — levels can be replayed and revisited in any order.
@@ -593,7 +760,8 @@ one — levels can be replayed and revisited in any order.
 Storage moved `progress.v2` → `v3` for the new field. Levels and stars carry
 across and `paidBlocks` starts empty, so an existing player is paid for blocks
 they have already finished. The alternative is marking them paid for a bonus
-that did not exist when they earned it.
+that did not exist when they earned it. It has since moved again, `v3` → `v4`,
+for the generator stamp — see the storage section.
 
 ### The daily reminder
 
@@ -651,9 +819,11 @@ is a store-review question with no good answer.
 
 ### The daily reward
 
-`economyStore`, key `economy.v2`. **A rolling twenty-four hours from the moment
-you claim**, not a calendar day — claim at 9am and the next one opens at 9am
-tomorrow, wherever the clock happens to be.
+`economyStore`, key `economy.v3` — v2's streak counted claims rather than
+visits, so the balance and the shelf carried over and the run started fresh.
+**A rolling twenty-four hours from the moment you claim**, not a calendar day —
+claim at 9am and the next one opens at 9am tomorrow, wherever the clock
+happens to be.
 
 Calendar days were the first version and they misbehave at both ends: claim at
 11pm and you can claim again an hour later, but claim at 9am and then open the
@@ -743,9 +913,15 @@ dismiss it is the one press in the app that should feel like nothing.
 
 Sound is not wired, and the Settings rows for it show a **Soon** badge rather
 than a switch. A control that visibly moves and changes nothing reads as a
-broken game, not a missing feature. `Rate us` and `Restore purchases` are
-marked the same way and are deliberately not tappable — neither has anything
-behind it until there is a store listing and a purchase SDK.
+broken game, not a missing feature. `Rate us` is marked the same way and is
+deliberately not tappable — there is no store listing to send a rating to yet.
+
+**`Restore purchases` is not in the drawer at all**, and its absence is the
+decision rather than an oversight. A badged row promises a feature that is
+merely unfinished; this one did not exist even in plan, since the game sells
+nothing for money and the shop's coins are device-local. It comes back in the
+same piece of work that adds the purchase SDK — both stores require it then,
+and the phase 2 notes above describe what it has to do.
 
 An audio layer was built and removed. `expo-audio` works fine and the design
 was sound — an imperative player pool, no hooks, settings read at call time,

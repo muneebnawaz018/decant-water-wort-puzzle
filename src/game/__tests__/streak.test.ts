@@ -1,7 +1,14 @@
 import { EARNINGS } from '../economy';
 import {
+  claimPhase,
+  REWARD_AVAILABLE_MS,
+  CLAIM_INTERVAL_MS,
+  CLAIM_WINDOW_MS,
+  rewardDayAfterClaim,
   standingFor,
   streakAfterVisit,
+  timeUntilLapse,
+  timeUntilUnlock,
   VISIT_INTERVAL_MS,
   VISIT_WINDOW_MS,
 } from '../streak';
@@ -78,8 +85,6 @@ describe('counting a visit', () => {
   });
 
   it('forgives a late visit inside the window', () => {
-    // 9am one day and 8am two days later still counts: a strict interval breaks
-    // the run on a technicality nobody would accept.
     expect(streakAfterVisit(5, T0, T0 + VISIT_WINDOW_MS - 1).streak).toBe(6);
   });
 
@@ -97,5 +102,47 @@ describe('counting a visit', () => {
       streak: 9,
       counted: false,
     });
+  });
+});
+
+describe('the reward track', () => {
+  const T0 = Date.parse('2026-03-01T09:00:00Z');
+  const H = 60 * 60 * 1000;
+
+  it('offers the first reward with nothing to wait for', () => {
+    expect(claimPhase(null, T0)).toBe('ready');
+    expect(rewardDayAfterClaim(0, null, T0)).toBe(1);
+  });
+
+  it('locks the reward for a day after a claim', () => {
+    expect(claimPhase(T0, T0)).toBe('waiting');
+    expect(claimPhase(T0, T0 + CLAIM_INTERVAL_MS - 1)).toBe('waiting');
+    expect(timeUntilUnlock(T0, T0 + 6 * H)).toBe(18 * H);
+  });
+
+  it('opens the reward on the day, and leaves the grace to collect it', () => {
+    expect(claimPhase(T0, T0 + CLAIM_INTERVAL_MS)).toBe('ready');
+    expect(claimPhase(T0, T0 + CLAIM_WINDOW_MS)).toBe('ready');
+    expect(rewardDayAfterClaim(4, T0, T0 + 30 * H)).toBe(5);
+  });
+
+  it('lapses one millisecond past the window', () => {
+    expect(claimPhase(T0, T0 + CLAIM_WINDOW_MS + 1)).toBe('lapsed');
+    // Still collectable — it pays day one and the track starts again.
+    expect(rewardDayAfterClaim(6, T0, T0 + CLAIM_WINDOW_MS + 1)).toBe(1);
+  });
+
+  it('counts the deadline down through the grace only', () => {
+    // Nothing at risk while it is locked: the number is for the card, and the
+    // card only warns when the track can actually be lost.
+    expect(timeUntilLapse(T0, T0 + CLAIM_INTERVAL_MS)).toBe(REWARD_AVAILABLE_MS);
+    expect(timeUntilLapse(T0, T0 + 30 * H)).toBe(18 * H);
+    expect(timeUntilLapse(T0, T0 + CLAIM_WINDOW_MS + H)).toBe(0);
+  });
+
+  it('pauses rather than lapses when the clock is wound back', () => {
+    // Negative elapsed time would otherwise read as a very old claim and reset
+    // the track — a timezone change should not cost a week's progress.
+    expect(claimPhase(T0, T0 - CLAIM_WINDOW_MS)).toBe('waiting');
   });
 });

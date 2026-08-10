@@ -13,10 +13,29 @@ const at = (hour: number, day = 1, minute = 0) =>
 const hourOf = (ms: number) => new Date(ms).getHours();
 
 const state = (over: Partial<ReminderState> = {}): ReminderState => ({
+  lastClaimAt: null,
   lastVisitAt: null,
+  rewardDay: 0,
   streak: 0,
   lastPlayedAt: null,
   ...over,
+});
+
+/**
+ * A player who both opened the app and collected at the same moment.
+ *
+ * The two anchors are separate now, and most of these cases do not care which
+ * is which — they care that a run exists. Setting both keeps the fixtures
+ * readable and leaves the tests that *do* care to say so explicitly.
+ */
+const active = (anchor: number, streak: number): Partial<ReminderState> => ({
+  lastClaimAt: anchor,
+  lastVisitAt: anchor,
+  // Below the track warning's threshold on purpose: most of these cases are
+  // about the streak, and a second warning in the results would obscure them.
+  // The track's own tests set it explicitly.
+  rewardDay: 1,
+  streak,
 });
 
 const kinds = (over: Partial<ReminderState>, now: number) =>
@@ -30,7 +49,7 @@ describe('reward reminders', () => {
 
   it('fires when the reward opens, not at a fixed hour', () => {
     const claim = at(14);
-    const [ready] = remindersFor(state({ lastVisitAt: claim, streak: 1 }), claim);
+    const [ready] = remindersFor(state(active(claim, 1)), claim);
     // A 2pm claim must not be answered at 8am with hours still on the clock.
     expect(ready!.at).toBe(claim + 24 * HOURS);
   });
@@ -38,37 +57,86 @@ describe('reward reminders', () => {
   it('leaves a short streak alone', () => {
     // Two notifications for a one-day streak is nagging, and a player who has
     // claimed once has nothing invested to lose.
-    expect(kinds({ lastVisitAt: at(12), streak: 1 }, at(12))).toEqual(['ready']);
-    expect(kinds({ lastVisitAt: at(12), streak: 2 }, at(12))).toEqual(['ready']);
+    expect(kinds(active(at(12), 1), at(12))).toEqual(['ready']);
+    expect(kinds(active(at(12), 2), at(12))).toEqual(['ready']);
   });
 
   it('warns before a streak worth keeping lapses', () => {
     // 2pm visit, so +18h is 8am — inside waking hours and left where it is.
     //
-    // 18 hours out, not 44. A warning at 44 arrives with four hours left and a
-    // whole missed day behind it, which is news of a loss rather than a chance
-    // to avoid one. At 18 there are still six hours to open the app.
+    // Anchored to the visit, not the claim: this defends the streak, and the
+    // streak is made of visits. It lapses 48 hours after the last one.
     const claim = at(14);
-    const reminders = remindersFor(state({ lastVisitAt: claim, streak: 5 }), claim);
+    const reminders = remindersFor(state(active(claim, 5)), claim);
     const streak = reminders.find((r) => r.kind === 'streak')!;
 
-    expect(streak.at).toBe(claim + 18 * HOURS);
+    expect(streak.at).toBe(claim + 30 * HOURS);
     expect(streak.title).toContain('5-day streak');
   });
 
   it('warns twice, a heads-up and a last call', () => {
-    // Two, because they do different jobs. The first is something a player can
-    // plan around; the second is six hours from the 36-hour lapse. One warning
-    // has to be one or the other and is wrong for half the cases.
+    // Two, because they do different jobs. Eighteen hours out is something a
+    // player can plan around; six is a last call. One warning has to be one or
+    // the other and is wrong for half the cases.
     const claim = at(14);
-    const warnings = remindersFor(state({ lastVisitAt: claim, streak: 5 }), claim).filter(
+    const warnings = remindersFor(state(active(claim, 5)), claim).filter(
       (r) => r.kind === 'streak'
     );
 
     expect(warnings).toHaveLength(2);
-    expect(warnings[0]!.at).toBe(claim + 18 * HOURS);
-    expect(warnings[1]!.at).toBe(claim + 30 * HOURS);
+    expect(warnings[0]!.at).toBe(claim + 30 * HOURS);
+    expect(warnings[1]!.at).toBe(claim + 42 * HOURS);
     expect(warnings[1]!.title).toContain('Last call');
+  });
+
+  it('warns before the payout track restarts, on its own anchor', () => {
+    // The track's deadline is 48h from the *claim* — when the next reward
+    // would overtake the missed one; the streak's is 48h from the last visit.
+    // Two runs, two clocks — a warning about one must not be scheduled off the
+    // other's, so the streak here sits below its own warning threshold and the
+    // track warning still lands.
+    const claimed = at(14);
+    const visited = at(20);
+    const reminders = remindersFor(
+      state({ lastClaimAt: claimed, lastVisitAt: visited, rewardDay: 4, streak: 2 }),
+      claimed
+    );
+    const track = reminders.find((r) => r.kind === 'track')!;
+
+    expect(track.at).toBe(claimed + 42 * HOURS);
+    expect(track.title).toContain('Day 5');
+  });
+
+  it('leaves a barely-started track alone', () => {
+    // Day two pays fifteen coins. Restarting from there is not a loss worth
+    // spending a notification on.
+    const claimed = at(8);
+    const kinds = remindersFor(state({ lastClaimAt: claimed, rewardDay: 2 }), claimed).map(
+      (r) => r.kind
+    );
+
+    expect(kinds).not.toContain('track');
+  });
+
+  it('lets the streak warning win when the two collide', () => {
+    // Both deadlines can land in the same hour, and only one of them can be
+    // said. The streak is the one with weeks behind it.
+    const anchor = at(8);
+    const kinds = remindersFor(
+      state({
+        lastClaimAt: anchor + 12 * HOURS,
+        lastVisitAt: anchor,
+        rewardDay: 6,
+        streak: 9,
+      }),
+      anchor
+    ).map((r) => r.kind);
+
+    // Close enough after the waking-hours shift to collapse, so one of the
+    // pair is dropped rather than both being delivered.
+    expect(kinds.filter((kind) => kind === 'streak' || kind === 'track')).toContain(
+      'streak'
+    );
   });
 
   it('drops the streak warning rather than send it too late', () => {
@@ -78,7 +146,7 @@ describe('reward reminders', () => {
     // "about to end" delivered after it ended is worse than silence.
     const late = Array.from({ length: 24 }, (_, hour) => {
       const claim = at(hour);
-      const streak = remindersFor(state({ lastVisitAt: claim, streak: 5 }), claim).find(
+      const streak = remindersFor(state(active(claim, 5)), claim).find(
         (r) => r.kind === 'streak'
       );
       return streak !== undefined && streak.at >= claim + 48 * HOURS;
@@ -119,7 +187,7 @@ describe('come-back nudges', () => {
     const played = at(9);
     const alone = remindersFor(state({ lastPlayedAt: played }), played);
     const midStreak = remindersFor(
-      state({ lastPlayedAt: played, lastVisitAt: at(9), streak: 9 }),
+      state({ ...active(at(9), 9), lastPlayedAt: played }),
       played
     );
 
@@ -154,7 +222,7 @@ describe('come-back nudges', () => {
     // thing the player has been building.
     const claim = at(16, 1);
     const reminders = remindersFor(
-      state({ lastVisitAt: claim, streak: 7, lastPlayedAt: at(10, 2) }),
+      state({ ...active(claim, 7), lastPlayedAt: at(10, 2) }),
       claim
     );
 
@@ -168,7 +236,7 @@ describe('come-back nudges', () => {
     const visit = at(9);
     const played = at(21);
     const reminders = remindersFor(
-      state({ lastVisitAt: visit, streak: 1, lastPlayedAt: played }),
+      state({ ...active(visit, 1), lastPlayedAt: played }),
       visit
     );
 
@@ -187,7 +255,7 @@ describe('waking hours', () => {
     // Claimed at 3am, so the reward opens at 3am. Waking someone at 3am to
     // say their vials are ready is how notifications get turned off forever.
     const claim = at(3);
-    const [ready] = remindersFor(state({ lastVisitAt: claim, streak: 1 }), claim);
+    const [ready] = remindersFor(state(active(claim, 1)), claim);
 
     expect(hourOf(ready!.at)).toBe(8);
     expect(ready!.at).toBeGreaterThan(claim);
@@ -195,7 +263,7 @@ describe('waking hours', () => {
 
   it('rolls a late-evening reminder to the next morning', () => {
     const claim = at(23, 1);
-    const [ready] = remindersFor(state({ lastVisitAt: claim, streak: 1 }), claim);
+    const [ready] = remindersFor(state(active(claim, 1)), claim);
 
     expect(hourOf(ready!.at)).toBe(8);
     // Forward, never back: pulling it to the previous 11pm would announce the
@@ -205,7 +273,7 @@ describe('waking hours', () => {
 
   it('leaves a sociable time exactly where it is', () => {
     const claim = at(14, 1, 37);
-    const [ready] = remindersFor(state({ lastVisitAt: claim, streak: 1 }), claim);
+    const [ready] = remindersFor(state(active(claim, 1)), claim);
     expect(ready!.at).toBe(claim + 24 * HOURS);
   });
 
@@ -213,7 +281,7 @@ describe('waking hours', () => {
     for (let hour = 0; hour < 24; hour++) {
       const anchor = at(hour);
       const reminders = remindersFor(
-        state({ lastVisitAt: anchor, streak: 5, lastPlayedAt: anchor }),
+        state({ ...active(anchor, 5), lastPlayedAt: anchor }),
         anchor
       );
 
@@ -229,7 +297,7 @@ describe('waking hours', () => {
     // a burst of notifications at once.
     const anchor = at(2);
     const reminders = remindersFor(
-      state({ lastVisitAt: anchor, streak: 5, lastPlayedAt: anchor }),
+      state({ ...active(anchor, 5), lastPlayedAt: anchor }),
       anchor
     );
 
@@ -243,7 +311,7 @@ describe('anything already due', () => {
     const claim = at(12, 1);
     // Two days later, never claimed. Both moments have been and gone, and the
     // reward is on the home screen where it can be seen.
-    expect(kinds({ lastVisitAt: claim, streak: 5 }, at(12, 4))).toEqual([]);
+    expect(kinds({ lastClaimAt: claim, streak: 5 }, at(12, 4))).toEqual([]);
   });
 
   it('never schedules anything in the past', () => {
@@ -251,7 +319,7 @@ describe('anything already due', () => {
     for (const hours of [0, 12, 24, 30, 44, 48, 96]) {
       const now = anchor + hours * HOURS;
       const reminders = remindersFor(
-        state({ lastVisitAt: anchor, streak: 5, lastPlayedAt: anchor }),
+        state({ ...active(anchor, 5), lastPlayedAt: anchor }),
         now
       );
       for (const reminder of reminders) expect(reminder.at).toBeGreaterThan(now);

@@ -27,6 +27,7 @@ import { Panel } from './chrome/Panel';
 import { useScreenPadding } from './hooks/useScreenPadding';
 import { Icon } from './Icon';
 import { claimToast } from './rewardTrack';
+import { showRewarded } from '@/ads/rewarded';
 import { styles } from './styles/CompleteScreen.styles';
 
 interface CompleteScreenProps {
@@ -114,20 +115,18 @@ export const CompleteScreen = memo(function CompleteScreen({
   const [doubled, setDoubled] = useState(false);
 
   /**
-   * Pay the bonus. **The ad is not wired** — spec §10 puts the SDK in phase 2,
-   * so this pays outright rather than refusing, the same trade the daily
-   * reward's offer makes.
+   * Pay the bonus, once the ad has been earned.
    *
-   * When the SDK lands: show the ad, and move this into its completion
-   * callback. Nothing else has to change — the coins are already paid
-   * separately from the level's own payout, so a failed or skipped ad simply
-   * leaves the run's earnings as they were.
+   * Behind `showRewarded`, so the SDK arriving changes nothing here. Unlike the
+   * spare vial this slot does **not** pay when no ad fills: the bonus sits on
+   * top of coins the run has already banked, so a failed offer costs the player
+   * nothing they had — and paying it out anyway would mean the ad was never the
+   * price. See `paysWithoutAd`.
    */
   /** What this run has paid in total, counting the ad bonus if it was taken. */
   const paid = doubled ? reward * EARNINGS.adMultiplier : reward;
 
-  const double = useCallback(() => {
-    if (doubled || reward <= 0) return;
+  const pay = useCallback(() => {
     setDoubled(true);
     // `- 1` because the run already paid one share. Doubling adds the
     // difference, not the whole amount again.
@@ -165,7 +164,23 @@ export const CompleteScreen = memo(function CompleteScreen({
      * The toast carries the numbers out regardless: the overlay is global and
      * outlives the screen that raised it.
      */
-  }, [doubled, reward]);
+  }, [reward]);
+
+  const double = useCallback(() => {
+    if (doubled || reward <= 0) return;
+
+    void showRewarded('double_level_reward').then((outcome) => {
+      if (outcome !== 'earned') {
+        overlay.toast(
+          outcome === 'dismissed'
+            ? 'The ad was closed early — nothing doubled'
+            : 'No ad available right now'
+        );
+        return;
+      }
+      pay();
+    });
+  }, [doubled, reward, pay]);
 
   /**
    * The timer is owned by an effect, not by the handler that started it.

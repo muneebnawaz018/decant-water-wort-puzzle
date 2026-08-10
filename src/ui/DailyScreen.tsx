@@ -11,13 +11,14 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { showRewarded } from '@/ads/rewarded';
 import { standingFor, type StreakStanding } from '@/game/streak';
 import { syncReminders } from '@/notifications/dailyReminder';
 import { DAILY_REWARDS, useEconomyStore } from '@/state/economyStore';
 import { overlay, useOverlayStore } from '@/state/overlayStore';
 import { colours, gradients, ui } from '@/theme/colors';
 import { s } from '@/theme/scale';
-import { countdown, percentWidth } from '@/utils';
+import { countdown, percentWidth, plural } from '@/utils';
 import { ClaimButton } from './chrome/ClaimButton';
 import { Panel } from './chrome/Panel';
 import { ScrollPage } from './chrome/ScrollPage';
@@ -43,8 +44,30 @@ const BONUS_REWARD = EARNINGS.bonusPuzzle;
  * the button is the one that has to explain itself, so the card says the thing
  * the button cannot: what the streak is being kept for.
  */
-function streakDetail(standing: StreakStanding): string {
+function streakDetail(standing: StreakStanding, lapseIn: number): string {
+  /*
+    The deadline wins the line whenever there is one.
+
+    **It is the reward track's deadline, not the streak's** — hence "your
+    place", which is where the player sits on the seven-day payout. Missing a
+    collection drops them to day one and its ten coins; it does not touch the
+    number above this line, which counts days the app was opened.
+
+    Until this the deadline existed only in the code: the card showed a Collect
+    button with no hint that anything was at stake. Progress lost to a rule
+    nobody could see reads as the game losing it, and the notification does not
+    cover the gap — that setting is off by default.
+
+    Hours rather than a live clock. This is a nudge, not a countdown, and the
+    button below already carries a clock when there is one to carry.
+  */
+  if (lapseIn > 0) {
+    const hours = Math.max(1, Math.ceil(lapseIn / (60 * 60 * 1000)));
+    return `Collect within ${plural(hours, 'hour')} to keep your place`;
+  }
+
   if (standing.days <= 0) return 'Open the app tomorrow to start a run';
+
   // One line for every day of the run, including the day a milestone is
   // passed — the marker has already moved to the next one by then, so there is
   // no "complete" state to word differently and nothing that reads as done.
@@ -62,7 +85,7 @@ export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScree
   // returning a function has a stable identity, so the card would never
   // re-render when the run advanced. The same rule Home's `lastClaim` follows.
   const standing = standingFor(streak);
-  const { reward, remaining, dayIndex } = useClaimTimer();
+  const { reward, remaining, dayIndex, lapseIn } = useClaimTimer();
   const waiting = reward === null;
 
   /**
@@ -161,19 +184,39 @@ export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScree
       onSecondary: () => {
         if (useOverlayStore.getState().celebration) return;
 
-        // Read from what the claim returned rather than from the table, so the
-        // two cannot disagree about which day was paid. `- 1` because the
-        // claim already paid one share: doubling means adding the difference,
-        // not the whole amount again.
-        const paid = useEconomyStore.getState().claimDaily(Date.now());
-        useEconomyStore.getState().add(paid * (EARNINGS.adMultiplier - 1));
-        void syncReminders();
+        /*
+          The ad first, the coins after — behind `showRewarded`, so the SDK
+          landing changes nothing here.
 
-        const balance = useEconomyStore.getState().coins;
+          Nothing is claimed on a refusal, deliberately: the base reward is
+          still sitting there and Collect still pays it. Claiming anyway and
+          skipping only the bonus would spend the day's reward on an ad the
+          player did not watch.
+        */
+        void showRewarded('double_daily_reward').then((outcome) => {
+          if (outcome !== 'earned') {
+            overlay.toast(
+              outcome === 'dismissed'
+                ? 'The ad was closed early — nothing doubled'
+                : 'No ad available right now'
+            );
+            return;
+          }
 
-        overlay.celebrate(() => {
-          overlay.closeModal();
-          overlay.toast(claimToast(paid * EARNINGS.adMultiplier, balance));
+          // Read from what the claim returned rather than from the table, so
+          // the two cannot disagree about which day was paid. `- 1` because
+          // the claim already paid one share: doubling means adding the
+          // difference, not the whole amount again.
+          const paid = useEconomyStore.getState().claimDaily(Date.now());
+          useEconomyStore.getState().add(paid * (EARNINGS.adMultiplier - 1));
+          void syncReminders();
+
+          const balance = useEconomyStore.getState().coins;
+
+          overlay.celebrate(() => {
+            overlay.closeModal();
+            overlay.toast(claimToast(paid * EARNINGS.adMultiplier, balance));
+          });
         });
       },
     });
@@ -204,7 +247,7 @@ export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScree
               ]}
             />
           </View>
-          <Text style={styles.streakDetail}>{streakDetail(standing)}</Text>
+          <Text style={styles.streakDetail}>{streakDetail(standing, lapseIn)}</Text>
         </View>
       </Panel>
 
@@ -250,13 +293,10 @@ export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScree
             // and never what — the one line that could give a player a reason
             // to come back was the one that did not name the prize.
             //
-            // `streak % 7` and not `dayIndex`: while the clock is running,
-            // `dayIndex` is *today's* tile, already collected. Tomorrow's visit
-            // takes the streak to `streak + 1`, whose 1-based position on the
-            // track is this.
-            captionAmount={
-              waiting ? DAILY_REWARDS[streak % DAILY_REWARDS.length] : undefined
-            }
+            // `dayIndex` is already the tile the *next* claim pays: while the
+            // clock is running, today's has been collected and the store
+            // computes the index from the streak that claim will produce.
+            captionAmount={waiting ? DAILY_REWARDS[dayIndex] : undefined}
             onPress={claim}
             waiting={waiting}
             fill

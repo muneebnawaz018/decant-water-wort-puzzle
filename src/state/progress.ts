@@ -1,6 +1,7 @@
 import { DEFAULT_DIFFICULTY, DIFFICULTIES, type Difficulty } from '@/game/difficulty';
+import { GENERATOR_VERSION } from '@/game/generatorVersion';
 import { blockOf, levelsInBlock } from '@/game/stars';
-import { readJson, writeJson } from './storage';
+import { readJsonOrNull, storage, writeJson } from './storage';
 
 export interface Progress {
   /** Highest level reached. Levels above this are not yet unlocked. */
@@ -24,9 +25,29 @@ export interface Progress {
 /** One record per difficulty — modes do not share unlocks or bests. */
 export type ProgressByDifficulty = Record<Difficulty, Progress>;
 
-const KEY = 'progress.v3';
-/** The v2 record, before milestone bonuses. Read once to carry progress over. */
-const LEGACY_KEY = 'progress.v2';
+const KEY = 'progress.v4';
+/**
+ * Earlier shapes, newest first. Read once, carried forward, then **deleted** —
+ * an old record left on disk is what a corrupt current record would silently
+ * fall back to, and the v2 shape predates `paidBlocks`, so resurrecting it
+ * would pay every milestone bonus a second time.
+ */
+const LEGACY_KEYS = ['progress.v3', 'progress.v2'] as const;
+
+/**
+ * What `progress.v4` actually holds: the per-mode records plus the generator
+ * stamp they were written against.
+ *
+ * The stamp is the missing half of a guard the session record already had.
+ * `session.v1` replays its moves and gives up when they no longer fit, but
+ * `best` had no equivalent — repoint the generator and every move count keeps
+ * describing a board that no longer exists, with nothing to notice. See
+ * `GENERATOR_VERSION` for what counts as repointing.
+ */
+interface Stored {
+  gen: number;
+  modes: Partial<ProgressByDifficulty>;
+}
 
 function emptyProgress(): Progress {
   return { furthestLevel: 1, currentLevel: 1, best: {}, stars: {}, paidBlocks: [] };
@@ -53,23 +74,72 @@ export function emptyRecord(): ProgressByDifficulty {
   };
 }
 
-export function loadProgress(): ProgressByDifficulty {
-  // Milestone bonuses added `paidBlocks`, so the key moved. A player's levels
-  // and stars carry across; `paidBlocks` starts empty, which pays out the
-  // blocks they have already finished. Generous rather than punishing, and the
-  // alternative is marking them paid for a bonus that did not exist yet.
-  const stored = readJson<Partial<ProgressByDifficulty>>(KEY, {
-    ...readJson<Partial<ProgressByDifficulty>>(LEGACY_KEY, {}),
-  });
+function recordFrom(
+  modes: Partial<ProgressByDifficulty> | undefined
+): ProgressByDifficulty {
   const record = emptyRecord();
   for (const difficulty of DIFFICULTIES) {
-    record[difficulty] = sanitise(stored[difficulty]);
+    record[difficulty] = sanitise(modes?.[difficulty]);
   }
   return record;
 }
 
+/**
+ * The record with every `best` dropped, for a generator that has moved on.
+ *
+ * Everything else survives on purpose. The levels *were* finished and the
+ * stars *were* earned, whatever boards they are attached to now — taking
+ * unlocks away over an internal change would punish the player for the app
+ * updating. `best` is the one field that measures a specific board's layout,
+ * so it is the one field that stops being true.
+ */
+function dropBests(record: ProgressByDifficulty): ProgressByDifficulty {
+  const scrubbed = emptyRecord();
+  for (const difficulty of DIFFICULTIES) {
+    scrubbed[difficulty] = { ...record[difficulty], best: {} };
+  }
+  return scrubbed;
+}
+
+export function loadProgress(): ProgressByDifficulty {
+  const stored = readJsonOrNull<Partial<Stored>>(KEY);
+
+  if (stored !== null) {
+    const record = recordFrom(stored.modes);
+    // A record from before the boards moved. Keep what is still true of the
+    // new ones, drop what is not, and re-stamp — the scrub must land exactly
+    // once, not on every launch.
+    if (typeof stored.gen === 'number' && stored.gen !== GENERATOR_VERSION) {
+      const scrubbed = dropBests(record);
+      saveProgress(scrubbed);
+      return scrubbed;
+    }
+    return record;
+  }
+
+  // First run under v4: carry the newest legacy record forward. The v2 shape
+  // predates `paidBlocks`, which starts empty and pays out the blocks the
+  // player has already finished — generous rather than punishing, and the
+  // alternative is marking them paid for a bonus that did not exist yet.
+  //
+  // Both records predate the generator stamp and are trusted as current:
+  // nothing has shipped, so no legacy record can have been written against
+  // other boards.
+  let legacy: Partial<ProgressByDifficulty> | null = null;
+  for (const key of LEGACY_KEYS) {
+    legacy ??= readJsonOrNull<Partial<ProgressByDifficulty>>(key);
+  }
+  const record = recordFrom(legacy ?? undefined);
+  // Written before the old keys go: a crash in between leaves both records
+  // and the next launch simply migrates again. The other order leaves neither.
+  if (legacy !== null) saveProgress(record);
+  for (const key of LEGACY_KEYS) storage.remove(key);
+  return record;
+}
+
 export function saveProgress(record: ProgressByDifficulty): void {
-  writeJson(KEY, record);
+  const stored: Stored = { gen: GENERATOR_VERSION, modes: record };
+  writeJson(KEY, stored);
 }
 
 export function progressFor(

@@ -13,6 +13,22 @@ describe('the skin catalogue', () => {
   });
 
   /**
+   * Skin ids are save format, the same way the generator is: `settings.skin`
+   * holds one and `economy.owned` will hold a list of them, and both records
+   * outlive the build that wrote them. An equipped id that goes missing falls
+   * back to the default glass — annoying, recoverable. A *purchased* id that
+   * goes missing is worse: the coins are spent, the shelf shows nothing, and
+   * `buy` would charge again for an item the player already owns.
+   *
+   * So ids may be added here, never changed or removed. If one ever has to
+   * move, the fix is a rename map in the stores' load paths — and then this
+   * pin is re-recorded, in that order.
+   */
+  it('pins the ids already in the wild', () => {
+    expect(SKINS.map((skin) => skin.id)).toEqual(['skin.vial']);
+  });
+
+  /**
    * A stored id outlives the build that wrote it. Renaming a skin then means
    * every player holding the old id has an unknown one, and the board has to
    * draw *something* — falling back is what stops a rename from shipping a

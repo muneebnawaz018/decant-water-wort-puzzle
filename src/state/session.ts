@@ -1,6 +1,7 @@
 import type { PourMove, WaterState } from '@/core/types';
 import { applyPour } from '@/core/waterCore';
 import { DIFFICULTIES, type Difficulty } from '@/game/difficulty';
+import { GENERATOR_VERSION } from '@/game/generatorVersion';
 import { isPaidSet } from '@/game/undoCost';
 import { readJson, storage, writeJson } from './storage';
 
@@ -87,6 +88,19 @@ function isDifficulty(value: unknown): value is Difficulty {
 export function loadSession(): Session | null {
   const stored = readJson<Partial<Session>>(KEY, {});
   const { difficulty, level, moves, extraTaken, paidUndos, freeUndosUsed } = stored;
+
+  /**
+   * A record written against boards that no longer exist is given up whole.
+   *
+   * The replay-legality check in `restoreSession` would catch nearly all of
+   * these anyway — repoint the generator and the moves stop fitting. This
+   * catches the remainder: moves that happen to be legal on the *new* board
+   * would replay into a position nobody was ever in, and the game would carry
+   * on reasoning about it. Absent means the record predates the stamp, which
+   * is read as current — nothing shipped before stamping began.
+   */
+  const gen = (stored as { gen?: unknown }).gen;
+  if (typeof gen === 'number' && gen !== GENERATOR_VERSION) return null;
   // Both spellings: `hintsUsed` is the count written now, `hintUsed` the
   // boolean this record carried when hints were one per level.
   const legacy = (stored as { hintUsed?: unknown }).hintUsed === true ? 1 : 0;
@@ -138,7 +152,10 @@ export function saveSession(session: Session): void {
     clearSession();
     return;
   }
-  writeJson(KEY, session);
+  // Stamped here rather than carried on `Session` — which puzzles the moves
+  // belong to is the storage layer's concern, and no caller should have to
+  // know the generator has versions.
+  writeJson(KEY, { ...session, gen: GENERATOR_VERSION });
 }
 
 export function clearSession(): void {

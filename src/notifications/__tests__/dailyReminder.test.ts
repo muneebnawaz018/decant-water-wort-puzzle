@@ -1,6 +1,8 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
+import { lastPlayedAt } from '../lastPlayed';
+import { remindersFor } from '../schedule';
 import { useEconomyStore } from '@/state/economyStore';
 import { useSettingsStore } from '@/state/settingsStore';
 import {
@@ -48,6 +50,25 @@ const scheduled = () => mocked.scheduleNotificationAsync.mock.calls.length;
 const NOON_ISH = new Date(2026, 2, 1, 14, 0, 0, 0);
 const justClaimed = () => Date.now();
 
+/**
+ * What the pure schedule says should be pending, for the state the suite seeds.
+ *
+ * The adapter's whole job is to hand `remindersFor`'s output to the OS, so the
+ * assertion is that the two agree — not that either produces a particular
+ * number. Which reminders survive depends on the hour the suite happens to run
+ * at, since the waking-hours shift and the merge window both do.
+ */
+function expectedCount(): number {
+  const { lastClaimAt, lastVisitAt, rewardDay, streak } = useEconomyStore.getState();
+  // The same inputs the adapter reads, `lastPlayedAt` included — the idle
+  // nudges hang off it, and passing `Date.now()` here instead counts a
+  // different schedule from the one that was actually written.
+  return remindersFor(
+    { lastClaimAt, lastVisitAt, rewardDay, streak, lastPlayedAt: lastPlayedAt() },
+    Date.now()
+  ).length;
+}
+
 function permission(granted: boolean, canAskAgain = true) {
   mocked.getPermissionsAsync.mockResolvedValue({
     granted,
@@ -66,7 +87,14 @@ beforeEach(() => {
   jest.clearAllMocks();
   permission(true);
   useSettingsStore.getState().set('dailyReminder', true);
-  useEconomyStore.setState({ coins: 0, streak: 4, lastVisitAt: justClaimed(), owned: [] });
+  useEconomyStore.setState({
+    coins: 0,
+    streak: 4,
+    rewardDay: 4,
+    lastVisitAt: justClaimed(),
+    lastClaimAt: justClaimed(),
+    owned: [],
+  });
 });
 
 describe('setup', () => {
@@ -114,8 +142,11 @@ describe('syncReminders', () => {
   it('replaces what is pending rather than adding to it', async () => {
     await syncReminders();
     expect(mocked.cancelAllScheduledNotificationsAsync).toHaveBeenCalled();
-    // A four-day streak: the reward, and both warnings before the run lapses.
-    expect(scheduled()).toBe(3);
+    // Counted against the pure schedule rather than pinned to a literal. The
+    // suite runs at whatever the wall clock says, and the waking-hours shift
+    // and the merge window both depend on the hour of day — a fixed 3 here
+    // passes in the morning and fails in the evening.
+    expect(scheduled()).toBe(expectedCount());
   });
 
   it('schedules an absolute instant, not a repeating hour', async () => {
@@ -142,7 +173,7 @@ describe('syncReminders', () => {
   });
 
   it('schedules nothing before the first claim', async () => {
-    useEconomyStore.setState({ lastVisitAt: null, streak: 0 });
+    useEconomyStore.setState({ lastClaimAt: null, lastVisitAt: null, streak: 0 });
     await syncReminders();
     expect(scheduled()).toBe(0);
   });
@@ -162,7 +193,7 @@ describe('reconcilePermission', () => {
   it('re-syncs when permission is still held', async () => {
     await reconcilePermission();
     expect(useSettingsStore.getState().dailyReminder).toBe(true);
-    expect(scheduled()).toBe(3);
+    expect(scheduled()).toBe(expectedCount());
   });
 
   it('does nothing at all when the row is off', async () => {

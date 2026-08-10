@@ -1,25 +1,26 @@
 import { create } from 'zustand';
 
-import { readJson, writeJson } from './storage';
+import { readJson, storage, writeJson } from './storage';
 import { EARNINGS, STARTING_COINS } from '@/game/economy';
 import {
+  claimPhase,
+  rewardDayAfterClaim,
   standingFor,
   streakAfterVisit,
-  VISIT_INTERVAL_MS,
+  timeUntilLapse,
+  timeUntilUnlock,
   type StreakStanding,
 } from '@/game/streak';
 
-const KEY = 'economy.v3';
+const KEY = 'economy.v5';
 /**
- * The v2 record, whose `streak` counted claims. Read once, for the balance only.
+ * The v4 record, which had one counter doing two jobs. Balance only.
  *
- * The number itself is deliberately **not** carried. A claim-era streak was a
- * count of rewards taken, and reading it as a count of days visited invents a
- * history that never happened — a test account with 22 claims came back as a
- * 22-day streak against a `lastVisitAt` of null. Visits were not recorded before
- * this version, so there is no honest value to migrate and the run starts over.
+ * v4 merged the streak and the reward track into a single number, so there is
+ * no honest way to split it back into the two this version keeps. Coins and
+ * cosmetics are real either way and come across; both runs start again.
  */
-const LEGACY_KEY = 'economy.v2';
+const LEGACY_KEY = 'economy.v4';
 
 /**
  * Coins in the daily track, one per day of the streak week.
@@ -48,24 +49,29 @@ export interface EconomyState {
   /**
    * Consecutive days the app was opened. Unbounded, zero before the first.
    *
-   * **Visits, not claims.** It used to count claims and wrap at seven, which
-   * made "streak" mean something no player would guess: turn up daily for a
-   * week without tapping Collect and it stayed at zero. Now the tap pays and
-   * the visit counts, which is what the word means everywhere else.
+   * **Visits, and only visits.** Collecting a reward does not touch it, and
+   * missing one does not break it — see `game/streak.ts` for why the two runs
+   * are separate.
    */
   streak: number;
   /** Device time of the last visit that counted, or null before the first. */
   lastVisitAt: number | null;
   /**
-   * The streak value on the day the last reward was collected.
+   * Position on the seven-day payout track, 1-based. Zero before the first.
    *
-   * One number instead of a per-day collected list: a day's reward can only be
-   * taken on that day, so all the screen has to know is whether today's has
-   * gone. Comparing it to `streak` answers that, and it survives a week rolling
-   * over without anything needing to be reset.
+   * Advances on a collection inside the window and restarts at one outside it.
+   * Stored rather than derived from the streak, because the two now move
+   * independently: a player can be nine days into a streak and on day two of
+   * the track.
    */
-  claimedOnDay: number | null;
-  /** Device time of the last claim, in ms, or null if never claimed. */
+  rewardDay: number;
+  /**
+   * Device time of the last claim, or null before the first.
+   *
+   * The reward track's anchor: the next reward unlocks 24h after it and stays
+   * collectable until the one after would arrive, 48h after it. Says nothing
+   * about the streak.
+   */
   lastClaimAt: number | null;
   /** Shop items bought. Cosmetic only — never pay-to-win (spec §7). */
   owned: string[];
@@ -77,14 +83,19 @@ export interface EconomyState {
   /**
    * Counts today's visit, if it is a new day. Call on launch and on foreground.
    *
-   * Returns the standing afterwards so a caller can celebrate a completed tier
+   * Returns the standing afterwards so a caller can react to a completed tier
    * without recomputing it.
    */
   registerVisit: (now: number) => StreakStanding;
-  /** The reward waiting right now, or null when today's has been taken. */
+  /** The reward waiting right now, or null while the timer is still running. */
   claimable: (now: number) => number | null;
   /** Milliseconds until the next reward unlocks. Zero when one is waiting. */
   timeUntilClaim: (now: number) => number;
+  /**
+   * Milliseconds left to collect before the track restarts. Zero when nothing
+   * is waiting, or once the window has already passed.
+   */
+  timeUntilLapse: (now: number) => number;
   /** Which day of the seven-day track today's reward pays. */
   nextDayIndex: (now: number) => number;
   claimDaily: (now: number) => number;
@@ -96,93 +107,95 @@ interface Stored {
   coins: number;
   streak: number;
   lastVisitAt: number | null;
-  claimedOnDay: number | null;
+  rewardDay: number;
   lastClaimAt: number | null;
   owned: string[];
 }
 
-/** The shape v2 wrote. Only the parts that still mean the same thing. */
-interface StoredV2 {
+/** The shape v4 wrote. Only the parts that still mean the same thing. */
+interface StoredV4 {
   coins: number;
   owned: string[];
 }
 
-function load(): Stored {
+/**
+ * Exported for the migration tests: the store is created once at import time,
+ * and the jest MMKV mock holds its data per instance, so re-importing the
+ * module to re-run this would also throw the seeded records away.
+ */
+export function loadEconomy(): Stored {
   const stored = readJson<Partial<Stored>>(KEY, {});
 
   // First run after the change: carry the balance and the shelf, and nothing
   // else. Losing coins to a scheduling fix is not a trade worth making; keeping
   // a streak that was measuring a different thing is worse than losing it.
   if (stored.coins === undefined) {
-    const legacy = readJson<Partial<StoredV2>>(LEGACY_KEY, {});
+    const legacy = readJson<Partial<StoredV4>>(LEGACY_KEY, {});
     if (legacy.coins !== undefined || legacy.owned !== undefined) {
-      return {
+      const carried: Stored = {
         coins: Math.max(0, Math.floor(legacy.coins ?? 0)),
         streak: 0,
         lastVisitAt: null,
-        claimedOnDay: null,
+        rewardDay: 0,
         lastClaimAt: null,
         owned: legacy.owned ?? [],
       };
+      // Written under the new key *before* the old one goes: a crash between
+      // the two leaves both records, and the next launch migrates again. The
+      // old record cannot stay — it is what a corrupt v3 would resurrect, a
+      // build-old balance handed back as if the time since never happened.
+      writeJson(KEY, carried);
+      storage.remove(LEGACY_KEY);
+      return carried;
     }
   }
 
-  const lastVisitAt =
-    typeof stored.lastVisitAt === 'number' && Number.isFinite(stored.lastVisitAt)
-      ? stored.lastVisitAt
-      : null;
+  // Already migrated, or a fresh install: either way the legacy record is
+  // done. Removing it here as well covers records written by builds that
+  // migrated before this delete existed.
+  storage.remove(LEGACY_KEY);
+
+  const lastVisitAt = readTime(stored.lastVisitAt);
+  const lastClaimAt = readTime(stored.lastClaimAt);
 
   return {
     coins: Math.max(0, Math.floor(stored.coins ?? STARTING_COINS)),
-    // A streak with no visit behind it is not a streak. The two fields are
-    // written together and only together, so a record holding one without the
-    // other has been hand-edited or half-migrated, and the honest reading of it
-    // is zero rather than a run the player never had.
-    streak: lastVisitAt === null ? 0 : readStreak(stored.streak),
+    // A run with no timestamp behind it is not a run. Each counter and its
+    // anchor are written together and only together, so a record holding one
+    // without the other has been hand-edited or half-migrated — and the honest
+    // reading is zero rather than progress the player never made.
+    streak: lastVisitAt === null ? 0 : readCount(stored.streak),
     lastVisitAt,
-    claimedOnDay:
-      typeof stored.claimedOnDay === 'number' && Number.isInteger(stored.claimedOnDay)
-        ? stored.claimedOnDay
-        : null,
-    lastClaimAt:
-      typeof stored.lastClaimAt === 'number' && Number.isFinite(stored.lastClaimAt)
-        ? stored.lastClaimAt
-        : null,
+    rewardDay: lastClaimAt === null ? 0 : readCount(stored.rewardDay),
+    lastClaimAt,
     owned: stored.owned ?? [],
   };
 }
 
 /**
- * A stored streak, validated but **not capped**.
+ * A stored counter, validated but **not capped**.
  *
- * It used to be clamped to the reward track's seven, which quietly discarded
- * every run past a week: the card said "21-day streak" until the app restarted
- * and then said seven. The streak is a total now and has a ladder above seven
- * to climb, so the cap was both a bug and a contradiction.
+ * The streak used to be clamped to the reward track's seven, which quietly
+ * discarded every run past a week: the card said "21-day streak" until the app
+ * restarted and then said seven. The streak is a total with a ladder above
+ * seven to climb, so the cap was both a bug and a contradiction — and the
+ * reward day is bounded by its own arithmetic rather than by a clamp here.
  */
-function readStreak(value: number | undefined): number {
+function readCount(value: number | undefined): number {
   return Math.max(0, Math.floor(value ?? 0));
 }
 
-/**
- * How long since the last claim, in ms. `Infinity` before the first one.
- *
- * Device time, per spec — there is no server to ask. A clock moved backwards
- * would otherwise read as a negative age and hand out an early reward, so the
- * elapsed time is floored at zero: winding the clock back pauses the timer
- * rather than skipping it.
- */
-function elapsedSince(lastClaimAt: number | null, now: number): number {
-  if (lastClaimAt === null) return Infinity;
-  return Math.max(0, now - lastClaimAt);
+/** A stored instant, or null if the record does not hold a usable one. */
+function readTime(value: number | null | undefined): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
 export const useEconomyStore = create<EconomyState>((set, get) => {
-  const initial = load();
+  const initial = loadEconomy();
 
   const persist = () => {
-    const { coins, streak, lastVisitAt, claimedOnDay, lastClaimAt, owned } = get();
-    writeJson(KEY, { coins, streak, lastVisitAt, claimedOnDay, lastClaimAt, owned });
+    const { coins, streak, lastVisitAt, rewardDay, lastClaimAt, owned } = get();
+    writeJson(KEY, { coins, streak, lastVisitAt, rewardDay, lastClaimAt, owned });
   };
 
   return {
@@ -225,53 +238,48 @@ export const useEconomyStore = create<EconomyState>((set, get) => {
     standing: () => standingFor(get().streak),
 
     /**
-     * Which of the seven tiles today's visit unlocked.
+     * Which of the seven tiles the next claim pays.
      *
-     * The reward track cycles weekly whatever tier the streak is on: day 8 pays
-     * what day 1 paid. The tier ladder is the long game and the week is the
-     * short one, and keeping them separate is what lets a thirty-day tier exist
-     * without needing thirty tiles on screen.
+     * The track cycles weekly whatever tier the streak is on: day 8 pays what
+     * day 1 paid. The ladder is the long game and the week is the short one,
+     * and keeping them separate is what lets a thirty-day tier exist without
+     * thirty tiles on screen.
      *
-     * Zero before the first visit, so a fresh install shows day one waiting
-     * rather than an empty track.
+     * A lapsed track reads day one, because that is what the claim will make
+     * it. The tile the player is about to take has to be the tile they see.
      */
-    nextDayIndex: () => {
-      const { streak } = get();
-      if (streak <= 0) return 0;
-      return (streak - 1) % DAILY_REWARDS.length;
+    nextDayIndex: (now) => {
+      const { rewardDay, lastClaimAt } = get();
+      const next = rewardDayAfterClaim(rewardDay, lastClaimAt, now);
+      return (next - 1) % DAILY_REWARDS.length;
     },
 
     /**
-     * Today's reward, or null once it has been taken.
+     * The reward waiting right now, or null while the timer is running.
      *
-     * **A day's coins are claimable only on that day.** Miss the tap and they
-     * are gone — the streak survives, because turning up is what the streak
-     * measures, but the reward was for turning up *and* collecting. Anything
-     * else means a player could ignore the card for a week and then bank seven
-     * days at once, which makes the daily nothing of the sort.
+     * A lapsed reward is still offered, deliberately. Refusing to pay someone
+     * who came back two days late punishes the return itself — they have
+     * already lost the streak, which was the thing at stake, and locking the
+     * coins as well makes coming back worth nothing.
      */
     claimable: (now) => {
-      const { streak, claimedOnDay } = get();
-      if (streak <= 0) return null;
-      if (claimedOnDay === streak) return null;
+      if (claimPhase(get().lastClaimAt, now) === 'waiting') return null;
       return DAILY_REWARDS[get().nextDayIndex(now)]!;
     },
 
-    /**
-     * How long until the next reward unlocks — which is the next visit day.
-     *
-     * Measured from the last counted visit rather than the last claim, since
-     * that is what moves the day on now. Zero when today's reward is still
-     * waiting, so the button can key off one number.
-     */
-    timeUntilClaim: (now) => {
-      const { lastVisitAt, streak, claimedOnDay } = get();
-      if (streak <= 0) return 0;
-      if (claimedOnDay !== streak) return 0;
+    /** Time to the unlock. Zero once a reward is waiting, lapsed or not. */
+    timeUntilClaim: (now) => timeUntilUnlock(get().lastClaimAt, now),
 
-      const elapsed = elapsedSince(lastVisitAt, now);
-      if (elapsed === Infinity) return 0;
-      return Math.max(0, VISIT_INTERVAL_MS - elapsed);
+    /**
+     * Time left to collect before the track resets to day one.
+     *
+     * Zero while the reward is still locked and zero once it has lapsed, so a
+     * non-zero value means exactly one thing: a reward is waiting and the
+     * track is still on the line. That is the only state the card warns about.
+     */
+    timeUntilLapse: (now) => {
+      if (claimPhase(get().lastClaimAt, now) !== 'ready') return 0;
+      return timeUntilLapse(get().lastClaimAt, now);
     },
 
     claimDaily: (now) => {
@@ -280,10 +288,9 @@ export const useEconomyStore = create<EconomyState>((set, get) => {
 
       set((current) => ({
         coins: current.coins + reward,
-        // Marks *today* as collected rather than starting a timer. The streak
-        // is what moves the day on, so the claim only has to record which day
-        // it was for.
-        claimedOnDay: current.streak,
+        // The claim moves the track and nothing else. The streak is made of
+        // visits and is not this function's business.
+        rewardDay: rewardDayAfterClaim(current.rewardDay, current.lastClaimAt, now),
         lastClaimAt: now,
       }));
       persist();
