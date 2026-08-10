@@ -1,12 +1,12 @@
 import { create } from 'zustand';
 
 import type { Colour, PourMove, WaterState } from '@/core/types';
-import { optimalMoves } from '@/core/solver';
+import { optimalLine } from '@/core/solver';
 import { applyPour, canPour, isSolved } from '@/core/waterCore';
 import type { Difficulty } from '@/game/difficulty';
 import { dayIndex, generateBonus } from '@/game/dailyPuzzle';
 import { EARNINGS, FREE_HINTS, PRICES } from '@/game/economy';
-import { positionKey, suggestPour, type HintSearch } from '@/game/hint';
+import { lineMap, positionKey, suggestPour, type HintSearch } from '@/game/hint';
 import { coinsForImprovement, milestoneBonus, starsFor } from '@/game/stars';
 import { forgetFrom, freeUndosFor, undoCharge, withUndoPaid } from '@/game/undoCost';
 import { generateLevel } from '@/game/waterGenerator';
@@ -167,19 +167,25 @@ export interface GameState {
   /**
    * The winning line the hints are following, as position → move.
    *
-   * Consecutive hints have to agree, and independent searches do not: `solve`
-   * returns *a* winning line rather than the shortest, so a search from one
-   * position can answer with the move that undoes the last one. Following that
-   * alternates forever — measured, on real generated boards.
+   * Consecutive hints have to agree, and independent searches do not: a search
+   * from one position can answer with the move that undoes the last one, and
+   * following that alternates forever — measured, on real generated boards.
    *
-   * So the first search plans the whole route and every position on it is
-   * answered from that plan. Falling off it (the player pours something else)
-   * simply misses, and the next press plans again from there.
+   * So one search plans the whole route and every position on it is answered
+   * from that plan. Falling off it (the player pours something else) simply
+   * misses, and the next press plans again from there. The plan is seeded off
+   * the load path by `refinePar` — the same search that computes par returns
+   * the optimal line, so the first press on an untouched board answers
+   * instantly.
    *
-   * Not persisted: it is a cache, rebuildable in a few dozen nodes, and
-   * `paidHints` is the part that has to survive a relaunch.
+   * Each entry keeps whether its line was the provably shortest one, because
+   * billing reads it: continuing a fallback plan must stay as free as the
+   * press that planned it — see `hint`.
+   *
+   * Not persisted: it is a cache, rebuildable by one search, and `paidHints`
+   * is the part that has to survive a relaunch.
    */
-  hintLine: Record<string, PourMove>;
+  hintLine: Record<string, PlannedHint>;
   record: ProgressByDifficulty;
 
   loadLevel: (level: number) => void;
@@ -216,6 +222,13 @@ export interface GameState {
   setLocked: (locked: boolean) => void;
   /** Progress for the mode being played. */
   progress: () => Progress;
+}
+
+/** One entry of the plan the hints follow — see `hintLine` on the state. */
+interface PlannedHint {
+  move: PourMove;
+  /** Whether the line this came from is the provably shortest. Decides billing. */
+  optimal: boolean;
 }
 
 /**
@@ -319,13 +332,22 @@ export const useGameStore = create<GameState>((set, get) => {
       // The player may have moved on while this was queued.
       if (get().level !== level || get().difficulty !== mode) return;
 
-      const exact = optimalMoves(board);
+      const exact = optimalLine(board);
       // Null means the node cap was hit. Keep the bound: a level nobody can
       // three-star is better than one where everybody does.
-      if (exact === null) return;
+      if (exact.moves === null) return;
       if (get().level !== level || get().difficulty !== mode) return;
 
-      set({ par: exact });
+      // One search, two answers: the line's length is par, and the line itself
+      // seeds the hint plan, so the first press on an untouched board costs no
+      // search at all. Existing entries win the merge — a hint bought in the
+      // tick before this landed answered from a plan of its own, and the
+      // answer delivered must stay the answer.
+      const plan: Record<string, PlannedHint> = {};
+      for (const [key, move] of Object.entries(lineMap(board, exact.moves))) {
+        plan[key] = { move, optimal: true };
+      }
+      set({ par: exact.moves.length, hintLine: { ...plan, ...get().hintLine } });
     }, 0);
   };
 
@@ -598,7 +620,7 @@ export const useGameStore = create<GameState>((set, get) => {
       const nowSolved = isSolved(applied.state);
       const moves = get().history.length + 1;
 
-      const stars = nowSolved ? starsFor(moves, get().par, get().hintsUsed) : 0;
+      const stars = nowSolved ? starsFor(moves, get().par) : 0;
 
       set((current) => {
         // Read before the completion is recorded — afterwards this level's
@@ -772,7 +794,7 @@ export const useGameStore = create<GameState>((set, get) => {
       const nowSolved = isSolved(applied.state);
       const moves = get().history.length + 1;
 
-      const stars = nowSolved ? starsFor(moves, get().par, get().hintsUsed) : 0;
+      const stars = nowSolved ? starsFor(moves, get().par) : 0;
 
       set((current) => {
         // Read before the completion is recorded — afterwards this level's
@@ -929,12 +951,17 @@ export const useGameStore = create<GameState>((set, get) => {
       const key = positionKey(board);
       const planned = get().hintLine[key];
       const search: HintSearch = planned
-        ? { kind: 'move', move: planned, line: {} }
+        ? { kind: 'move', move: planned.move, line: {}, optimal: planned.optimal }
         : suggestPour(board);
       if (search.kind !== 'move') return { kind: search.kind };
 
       /**
-       * Paid before free, free before priced.
+       * Paid before free, free before priced — and perfect before any of it.
+       *
+       * A fallback line (`optimal: false`) is never billed and consumes
+       * nothing, not even the free hint: a paid hint promises the provably
+       * shortest continuation, and an answer the search could not perfect is
+       * not sold — or counted — as one.
        *
        * A position already delivered at is free outright and consumes no
        * allowance — undo brought the board back, the answer came back with
@@ -943,12 +970,18 @@ export const useGameStore = create<GameState>((set, get) => {
        * always re-produces the move that was originally delivered.
        */
       const alreadyDelivered = paidHints.includes(key);
-      const price = alreadyDelivered || hintsUsed < FREE_HINTS ? 0 : PRICES.hint;
+      const counted = search.optimal && !alreadyDelivered;
+      const price = !counted || hintsUsed < FREE_HINTS ? 0 : PRICES.hint;
       // Checked here, deducted after `persistSession` below — the same order
       // as undo, and for the same reason: a crash between the wallet and the
       // record must err toward a free hint, never a double bill.
       if (price > 0 && useEconomyStore.getState().coins < price) {
         return { kind: 'blocked', price };
+      }
+
+      const plan: Record<string, PlannedHint> = {};
+      for (const [position, move] of Object.entries(search.line)) {
+        plan[position] = { move, optimal: search.optimal };
       }
 
       // The source is *armed*, not just highlighted: the hint points, and the
@@ -960,12 +993,12 @@ export const useGameStore = create<GameState>((set, get) => {
         heldHint: search.move,
         // A re-delivery is not a new hint: the count and the record only move
         // when a position is answered for the first time.
-        hintsUsed: alreadyDelivered ? hintsUsed : hintsUsed + 1,
-        paidHints: alreadyDelivered ? paidHints : [...paidHints, key],
+        hintsUsed: counted ? hintsUsed + 1 : hintsUsed,
+        paidHints: counted ? [...paidHints, key] : paidHints,
         // Merged, not replaced: a re-plan after the player wandered off the
         // old route still leaves the old route's answers valid, and undo can
         // walk them back onto it.
-        hintLine: { ...get().hintLine, ...search.line },
+        hintLine: { ...get().hintLine, ...plan },
       });
       persistSession();
       if (price > 0) useEconomyStore.getState().spend(price);

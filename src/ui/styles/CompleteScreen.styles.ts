@@ -118,12 +118,24 @@ export const styles = StyleSheet.create({
    */
   close: {
     position: 'absolute',
-    top: s(12),
-    right: s(12),
+    // Measured so the ink lands where a 12dp inset would put it: the frame is
+    // deliberately larger than the cross (see `closeMark`), so an inset applied
+    // to the frame reads as a wider margin than it is.
+    top: s(6),
+    right: s(6),
     // Above the stars, which straddle the card's top edge and overlap this
     // corner's row. Without it the outer star swallows the press.
     zIndex: 1,
   },
+  /**
+   * The mark's box.
+   *
+   * Larger than the ink inside it: the cross reaches 8 units of a 44-unit
+   * frame, and the frame has to hold both the tilt and the 107% breath without
+   * clipping their corners. `hitSlop` on the Pressable covers the touch area,
+   * so this number is only ever about the drawing.
+   */
+  closeMark: { width: s(28), height: s(28) },
 
   next: { alignSelf: 'stretch', marginTop: s(22) },
   secondary: { flexDirection: 'row', gap: s(10), alignSelf: 'stretch', marginTop: s(10) },

@@ -278,8 +278,9 @@ export const useEconomyStore = create<EconomyState>((set, get) => {
      * track is still on the line. That is the only state the card warns about.
      */
     timeUntilLapse: (now) => {
-      if (claimPhase(get().lastClaimAt, now) !== 'ready') return 0;
-      return timeUntilLapse(get().lastClaimAt, now);
+      const { lastClaimAt } = get();
+      if (claimPhase(lastClaimAt, now) !== 'ready') return 0;
+      return timeUntilLapse(lastClaimAt, now);
     },
 
     claimDaily: (now) => {

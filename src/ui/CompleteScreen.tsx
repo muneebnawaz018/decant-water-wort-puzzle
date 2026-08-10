@@ -60,6 +60,15 @@ const WIN_BURST = require('../../assets/lottie/win.json');
  */
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const COIN_SHOWER = require('../../assets/lottie/coins.json');
+/**
+ * The dismiss cross — `script/make-close.py`.
+ *
+ * It loops, which the README tells you not to do. Same exemption as the coin
+ * pill's sheen and on the same grounds: a 16dp view, on screen for the seconds
+ * a win card is up.
+ */
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const CLOSE_MARK = require('../../assets/lottie/close.json');
 
 /**
  * How long the shower runs, taken from the file itself.
@@ -255,7 +264,17 @@ export const CompleteScreen = memo(function CompleteScreen({
             accessibilityRole="button"
             accessibilityLabel="Close"
           >
-            <Icon name="close" size={s(15)} color={apothecary.inkMuted} />
+            {/* Drawn rather than a glyph — `script/make-close.py`. A static
+                grey cross in the corner of a card full of gold buttons read as
+                part of the frame rather than as a control. The motion is small
+                on purpose: findable, not tempting. */}
+            <LottieView
+              source={CLOSE_MARK}
+              autoPlay
+              loop
+              resizeMode="contain"
+              style={styles.closeMark}
+            />
           </Pressable>
 
           <View style={styles.stars}>

@@ -1,4 +1,3 @@
-import { FREE_HINTS } from '@/game/economy';
 import { coinsFor, coinsForImprovement, starsFor } from '../stars';
 
 /** `par / moves`, the ratio the bands are defined on. */
@@ -107,43 +106,25 @@ describe('coinsForImprovement', () => {
 });
 
 /**
- * A board solved on hints is not a board solved well.
+ * Hints no longer touch the rating.
  *
- * This is the loophole the ceiling closes: efficiency measures the line played,
- * a hint hands the line over, so a fully-walked level rated as optimal play.
- * Coins were the only cost, and coins are exactly what hints are cheapest to
- * buy with.
+ * A per-hint ceiling existed while hints followed a merely-good line; it came
+ * out when they became the provably shortest one. Perfect advice that lowers
+ * the score of the player taking it teaches them not to take it, and the
+ * economy already prices the help: a fully-hinted board costs more in hints
+ * than its stars pay back. The rating judges the line played, whoever supplied
+ * it.
  */
-describe('hints lower the ceiling', () => {
-  it('leaves the free one harmless', () => {
-    // One free hint per level is the tutorial (`FREE_HINTS`). Answering
-    // "what now?" once is not being shown the board.
-    expect(starsFor(10, 10, 0)).toBe(3);
-    expect(starsFor(10, 10, FREE_HINTS)).toBe(3);
+describe('hints and the rating', () => {
+  it('rates a hinted optimal run as what it is — optimal', () => {
+    // Follow every hint from move one and you finish at par.
+    expect(starsFor(10, 10)).toBe(3);
   });
 
-  it('drops a star for each hint after it', () => {
-    expect(starsFor(10, 10, FREE_HINTS + 1)).toBe(2);
-    expect(starsFor(10, 10, FREE_HINTS + 2)).toBe(1);
-  });
-
-  it('floors at one, however many were taken', () => {
-    // There is no fail state, so a finished board always pays something.
-    expect(starsFor(10, 10, 50)).toBe(1);
-    expect(starsFor(10, 10, 500)).toBe(1);
-  });
-
-  it('is a ceiling, not a penalty', () => {
-    // A sloppy run with one paid hint still scores what it played, not two.
-    expect(starsFor(21, 10, 0)).toBe(1);
-    expect(starsFor(21, 10, FREE_HINTS + 1)).toBe(1);
-  });
-
-  it('never raises a rating', () => {
-    for (const hints of [0, 1, 2, 5]) {
-      for (const moves of [10, 12, 20, 40]) {
-        expect(starsFor(moves, 10, hints)).toBeLessThanOrEqual(starsFor(moves, 10, 0));
-      }
-    }
+  it('takes only two arguments now — the ceiling is gone', () => {
+    // Pinned so the ceiling cannot quietly return: the signature itself is
+    // the contract. A third parameter reappearing here is an API change, not
+    // a default.
+    expect(starsFor.length).toBe(2);
   });
 });

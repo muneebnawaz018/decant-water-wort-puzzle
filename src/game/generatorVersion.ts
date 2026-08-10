@@ -24,4 +24,4 @@
  * A repointed generator shipped without a bump is exactly the silent
  * corruption this exists to catch.
  */
-export const GENERATOR_VERSION = 1;
+export const GENERATOR_VERSION = 2;

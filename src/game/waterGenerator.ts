@@ -3,7 +3,7 @@ import { fragmentation, moveLowerBound, solve } from '@/core/solver';
 import type { Colour, LevelParams, WaterState } from '@/core/types';
 import { isTubeComplete, topRun } from '@/core/waterCore';
 import { DEFAULT_DIFFICULTY, DIFFICULTY_SALT, type Difficulty } from './difficulty';
-import { paramsForLevel } from './levelParams';
+import { generationForLevel } from './levelParams';
 
 export interface InversePour {
   from: number;
@@ -35,11 +35,10 @@ export interface AcceptanceOptions {
    * a longer scramble does not help — 400 steps gives the same distribution as
    * 130, because each extra step is as likely to cap a tube as to uncap one.
    *
-   * **Unbounded by default, deliberately.** Every generated level is rebuilt
-   * from its seed and nothing about a board is stored, so tightening this gate
-   * would change which attempt is accepted and repoint every player's progress
-   * at different puzzles. Boards that are *not* levels — the daily bonus — have
-   * no such history and set it.
+   * **Unbounded by default.** The per-level gate ramp in `generationForLevel`
+   * is what sets it for high levels, and the daily bonus sets it outright —
+   * both are part of the save format, so moving either repoints boards and
+   * needs a `GENERATOR_VERSION` bump in the same commit.
    */
   maxCappedTubes?: number;
   /** Node ceiling for the solvability check. */
@@ -282,10 +281,18 @@ export function generateLevel(
   difficulty: Difficulty = DEFAULT_DIFFICULTY,
   options: GenerateOptions = {}
 ): GeneratedLevel {
-  const maxAttempts = options.maxAttempts ?? 40;
-  const sampleSize = options.sampleSize ?? 8;
-  const params = options.params ?? paramsForLevel(level, difficulty);
-  const seed = options.seed ?? seedForLevel(level, DIFFICULTY_SALT[difficulty]);
+  // A real level brings its own gate from the curve — see `generationForLevel`,
+  // which is how difficulty keeps growing after the shape params max out. A
+  // caller that supplies `params` is building a board that is not a level (the
+  // daily bonus) and owns its gate outright; deriving one from a day number
+  // would be nonsense.
+  const derived = options.params ? {} : generationForLevel(level, difficulty);
+  const merged: GenerateOptions = { ...derived, ...options };
+
+  const maxAttempts = merged.maxAttempts ?? 40;
+  const sampleSize = merged.sampleSize ?? 8;
+  const params = merged.params!;
+  const seed = merged.seed ?? seedForLevel(level, DIFFICULTY_SALT[difficulty]);
 
   let bestAccepted: {
     state: WaterState;
@@ -298,11 +305,32 @@ export function generateLevel(
     attempt: number;
   } | null = null;
 
+  /**
+   * Fallback ranking, for when no attempt clears the gate: closest to the
+   * gate first, by the gate's own priorities. Capped tubes outrank
+   * fragmentation because they are what the tight tiers exist to squeeze —
+   * ranked by fragmentation alone, an unsatisfiable gate handed back a
+   * high-fragmentation board carrying four pre-played tubes, which is the
+   * exact board the tier was written to refuse. Only excess above the
+   * allowance counts, so a loose gate leaves the old fragmentation ranking
+   * untouched.
+   */
+  const cappedAllowance = merged.maxCappedTubes ?? Infinity;
+  const better = (candidate: AcceptanceReport, incumbent: AcceptanceReport): boolean => {
+    const excess = (report: AcceptanceReport): number =>
+      Number.isFinite(cappedAllowance)
+        ? Math.max(0, report.cappedTubes - cappedAllowance)
+        : 0;
+    if (excess(candidate) !== excess(incumbent))
+      return excess(candidate) < excess(incumbent);
+    return candidate.fragmentation > incumbent.fragmentation;
+  };
+
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     // Vary the seed per attempt, but stay deterministic for a given level.
     const rng = createRng((seed + attempt * 0x9e3779b9) >>> 0);
     const state = scramble(buildSolved(params, rng), params.scrambleSteps, rng);
-    const report = isAcceptable(state, options);
+    const report = isAcceptable(state, merged);
     const candidate = { state, report, attempt: attempt + 1 };
 
     if (report.accepted) {
@@ -312,7 +340,7 @@ export function generateLevel(
       // Enough good boards seen; take the best of them.
       if (attempt + 1 >= sampleSize) break;
     }
-    if (!bestOverall || report.fragmentation > bestOverall.report.fragmentation) {
+    if (!bestOverall || better(report, bestOverall.report)) {
       bestOverall = candidate;
     }
   }

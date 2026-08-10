@@ -231,19 +231,43 @@ Reanimated already cover vector icons and UI-thread motion.
 
 ## Difficulty modes
 
-Three modes in `src/game/difficulty.ts`: gentle, classic, fiendish. They spend
-the lever doc §5 names — spare tubes — rather than colour count alone, and a
-board never drops below one spare tube. Each mode keeps its **own** unlocks,
-current level, and best scores (`progress.v2`, keyed by mode).
+Three modes in `src/game/difficulty.ts`: gentle, classic, fiendish. **Each mode
+owns a whole curve table in `levelParams.ts`** — not one shared table with
+modifiers. The modifier design ("fiendish = classic + 1 colour − 1 spare") had
+two structural bugs: the `−1 spare` hit the one-spare floor at level 1, so
+fiendish burned the game's main lever before its first board and the mode gap
+_halved_ at 201 when classic finally jumped; and the `+1 colour` collided with
+the 12-colour clamp in the rotating endgame, making a third of fiendish's
+endgame classic's exact shape on a different seed. Own tables: fiendish starts
+at two spares and spends them at 101 (a hundred levels before classic's 201),
+runs a fixed 12-colour endgame, and gentle never drops below two spares, never
+leaves capacity 4, and never tightens its gate — the relaxation promise held
+structurally. A board never drops below one spare tube anywhere. Each mode
+keeps its **own** unlocks, current level, and best scores (keyed by mode).
+
+**Difficulty keeps growing after the shape dials max out, via the acceptance
+gate.** Colours cap at 12 (palette), capacity at 5 (solver cost), spares floor
+at 1 and scramble saturates — so `generationForLevel` ramps the _gate_ instead:
+fragmentation floor rising, then zero pre-solved tubes, then capped tubes
+squeezed down. Classic ramps from 501; fiendish from 401, reaching the daily
+bonus's construction (`maxSolvedTubes: 0`, `maxCappedTubes: 1`) by 1301 — the
+untightened endgame median was five capped tubes, half the board pre-played.
+The frag ceilings (0.55 classic, 0.56 fiendish) are measured joint-feasibility,
+not aspiration: aimed higher, every attempt failed the gate and the whole
+attempt budget burned on each load. When no attempt passes, `generateLevel`
+falls back to the closest-to-gate board — ranked by capped-tube excess first,
+fragmentation second. Breathers (every 10th level) keep the loose gate.
 
 **Determinism is load-bearing and must not be broken.** No board is ever stored;
 level N in a mode is rebuilt from `seedForLevel(level, DIFFICULTY_SALT[mode])`.
-That means the difficulty curve, the salts, the generator, and the RNG are all
-part of the save format in practice. Changing any of them silently repoints
-every player's progress at different puzzles.
-`src/game/__tests__/difficulty.test.ts` pins level 30 against a recorded
-fingerprint to catch exactly that; if it fails, the fix is a migration, not a
-re-recorded expectation.
+That means the difficulty curves, the gate ramps, the salts, the generator, and
+the RNG are all part of the save format in practice. Changing any of them
+silently repoints every player's progress at different puzzles.
+`src/game/__tests__/difficulty.test.ts` pins level 30 in **all three modes**
+against recorded fingerprints to catch exactly that; if one fails, the fix is a
+migration, not a re-recorded expectation. Classic's curve is byte-identical to
+the original shared table below 501, on purpose — its pin proves the mode
+rewrite moved no tuned board. `GENERATOR_VERSION` is at 2 for the rewrite.
 
 Storage keys were bumped to `progress.v2` / `settings.v2` when modes landed. The
 old v1 records are ignored rather than migrated — acceptable pre-release,
@@ -693,6 +717,25 @@ several times slower than the machine those numbers came from. Until it lands
 old direction — too strict, never too generous. A result arriving after the
 player has moved on is discarded, and a board that exhausts the node cap keeps
 the bound.
+
+That one deferred search now feeds two things. `optimalLine` in `solver.ts`
+returns the shortest winning line itself — the path was always on IDA*'s stack;
+`optimalMoves` is a wrapper that keeps only its length — and `refinePar` seeds
+the whole line into `hintLine`, so par and the hint plan arrive together and
+the first Hint press on an untouched board costs no search at all.
+
+**Hints follow that optimal line — a hint is the provably shortest
+continuation.** The DFS line hints used to hand out ran ~20% over the optimum
+(median 1.20x), which silently capped a fully-hinted run below three stars:
+advice that lowers the score of the player taking it. A press answers from the
+cached plan; walking off the plan re-plans from the current position under a
+node budget (`HINT_OPTIMAL_BUDGET`), and a position that will not close inside
+it falls back to the DFS line, delivered with `optimal: false` and **never
+billed** — it consumes neither coins nor the free hint, and continuing a
+fallback plan stays free too (`hintLine` entries carry the flag). The
+per-paid-hint star ceiling from `stars.ts` came out in the same change: with
+hints perfect, a fully-hinted run legitimately finishes at par, and the economy
+already prices the help — hints cost more than the stars they unlock pay back.
 
 Par measures the **generated** board, not the one on screen. Taking the spare
 vial makes a level easier to finish but does not make it a different puzzle —

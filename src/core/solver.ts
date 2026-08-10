@@ -154,9 +154,33 @@ export function solve(state: WaterState, options: SolveOptions = {}): SolveResul
  * not needed until a level is solved.
  */
 export function optimalMoves(state: WaterState, options: SolveOptions = {}): number | null {
+  return optimalLine(state, options).moves?.length ?? null;
+}
+
+/**
+ * The shortest winning line itself, not just its length.
+ *
+ * Same IDA* as `optimalMoves` — this *is* `optimalMoves`; the count is the
+ * line's length — but the path is kept as the search walks, because the hint
+ * needs the moves and not merely their number. The path costs nothing extra to
+ * record: it is the recursion stack, pushed and popped as the walk goes, and
+ * the first round that reaches a solved board leaves the whole shortest line
+ * sitting in it.
+ *
+ * `exhaustedBudget` is the same distinction `solve` draws, and it matters for
+ * the same reason: `moves: null` with the budget intact is proof the board
+ * cannot be finished, while `moves: null` on an exhausted budget is only the
+ * search giving up. A hint charges money on the first and must not on the
+ * second.
+ */
+export function optimalLine(
+  state: WaterState,
+  options: SolveOptions = {}
+): { moves: PourMove[] | null; exhaustedBudget: boolean } {
   const nodeBudget = options.nodeBudget ?? 2_000_000;
   let nodesVisited = 0;
   let bound = moveLowerBound(state);
+  const path: PourMove[] = [];
 
   // Each round searches everything reachable within `bound` pours, then raises
   // the bound to the cheapest thing it had to turn away. The first round that
@@ -185,16 +209,19 @@ export function optimalMoves(state: WaterState, options: SolveOptions = {}): num
       for (const candidate of orderedMoves(current)) {
         const applied = applyPour(current, candidate.from, candidate.to);
         if (!applied) continue;
+        path.push(applied.move);
         if (walk(applied.state, cost + 1)) return true;
+        path.pop();
         if (nodesVisited >= nodeBudget) return false;
       }
       return false;
     };
 
-    if (walk(state, 0)) return bound;
-    if (nodesVisited >= nodeBudget) return null;
+    if (walk(state, 0)) return { moves: [...path], exhaustedBudget: false };
+    if (nodesVisited >= nodeBudget) return { moves: null, exhaustedBudget: true };
     // Nothing left to raise the bound to: the board cannot be finished.
-    if (nextBound === Infinity) return null;
+    if (nextBound === Infinity) return { moves: null, exhaustedBudget: false };
     bound = nextBound;
+    path.length = 0;
   }
 }

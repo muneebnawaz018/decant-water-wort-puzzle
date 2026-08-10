@@ -1,6 +1,6 @@
 import { DIFFICULTIES } from '@/game/difficulty';
 import { generateLevel } from '@/game/waterGenerator';
-import { moveLowerBound, optimalMoves } from '../solver';
+import { moveLowerBound, optimalLine, optimalMoves } from '../solver';
 import type { WaterState } from '../types';
 import { applyPour, canPour, isSolved } from '../waterCore';
 
@@ -91,6 +91,65 @@ describe('optimalMoves', () => {
       tubes: [[0, 0], [1, 1], []],
     };
     expect(optimalMoves(solved)).toBe(0);
+  });
+
+  /**
+   * The line, not just the count — what the hint follows. `optimalMoves` is a
+   * wrapper over this, so the count tests above already exercise the search;
+   * these pin what the wrapper throws away.
+   */
+  describe('optimalLine', () => {
+    it('returns a line that replays to solved in exactly the optimal count', () => {
+      for (const [level, mode] of [
+        [12, 'classic'],
+        [120, 'fiendish'],
+        [301, 'gentle'],
+      ] as const) {
+        const { state } = generateLevel(level, mode);
+        const line = optimalLine(state);
+
+        expect(line.moves).not.toBeNull();
+        expect(line.moves!.length).toBe(optimalMoves(state));
+
+        let position = state;
+        for (const move of line.moves!) {
+          expect(canPour(position, move.from, move.to)).toBe(true);
+          position = applyPour(position, move.from, move.to)!.state;
+        }
+        expect(isSolved(position)).toBe(true);
+      }
+    }, 60_000);
+
+    it('answers a solved board with an empty line, not a null', () => {
+      const solved: WaterState = {
+        capacity: 2,
+        colourCount: 2,
+        extraTubes: 1,
+        tubes: [[0, 0], [1, 1], []],
+      };
+      expect(optimalLine(solved)).toEqual({ moves: [], exhaustedBudget: false });
+    });
+
+    it('tells an exhausted budget apart from a proven dead end', () => {
+      const { state } = generateLevel(700, 'fiendish');
+      expect(optimalLine(state, { nodeBudget: 5 })).toEqual({
+        moves: null,
+        exhaustedBudget: true,
+      });
+
+      // Two colours interleaved with no working space: no pour is legal, so
+      // the search proves the position dead without spending its budget.
+      const dead: WaterState = {
+        capacity: 2,
+        colourCount: 2,
+        extraTubes: 0,
+        tubes: [
+          [0, 1],
+          [1, 0],
+        ],
+      };
+      expect(optimalLine(dead)).toEqual({ moves: null, exhaustedBudget: false });
+    });
   });
 
   it('prunes hard on the worst boards the game generates', () => {

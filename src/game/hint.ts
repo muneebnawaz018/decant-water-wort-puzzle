@@ -1,27 +1,31 @@
 import type { PourMove, WaterState } from '@/core/types';
-import { solve } from '@/core/solver';
+import { optimalLine, solve } from '@/core/solver';
 import { applyPour } from '@/core/waterCore';
 
 /**
  * The pour a hint should point at, or null when the board cannot be won.
  *
- * ## Why this asks the solver
+ * ## The hint is the perfect line
  *
- * The first version scanned for the first legal pour, top-left first, and
- * suggested that. It was not a hint — it was "here is *a* move", and on a
- * fragmented board the first legal pour is very often the one that wrecks it.
- * A player who trusts a hint that loses the level is worse off than one who was
- * never offered help, because they have no way to tell which kind they got.
+ * `optimalLine` is asked first: IDA* over the position, returning the provably
+ * shortest winning line. A hint that costs coins has to be worth trusting all
+ * the way down — the DFS line it used to hand out was a *winning* line but ran
+ * ~20% over the optimum (median 1.20x, worst 1.94x), which meant a player who
+ * followed every hint faithfully still could not rate three stars. Advice that
+ * caps the score of the person taking it is not advice.
  *
- * `solve` returns a full winning line, so its first move is guaranteed to lie
- * on a path to a solved board. Not the *shortest* path — `solve` is a plain
- * depth-first search and is explicitly not trying to be optimal — but on a
- * winning one, which is the property a hint has to have.
+ * The old objection — "IDA* returns a count, not a path" — was answered by
+ * teaching it to keep the path, which it already had on its stack. One search
+ * per plan, not one per child board, and the plan is cached position by
+ * position in `hintLine`, so the expensive call happens when the player walks
+ * off the plan, not on every press.
  *
- * Optimal was considered and is not affordable. `optimalMoves` returns a move
- * *count*, not a path, so the best next move would mean running IDA* once per
- * child board — the branching factor times up to 133ms, on Hermes, on the UI
- * thread. `solve` costs a fraction of that and answers the question asked.
+ * ## The fallback is honest and free
+ *
+ * A board that exhausts the optimal budget falls back to `solve` — the same
+ * good-but-not-shortest DFS line as before, delivered with `optimal: false`.
+ * The caller charges nothing for it: a paid hint promises the perfect answer,
+ * and an answer the search could not perfect is not sold as one.
  *
  * ## Null means stuck, and it is worth saying so
  *
@@ -43,8 +47,10 @@ export type HintSearch =
    * `line` maps every position along the way to the move that leaves it, keyed
    * by `positionKey`. The caller keeps it and answers from it, which is what
    * makes consecutive hints agree with each other — see `suggestPour`.
+   * `optimal` is whether that line is the provably shortest one, which decides
+   * whether it may be charged for.
    */
-  | { kind: 'move'; move: PourMove; line: Record<string, PourMove> }
+  | { kind: 'move'; move: PourMove; line: Record<string, PourMove>; optimal: boolean }
   /** The search finished and no winning line exists. Certain, not a guess. */
   | { kind: 'stuck' }
   /**
@@ -59,44 +65,78 @@ export type HintSearch =
   | { kind: 'unsure' };
 
 export function suggestPour(board: WaterState): HintSearch {
+  const exact = optimalLine(board, { nodeBudget: HINT_OPTIMAL_BUDGET });
+  // An already-solved board answers with an empty line — nothing to point at,
+  // which is the same news as `stuck`: no pour worth suggesting exists.
+  if (exact.moves && exact.moves.length > 0) {
+    return {
+      kind: 'move',
+      move: exact.moves[0]!,
+      line: lineMap(board, exact.moves),
+      optimal: true,
+    };
+  }
+  // Budget intact and no line: proof there is nothing to find, at any price.
+  if (!exact.exhaustedBudget) return { kind: 'stuck' };
+
+  // The optimal search gave up, so fall back to any winning line. Still real
+  // advice — every move on it reaches a solved board — just not sold as
+  // perfect, and not billed.
   const result = solve(board, { nodeBudget: HINT_NODE_BUDGET });
   const first = result.moves?.[0];
   if (!first) return result.exhaustedBudget ? { kind: 'unsure' } : { kind: 'stuck' };
 
-  /**
-   * The whole line, not just its head — and this is load-bearing.
-   *
-   * Returning only the first move meant every press ran its own search, and
-   * two searches from adjacent positions do not have to agree: `solve` is a
-   * depth-first walk that returns *a* winning line, not the shortest, so from
-   * P it would answer "4 → 5" and from the position that produces, "5 → 4".
-   * Both are genuinely on winning lines. Following them alternates forever.
-   *
-   * Measured on level 1,000,000: two of the three modes cycled inside four
-   * moves and never reached solved. With a paid hint that is a button charging
-   * for a loop, which is the worst version of the bug.
-   *
-   * Handing back the line fixes it by construction. The caller answers every
-   * position on it from the same walk, so the advice is one plan followed to
-   * the end rather than a fresh opinion each time. A player who ignores it and
-   * pours something else simply falls off the line, and the next press plans
-   * again from wherever they now are.
-   */
-  const line: Record<string, PourMove> = {};
-  let position = board;
-  for (const move of result.moves!) {
-    line[positionKey(position)] = move;
-    position = applyPour(position, move.from, move.to)!.state;
-  }
-
-  return { kind: 'move', move: first, line };
+  return { kind: 'move', move: first, line: lineMap(board, result.moves!), optimal: false };
 }
 
 /**
- * Ceiling on the search, so a hint can never stall the UI.
+ * A line as position → move, which is the shape consecutive hints answer from.
+ *
+ * The whole line, not just its head — and this is load-bearing. Returning only
+ * the first move meant every press ran its own search, and two searches from
+ * adjacent positions do not have to agree; measured on level 1,000,000, two of
+ * the three modes cycled inside four moves and never reached solved. With a
+ * paid hint that is a button charging for a loop.
+ *
+ * Handing back the line fixes it by construction: the caller answers every
+ * position on it from the same walk, so the advice is one plan followed to the
+ * end. A player who pours something else simply falls off the line, and the
+ * next press plans again from wherever they now are.
+ */
+export function lineMap(
+  board: WaterState,
+  moves: readonly PourMove[]
+): Record<string, PourMove> {
+  const line: Record<string, PourMove> = {};
+  let position = board;
+  for (const move of moves) {
+    line[positionKey(position)] = move;
+    position = applyPour(position, move.from, move.to)!.state;
+  }
+  return line;
+}
+
+/**
+ * Ceiling on the optimal search.
  *
  * This runs synchronously on the JS thread when the button is pressed, so the
- * only question that matters is the worst case, not the average.
+ * only question that matters is the worst case, not the average. IDA* over the
+ * generator's own boards closes in a few dozen nodes most of the time — over
+ * 800 endgame boards the median was 1ms and the p95 11ms on a laptop — but the
+ * worst single board took 133ms, and Hermes on a phone is several times
+ * slower. The budget is what turns "several times 133ms" into a fallback
+ * instead of a freeze: a position that will not close inside it drops to the
+ * DFS line below, free of charge.
+ *
+ * Mostly the expensive call never happens at the button at all. The level's
+ * whole optimal line is computed off the load path alongside par and seeded
+ * into `hintLine`, so a press only searches after the player has walked off
+ * the plan — from a position closer to solved than the start was.
+ */
+const HINT_OPTIMAL_BUDGET = 400_000;
+
+/**
+ * Ceiling on the fallback search, so a hint can never stall the UI.
  *
  * Measured over those same 1,407 positions — random legal play, 12 colours,
  * capacity 5, one spare, which is the hardest the generator goes: median 21

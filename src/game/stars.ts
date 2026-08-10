@@ -1,4 +1,4 @@
-import { EARNINGS, FREE_HINTS } from './economy';
+import { EARNINGS } from './economy';
 
 /**
  * Efficiency a run needs for three stars, as `par / moves`.
@@ -56,32 +56,15 @@ const TWO_STAR_EFFICIENCY = 0.5;
  * One star has no lower limit, and that is the design: there is no fail state
  * (doc §4), so five hundred pours on a fifteen-move board is still a win.
  *
- * **Hints lower the ceiling**, and they have to. Efficiency measures the *line
- * played*, and a hint hands the line over — a board solved entirely on hints
- * scores as optimal play the player did not do, which is how a fully-walked
- * level came back two and three stars. Coins were the only cost, and coins are
- * the thing hints are cheapest to buy with.
- *
- * The level's free hint costs nothing here. It is the tutorial (see
- * `FREE_HINTS`), and answering "what now?" once is not the same as being shown
- * the board. Every hint after it drops the ceiling by one, to a floor of one
- * star — so a couple of nudges still leave a good run worth two, and a board
- * walked move by move is worth exactly what finishing anything is worth.
+ * **Hints do not cap the rating.** A ceiling per paid hint was tried and taken
+ * out again when hints became the provably shortest line: perfect advice that
+ * lowers the score of the player taking it teaches them not to take it, and
+ * the economy already prices the lesson — a fully-hinted board costs more in
+ * hints than its stars pay back, so the rating can afford to be honest about
+ * the line that was played.
  */
-export function starsFor(moves: number, par: number, hintsUsed = 0): number {
-  return Math.min(hintCeiling(hintsUsed), efficiencyStars(moves, par));
-}
-
-/**
- * The most a run can score, given how many hints it leant on.
- *
- * Separate from the rating so the two read as what they are: one measures how
- * the board was played, the other caps how much credit that can earn. Combining
- * them into one expression made both harder to change.
- */
-function hintCeiling(hintsUsed: number): number {
-  const paid = Math.max(0, hintsUsed - FREE_HINTS);
-  return Math.max(1, 3 - paid);
+export function starsFor(moves: number, par: number): number {
+  return efficiencyStars(moves, par);
 }
 
 function efficiencyStars(moves: number, par: number): number {

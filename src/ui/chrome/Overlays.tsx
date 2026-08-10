@@ -1,5 +1,5 @@
 import LottieView from 'lottie-react-native';
-import { memo, useCallback, useEffect } from 'react';
+import { memo, useCallback, useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   FadeIn,
@@ -64,14 +64,41 @@ export const Overlays = memo(function Overlays() {
 
 const ModalHost = memo(function ModalHost() {
   const modal = useOverlayStore((state) => state.modal);
+  const modalId = useOverlayStore((state) => state.modalId);
   const closeModal = useOverlayStore((state) => state.closeModal);
-  const scale = useSharedValue(0.9);
+
+  /**
+   * Open at full size if a dialog is already up when this mounts.
+   *
+   * The card sprang from 0.9 on every mount, and a spring with this damping
+   * overshoots — which is fine as an entrance and wrong as a re-entrance. A
+   * full-screen ad closing remounts this host with the dialog still open, so
+   * the reward card grew past its size and settled back every time an ad
+   * finished. Reported on both platforms; the ad activity is the trigger.
+   */
+  const scale = useSharedValue(modal ? 1 : 0.9);
+
+  /**
+   * Which dialog the spring has already played for.
+   *
+   * Keyed on `modalId` rather than on the spec's identity: the id changes once
+   * per dialog raised, where identity also changes on a remount. Seeded with
+   * whatever is open at mount, so the animation is skipped for a card that was
+   * already on screen and runs normally for the next one.
+   */
+  const animatedFor = useRef(modal ? modalId : null);
 
   useEffect(() => {
-    scale.value = modal
-      ? withSpring(1, { damping: 14, stiffness: 180 })
-      : withTiming(0.9, { duration: 120 });
-  }, [modal, scale]);
+    if (!modal) {
+      scale.value = withTiming(0.9, { duration: 120 });
+      animatedFor.current = null;
+      return;
+    }
+
+    if (animatedFor.current === modalId) return;
+    animatedFor.current = modalId;
+    scale.value = withSpring(1, { damping: 14, stiffness: 180 });
+  }, [modal, modalId, scale]);
 
   const animated = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],

@@ -1,9 +1,10 @@
 import { createRng } from '@/core/rng';
-import { solve } from '@/core/solver';
+import { optimalMoves, solve } from '@/core/solver';
 import type { WaterState } from '@/core/types';
 import { applyPour, canPour, isSolved } from '@/core/waterCore';
 import { DIFFICULTIES } from '@/game/difficulty';
-import { HINT_NODE_BUDGET, suggestPour } from '@/game/hint';
+import { HINT_NODE_BUDGET, positionKey, suggestPour } from '@/game/hint';
+import { starsFor } from '@/game/stars';
 import { generateLevel } from '@/game/waterGenerator';
 
 /** Every legal pour from a position, for walking a board into a mess. */
@@ -138,5 +139,53 @@ describe('suggestPour', () => {
 
     expect(isSolved(solvedBoard)).toBe(true);
     expect(suggestPour(solvedBoard).kind).toBe('stuck');
+  });
+
+  /**
+   * The promise the rewrite exists for: a hint is the provably shortest
+   * continuation, so a player who follows every hint from the first move
+   * finishes at par and rates three stars. The old DFS line ran ~20% over the
+   * optimum, which silently capped a fully-hinted run at two.
+   */
+  it('walks a board to solved in exactly par moves, worth three stars', () => {
+    for (const [level, mode] of [
+      [8, 'classic'],
+      [55, 'gentle'],
+      [130, 'fiendish'],
+    ] as const) {
+      const start = generateLevel(level, mode).state;
+      const par = optimalMoves(start)!;
+
+      let board = start;
+      let moves = 0;
+      // Follow the plan the way the store does: answer from the line while
+      // the position is on it, re-search only after falling off. Here nothing
+      // falls off, so one search should carry the whole walk.
+      const line = ((): Record<string, { from: number; to: number }> => {
+        const search = suggestPour(board);
+        expect(search.kind).toBe('move');
+        return search.kind === 'move' ? search.line : {};
+      })();
+
+      while (!isSolved(board) && moves <= par) {
+        const planned = line[positionKey(board)];
+        // A position missing from the plan leaves the walk unfinished, and
+        // the solved assertion below is what reports it.
+        if (!planned) break;
+        board = applyPour(board, planned.from, planned.to)!.state;
+        moves++;
+      }
+
+      expect(isSolved(board)).toBe(true);
+      expect(moves).toBe(par);
+      expect(starsFor(moves, par)).toBe(3);
+    }
+  }, 60_000);
+
+  it('marks the line it sells as optimal', () => {
+    const search = suggestPour(generateLevel(9, 'classic').state);
+    // The flag is what billing reads: only an `optimal: true` delivery may be
+    // charged for, so the search vouching for its own line is the contract.
+    expect(search).toMatchObject({ kind: 'move', optimal: true });
   });
 });

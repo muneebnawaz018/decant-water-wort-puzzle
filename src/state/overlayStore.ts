@@ -82,6 +82,15 @@ interface CelebrationSpec {
 
 export interface OverlayState {
   modal: ModalSpec | null;
+  /**
+   * Bumped every time a dialog is raised.
+   *
+   * The open animation keys off this rather than off `modal`'s identity, so it
+   * runs once per dialog and not once per mount. `ModalHost` can be remounted
+   * with a dialog already on screen — coming back from a full-screen ad does
+   * exactly that — and re-running a spring there makes an open card jump.
+   */
+  modalId: number;
   toast: string | null;
   /** Bumped per toast so the same text twice still re-triggers the animation. */
   toastId: number;
@@ -124,12 +133,13 @@ export interface OverlayState {
  */
 export const useOverlayStore = create<OverlayState>((set, get) => ({
   modal: null,
+  modalId: 0,
   toast: null,
   toastId: 0,
   drawer: false,
   celebration: null,
 
-  showModal: (spec) => set({ modal: spec }),
+  showModal: (spec) => set({ modal: spec, modalId: get().modalId + 1 }),
   closeModal: () => set({ modal: null }),
   celebrate: (kind, onDone) =>
     set({ celebration: { id: (get().celebration?.id ?? 0) + 1, kind, onDone } }),
