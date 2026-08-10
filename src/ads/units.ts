@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { TestIds } from 'react-native-google-mobile-ads';
 
 /**
@@ -36,7 +37,26 @@ import { TestIds } from 'react-native-google-mobile-ads';
  */
 const liveAllowed = !__DEV__ && process.env.EXPO_PUBLIC_ADMOB_LIVE === 'true';
 
+/**
+ * The rewarded unit for this platform.
+ *
+ * **One per platform, never shared.** An AdMob ad unit belongs to a single app
+ * entry, and Android and iOS are always two separate entries with two separate
+ * App IDs — so a unit minted for the Android app is meaningless to the iOS one.
+ * Passing the same string to both is a request AdMob answers with no-fill
+ * forever, which looks exactly like poor demand rather than a wiring mistake.
+ *
+ * `Platform.select` rather than a runtime branch so the unreachable platform's
+ * lookup is never evaluated, and so adding a third platform is a compile error
+ * rather than a silent fallback.
+ */
 export function rewardedUnitId(): string {
   if (!liveAllowed) return TestIds.REWARDED;
-  return process.env.EXPO_PUBLIC_ADMOB_REWARDED ?? TestIds.REWARDED;
+
+  const live = Platform.select({
+    android: process.env.EXPO_PUBLIC_ADMOB_REWARDED_ANDROID,
+    ios: process.env.EXPO_PUBLIC_ADMOB_REWARDED_IOS,
+  });
+
+  return live ?? TestIds.REWARDED;
 }

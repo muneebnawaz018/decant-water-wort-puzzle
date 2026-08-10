@@ -122,24 +122,23 @@ company before launch — every one of those impressions would be live.
 
 Two files, then a prebuild.
 
-**`app.config.ts`** — the plugin block. These go into
+**`.env`** — the App IDs, read by `app.config.ts`. These go into
 `AndroidManifest.xml` and `Info.plist`, which is why they cannot be a runtime
 value: they are read before any JavaScript runs, and a mismatch crashes the app
 at launch rather than failing an ad request.
 
-```ts
-androidAppId: 'ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY',
-iosAppId:     'ca-app-pub-XXXXXXXXXXXXXXXX~ZZZZZZZZZZ',
+```bash
+ADMOB_ANDROID_APP_ID=ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY
+ADMOB_IOS_APP_ID=ca-app-pub-XXXXXXXXXXXXXXXX~ZZZZZZZZZZ
 ```
 
-**`src/ads/units.ts`** — the unit, and the switch.
+**`.env`** — the units and the switch. One unit per platform: an ad unit
+belongs to a single AdMob app entry, and Android and iOS are always two.
 
-```ts
-const LIVE: { rewarded: string | null } = {
-  rewarded: 'ca-app-pub-XXXXXXXXXXXXXXXX/WWWWWWWWWW',
-};
-
-const LIVE_ADS_ENABLED = true; // only once the app is on a store
+```bash
+EXPO_PUBLIC_ADMOB_REWARDED_ANDROID=ca-app-pub-XXXXXXXXXXXXXXXX/WWWWWWWWWW
+EXPO_PUBLIC_ADMOB_REWARDED_IOS=ca-app-pub-XXXXXXXXXXXXXXXX/VVVVVVVVVV
+EXPO_PUBLIC_ADMOB_LIVE=true          # only once the app is on a store
 ```
 
 Then:
