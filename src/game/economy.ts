@@ -214,20 +214,43 @@ export const EARNINGS = {
   adMultiplier: 2,
 
   /**
-   * The daily bonus puzzle, paid flat on completion.
+   * The daily bonus puzzle, **per star** — so 40, 80 or 120.
    *
-   * Flat rather than by stars, and that is the one place this game pays for
-   * finishing rather than for finishing well. The board is the hardest shape
-   * the generator can produce — twelve colours, one spare tube — so par on it
-   * is long and a star rating would mostly measure patience. It is also once a
-   * day, which caps it: no amount of grinding turns 120 into an income.
+   * It used to be a flat 120 on completion, on the reasoning that the board was
+   * always the hardest shape the generator makes and a star rating there would
+   * mostly measure patience. The board is no longer always that shape — it
+   * follows the player now (see `BREW_LEAD`) — so the reasoning went with it,
+   * and a flat payout would hand the same 120 to a six-colour brew and a
+   * twelve-colour one.
    *
-   * Sized between a good level (60) and a milestone block (up to 180). Above a
-   * level because it is harder than any level; below a block because a block is
-   * ten levels of work.
+   * Stars are what this game already uses to say how well a board was played,
+   * and they need no second dial: there is no fail state, so a finished brew
+   * always pays at least 40, and the ceiling stays exactly where the flat
+   * payout was. Twice the rate a level pays per star, because it is once a day
+   * and cannot be farmed.
+   *
+   * Three stars still sits between a good level (60) and a milestone block (up
+   * to 180): above a level because it is harder than the player's own ladder,
+   * below a block because a block is ten levels of work.
    */
-  bonusPuzzle: 120,
+  bonusPuzzlePerStar: 40,
 } as const;
+
+/**
+ * How far beyond the player the daily brew reaches, in levels.
+ *
+ * The brew is generated on the Hard curve at `furthest + BREW_LEAD`, so it is
+ * always harder than anything on the player's own ladder without ever being a
+ * wall. Thirty is measured against the curve rather than picked: it puts a
+ * beginner on a six-colour board — clearly above the four-colour boards they
+ * are learning on, and finishable — reaches the first single-spare board
+ * around level 100, and arrives at the twelve-colour ceiling near 400, after
+ * which it stops mattering because the curve itself has saturated.
+ *
+ * Additive rather than proportional for that last reason: the curve tops out,
+ * so a multiplier would only overshoot into a clamp.
+ */
+export const BREW_LEAD = 30;
 
 /**
  * Real-money products, and what they hand over.

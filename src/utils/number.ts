@@ -55,6 +55,23 @@ export function compactCoins(value: number): string {
   const sign = value < 0 ? '-' : '';
   const amount = Math.abs(Math.floor(value));
 
+  /*
+    Past the largest unit the string starts growing again.
+
+    `B` is the top tier, so a trillion is `1000B` and ten quadrillion is
+    `12000000B` — nine characters in a control whose width is a declared
+    constant. `COIN_PILL_WIDTH` is summed rather than measured, because
+    `ScreenHeader` centres its title absolutely and needs the number before
+    layout runs, so nothing downstream can absorb a string this wide: the pill
+    simply grows into the title.
+
+    Bounding it here rather than adding a `T` tier and a `Q` after it. No
+    balance this game can pay comes close — the cap exists so the width is a
+    guarantee rather than a reasonable expectation, and the `+` says the figure
+    is a ceiling rather than the balance.
+  */
+  if (amount >= 1e12) return `${sign}999B+`;
+
   for (const { at, suffix } of UNITS) {
     if (amount < at) continue;
 
@@ -68,4 +85,20 @@ export function compactCoins(value: number): string {
   }
 
   return `${sign}${amount}`;
+}
+
+/**
+ * The whole balance, grouped — `1,204,832`. The counterpart to `compactCoins`.
+ *
+ * The pill shortens because it has a width to keep; this is what the player
+ * gets when they ask what the short figure stands for, so it must not round,
+ * truncate or abbreviate anything.
+ *
+ * Hand-grouped rather than `toLocaleString`. Hermes ships Intl, but its data is
+ * the device's and the separator would then vary by locale while every other
+ * string in the app is English — a comma here and a full stop on the next phone
+ * is worse than one wrong convention consistently.
+ */
+export function groupedNumber(value: number): string {
+  return String(Math.max(0, Math.floor(value))).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }

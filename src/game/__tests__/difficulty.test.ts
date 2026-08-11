@@ -133,13 +133,44 @@ describe('the difficulty ramp', () => {
   });
 
   /**
-   * The floor is deliberately *under* the median board, and this is the test
-   * that keeps it there. Ramped above the median it rejected 27 of 30 boards
-   * at classic 201 — capacity-4 boards land on their median nearly every time,
-   * so a bar one move above it is a bar almost nothing clears, and every
-   * rejection is a level falling back instead of being chosen.
+   * The ramp used to stop at 32× each mode's start — best-of-24 by fiendish
+   * 1280, every level past it statistically identical. The caps now sit where
+   * roughly level one million lands, so the late game keeps climbing for as
+   * long as anyone can conceivably play. The mid-game values are pinned
+   * byte-for-byte: the cap is deliberately decoupled from the slope, because
+   * a steeper slope would silently repoint every level above `start`.
    */
-  it('keeps the difficulty floor satisfiable', () => {
+  it('keeps growing to about level one million, without moving the mid-game', () => {
+    // Unchanged below the old plateau — the exact values the old ramp gave.
+    expect(generationForLevel(501, 'fiendish').sampleSize).toBe(20);
+    expect(generationForLevel(1281, 'fiendish').sampleSize).toBe(24);
+    expect(generationForLevel(801, 'classic').sampleSize).toBe(15);
+    expect(generationForLevel(1601, 'gentle').sampleSize).toBe(8);
+
+    // Past the old plateau the ramp keeps climbing instead of stopping…
+    expect(generationForLevel(5001, 'fiendish').sampleSize).toBe(30);
+
+    // …until the cap, which lands at roughly a million in every mode.
+    expect(generationForLevel(1_000_001, 'gentle').sampleSize).toBe(16);
+    expect(generationForLevel(1_000_001, 'classic').sampleSize).toBe(40);
+    expect(generationForLevel(1_000_001, 'fiendish').sampleSize).toBe(55);
+    expect(generationForLevel(2_000_001, 'fiendish').sampleSize).toBe(56);
+  });
+
+  /**
+   * Every level the gate is asked for, it can deliver.
+   *
+   * **There is no difficulty floor at all, and that is the design.** One was
+   * tried and removed: it rejected 27 of 30 boards at classic 201, because
+   * capacity-4 boards land on their median nearly every time and a bar above
+   * that median is a bar almost nothing clears. A rejected board is not a
+   * harder board — it is a level that falls back to whatever the fallback
+   * ranking liked. Reaching upward is `sampleSize`'s job, and this game has no
+   * fail state and no timer, so a board that falls together easily is a short
+   * pleasant one rather than a defect. The stars already say what a run was
+   * worth.
+   */
+  it('accepts a board at every level, in every mode', () => {
     for (const mode of DIFFICULTIES) {
       for (const level of [1, 55, 201, 501, 905, 1501, 5001]) {
         const { report } = generateLevel(level, mode);
@@ -151,6 +182,25 @@ describe('the difficulty ramp', () => {
       }
     }
   }, 120_000);
+
+  /**
+   * No floor still must not mean a board that is over before it starts. The
+   * guard is selection rather than rejection — the hardest of the sample — and
+   * this pins that it is enough on the smallest boards in the game, which are
+   * where a trivial one could actually appear.
+   */
+  it('never opens on a board that is nearly solved already', () => {
+    for (const mode of DIFFICULTIES) {
+      for (let level = 1; level <= 12; level++) {
+        const { report } = generateLevel(level, mode);
+        expect({ mode, level, tooEasy: report.lowerBound < 5 }).toEqual({
+          mode,
+          level,
+          tooEasy: false,
+        });
+      }
+    }
+  });
 
   it('relaxes on a breather', () => {
     // An easier row, no selection pressure, and slack on the look.
@@ -261,6 +311,30 @@ describe('determinism', () => {
     expect(fingerprint('gentle')).toBe('|1|2201|220|0101|');
     expect(fingerprint('fiendish')).toBe('221|220|104|0141||3340|334');
     expect(GENERATOR_VERSION).toBe(2);
+  });
+
+  /**
+   * A second pin, on a level that is **not** a breather — and it exists
+   * because the level-30 pin has a blind spot that let a real change through.
+   *
+   * Thirty is divisible by ten, so it is a breather in all three modes, and a
+   * breather takes a different branch of the gate. Dropping the difficulty
+   * floor moved every ordinary level in the game and left all three level-30
+   * boards untouched, so the tripwire stayed green through a change it exists
+   * to catch. Thirty-three takes the ordinary branch.
+   *
+   * Same rule as above: if this fails, bump `GENERATOR_VERSION` and re-record
+   * both pins in the same commit.
+   */
+  it('pins an ordinary level too, not only a breather', () => {
+    const fingerprint = (mode: (typeof DIFFICULTIES)[number]) =>
+      generateLevel(33, mode)
+        .state.tubes.map((tube) => tube.join(''))
+        .join('|');
+
+    expect(fingerprint('gentle')).toBe('2132|001|3321|23|001||');
+    expect(fingerprint('classic')).toBe('|2210|2230|4|334|1140|4301');
+    expect(fingerprint('fiendish')).toBe('54|3301||2214|1104|453|2235|005');
   });
 
   it('does not drift when levels are generated out of order', () => {

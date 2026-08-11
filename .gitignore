@@ -64,3 +64,9 @@ assets/audio/source/
 # any APK exposes them — but account-specific, so they do not belong in git.
 .env
 .env.local
+
+# Python bytecode. `script/*.py` regenerate the Lottie files; their cache is
+# machine- and interpreter-specific (`cpython-314`), rebuilt on every run, and
+# binary — so it conflicts on merge rather than diffing. One was committed.
+__pycache__/
+*.pyc

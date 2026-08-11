@@ -210,23 +210,6 @@ export function paramsForLevel(
 }
 
 /**
- * The typical minimum-pour count the scrambler produces for a shape.
- *
- * `moveLowerBound` is `runs - colours`, so a board whose colours are each
- * broken into `k` runs scores `colours * (k - 1)`. The least-clumping walk
- * lands on a strikingly consistent `k` — measured across every shape the
- * curves reach, 3.0 at capacity 4 and 3.2 at capacity 5, from four colours to
- * twelve. That regularity is what makes a difficulty floor expressible as a
- * formula rather than as a table of hand-picked numbers per band.
- *
- * Capacity 5 sits higher because five segments can hold more runs than four.
- */
-function typicalBound(params: LevelParams): number {
-  const splits = params.capacity >= 5 ? 3.2 : 3.0;
-  return params.colourCount * (splits - 1);
-}
-
-/**
  * How hard the generator is told to look, by level and mode.
  *
  * **This is the growth dial, and it is selection pressure rather than a
@@ -253,21 +236,35 @@ function typicalBound(params: LevelParams): number {
  *
  * Ramped on a log of the level so the early game moves quickly and the late
  * game keeps inching, rather than stepping between bands and then stopping.
- * Capped where the cost stops being worth it — a scramble is about a
- * millisecond, and this runs on the level-load path.
+ *
+ * **`slice` and `cap` are separate numbers on purpose.** The slice is the
+ * growth per five doublings — the slope every shipped level was tuned on — and
+ * the cap is where the ramp finally stops, placed so growth lasts to roughly
+ * level one million in every mode (gentle tops out at 2^12.5 × 200 ≈ 1.16M,
+ * classic at 2^13.3 × 100 ≈ 1.03M, fiendish at 2^15 × 40 ≈ 1.31M). Deriving
+ * the slope from the cap, as this used to, would mean raising the cap
+ * steepens the whole curve and silently repoints every level above `start` —
+ * decoupled, a higher cap only changes levels past the old plateau, where the
+ * boards were statistically interchangeable anyway.
+ *
+ * The cost lives at the far end and nowhere else: a fiendish level near the
+ * million mark draws 56 samples at a few milliseconds each, which is why the
+ * cap exists at all. Best-of-N grows on a log, so samples past that buy
+ * almost nothing — the walk's hardest producible board is an edge no sample
+ * size passes.
  */
 function samplesFor(level: number, difficulty: Difficulty): number {
-  const { start, floor, ceiling } = {
-    gentle: { start: 200, floor: 6, ceiling: 10 },
-    classic: { start: 100, floor: 8, ceiling: 20 },
-    fiendish: { start: 40, floor: 8, ceiling: 24 },
+  const { start, floor, slice, cap } = {
+    gentle: { start: 200, floor: 6, slice: 4, cap: 16 },
+    classic: { start: 100, floor: 8, slice: 12, cap: 40 },
+    fiendish: { start: 40, floor: 8, slice: 16, cap: 56 },
   }[difficulty];
 
   if (level <= start) return floor;
-  // Doubling the level adds a fixed slice of the range; five doublings reach
-  // the ceiling. Level 100 → 200 is worth as much as 800 → 1600.
+  // Doubling the level adds a fixed slice of growth; five doublings add one
+  // whole slice. Level 100 → 200 is worth as much as 800 → 1600.
   const doublings = Math.log2(level / start);
-  return Math.round(Math.min(ceiling, floor + ((ceiling - floor) * doublings) / 5));
+  return Math.round(Math.min(cap, floor + (slice * doublings) / 5));
 }
 
 /**
@@ -315,13 +312,18 @@ function gateForLevel(level: number, difficulty: Difficulty): GenerateOptions {
 
   return {
     /**
-     * A floor, not a target — deliberately under the median so it can always
-     * be met. Its job is to throw out the bottom of the distribution, the
-     * board that happens to fall together far too easily; reaching *up* is
-     * `sampleSize`'s job, and the two were conflated in the version of this
-     * that made classic 201 unsatisfiable.
+     * **No difficulty floor, deliberately.** A rejected board is not a harder
+     * board, it is a board the player never sees and a level that falls back
+     * to whatever the fallback ranking liked — and the thing that actually
+     * makes a level hard is `sampleSize`, which keeps the hardest board of the
+     * sample rather than turning boards away. The two were conflated once
+     * already, in a version of this that ramped a floor above the median and
+     * rejected 27 of 30 boards at classic 201.
+     *
+     * It is also the wrong instrument for the game. There is no fail state and
+     * no timer; a board that happens to fall together easily is a short pleasant
+     * one, not a defect, and the stars already say what the run was worth.
      */
-    minMoves: Math.floor(typicalBound(params) * 0.9),
     maxLongRunMass,
     // A pre-solved tube is free progress and reads as a mistake at any level.
     // Only the earliest boards, where it is an on-ramp, still allow one.

@@ -34,8 +34,15 @@ import { claimToast, dayState, nextRewardIndex, offerMessage } from './rewardTra
 import { COIN_SIZE, FLAME_SIZE, styles, TODAY_TINT } from './styles/DailyScreen.styles';
 import { EARNINGS } from '@/game/economy';
 
-/** What the bonus puzzle pays. Flat — see `economy.ts` for why. */
-const BONUS_REWARD = EARNINGS.bonusPuzzle;
+/**
+ * The most the bonus puzzle can pay — three stars' worth.
+ *
+ * The row advertises the ceiling rather than a flat figure, because the payout
+ * is per star now (see `economy.ts`). "Up to" is doing real work: a one-star
+ * finish pays a third of it, and a row promising 120 for any completion would
+ * be the kind of small lie a player notices exactly once.
+ */
+const BONUS_MAX = EARNINGS.bonusPuzzlePerStar * 3;
 
 /**
  * The streak card's second line.
@@ -348,7 +355,7 @@ const BonusRow = memo(function BonusRow({ onPlay }: { onPlay: () => void }) {
       spent={!available}
     >
       <Text style={available ? styles.bonusReward : styles.bonusWait}>
-        {available ? `+${BONUS_REWARD}` : countdown(remaining)}
+        {available ? `up to +${BONUS_MAX}` : countdown(remaining)}
       </Text>
     </SettingRow>
   );

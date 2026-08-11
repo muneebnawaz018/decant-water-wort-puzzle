@@ -1,4 +1,4 @@
-import { clamp, compactCoins, fract, percentWidth } from '../number';
+import { clamp, compactCoins, fract, groupedNumber, percentWidth } from '../number';
 
 describe('clamp', () => {
   it('passes a value already in range', () => {
@@ -65,6 +65,23 @@ describe('compactCoins', () => {
     expect(compactCoins(999_999)).toBe('999K');
   });
 
+  /**
+   * The pill's width is a constant `ScreenHeader` centres its title against,
+   * so the string has to be bounded or the balance grows into the title. `B`
+   * is the top tier, and without a ceiling ten quadrillion renders as
+   * `12000000B` — nine characters where four were budgeted.
+   */
+  it('never renders wider than five characters', () => {
+    expect(compactCoins(1e12)).toBe('999B+');
+    expect(compactCoins(1.2e16)).toBe('999B+');
+    expect(compactCoins(Number.MAX_SAFE_INTEGER)).toBe('999B+');
+
+    // Every tier below the cap, at its widest.
+    for (const value of [999, 999_999, 999_999_999, 999_999_999_999]) {
+      expect(compactCoins(value).length).toBeLessThanOrEqual(5);
+    }
+  });
+
   it('drops a decimal that would be a trailing zero', () => {
     // "1.0K" reads as a rounding artefact rather than as a number.
     expect(compactCoins(1000)).not.toContain('.');
@@ -82,5 +99,29 @@ describe('compactCoins', () => {
     // this formats whatever it is handed rather than producing "NaN" in a pill.
     expect(compactCoins(-1500)).toBe('-1.5K');
     expect(compactCoins(1500.7)).toBe('1.5K');
+  });
+});
+
+describe('groupedNumber', () => {
+  it('groups from four digits up', () => {
+    expect(groupedNumber(0)).toBe('0');
+    expect(groupedNumber(999)).toBe('999');
+    expect(groupedNumber(1000)).toBe('1,000');
+    expect(groupedNumber(1_204_832)).toBe('1,204,832');
+  });
+
+  /**
+   * The whole point of it beside `compactCoins`: this is what the player is
+   * shown when they ask what `1.2M` actually stands for, so a digit lost here
+   * is worse than no toast at all.
+   */
+  it('loses nothing the compact form drops', () => {
+    expect(groupedNumber(1_204_832)).toContain('832');
+    expect(compactCoins(1_204_832)).toBe('1.2M');
+  });
+
+  it('floors a fraction and refuses a negative', () => {
+    expect(groupedNumber(1500.9)).toBe('1,500');
+    expect(groupedNumber(-20)).toBe('0');
   });
 });

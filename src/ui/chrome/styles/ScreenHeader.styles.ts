@@ -13,6 +13,15 @@ export const styles = StyleSheet.create({
     paddingHorizontal: SPACE.screen,
     paddingTop: s(12),
     paddingBottom: s(10),
+    /**
+     * Above the scrolling body beneath it.
+     *
+     * The header is the *earlier* sibling of the `ScrollView` in `ScrollPage`,
+     * so by default every card on the page paints over anything the header
+     * hangs below itself — which is where the coin pill's balance note goes.
+     * Nothing else in the header overflows, so this changes no existing screen.
+     */
+    zIndex: 2,
   },
   /**
    * Centred on the header, not on the space left over beside the buttons.

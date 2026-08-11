@@ -298,24 +298,37 @@ fragmentation), and `samplesFor` grows the sample with the level, ramped on
 `log2` so early levels move fast and late ones keep inching. Measured lift at
 the endgame: classic par 26 → 28, fiendish 27 → 31.
 
+The ramp runs to roughly **level one million** before its cap (gentle 16,
+classic 40, fiendish 56 samples). It used to stop at 32× each mode's ramp
+start — best-of-24 by fiendish 1280 — which made every level past that
+statistically identical, the old 503-plateau one octave up. In `samplesFor`
+the **slice (slope) and cap are separate numbers on purpose**: the cap used to
+be derived into the slope, so raising it would steepen the whole curve and
+silently repoint every level above the ramp start. Decoupled, raising the cap
+touches only levels past the old plateau, and a test pins the mid-game values
+byte-for-byte. Measured at the far end: fiendish level 1,000,001 generates in
+59ms on a laptop (≈0.2–0.3s on a phone, that level only — level 1281 is
+unchanged at 17ms), bound 29 → 31 between the old plateau and the million
+mark. Best-of-N grows on a log, so a cap past 56 buys almost nothing — the
+walk's hardest producible board is an edge no sample size passes.
+
 `moveLowerBound` is the right ranking key now for a reason worth keeping: on
 un-clumped boards it sits within a move of the true optimum (measured gap p50
 0–1, max 2), so ranking by it is ranking by par. Fragmentation was only ever a
 proxy and is now just the tie-break.
 
-**`minMoves` is a floor, not a target — deliberately under the median (0.9 ×
-`typicalBound`) so it always passes.** The first attempt at this dial ramped it
-_above_ the median and rejected 27 of 30 boards at classic 201: capacity-4
-boards land on their median almost every time, so a bar one move above it is a
-bar nothing clears, and every rejection is a level falling back instead of being
-chosen. Reaching up is `sampleSize`'s job; throwing out the trivial bottom of
-the distribution is this one's. The current sweep rejects **0 of 630** boards
-across all three modes from level 1 to 5030.
+**There is no difficulty floor, and that is deliberate.** One was built and
+removed. Ramped above the median it rejected 27 of 30 boards at classic 201 —
+capacity-4 boards land on their median almost every time, so a bar above it is
+a bar nothing clears; lowered under the median it was redundant, because
+selection already discards the easy tail. A rejected board is not a harder
+board, it is a level that falls back to whatever the fallback ranking liked.
 
-`typicalBound(params)` = `colours × (splits − 1)`, splits 3.0 at capacity 4 and
-3.2 at capacity 5 — the walk breaks each colour into ~3 runs with startling
-consistency across every shape, which is what lets the floor be a formula
-instead of a table of hand-picked numbers.
+It was also the wrong instrument for this game. There is no fail state and no
+timer, so a board that falls together easily is a short pleasant one rather
+than a defect, and the stars already say what a run was worth. Measured with no
+floor at all: 0 rejections across every mode from level 1 to 5030, and the
+smallest board the generator opens on still needs 6 pours.
 
 Gentle tops out at **10 colours**, and the reason is par cost rather than
 difficulty: capacity 4 with two spares is the most expensive shape to search
@@ -924,6 +937,48 @@ needs no `Info.plist` entry — local notification permission is runtime only.
 foreground services, because most apps using it record or play behind a lock
 screen. This one does neither. A puzzle game shipping a microphone permission
 is a store-review question with no good answer.
+
+### The daily brew
+
+`src/game/dailyPuzzle.ts`, one board a day, keyed by `dayIndex(now)` — days
+since the epoch, on the **local** calendar so it turns over at the player's own
+midnight. The seed is the day and nothing else, so the board is stable all day
+and survives a reinstall.
+
+**The shape follows the player: the Hard curve at `furthest + BREW_LEAD` (30),
+taking the max across all three modes.** It used to be a constant at the ceiling
+— twelve colours, one spare — and that was right for the player it was written
+for and wrong for everyone else, because **nothing gates the Rewards row on
+progress**. Someone an hour into the game could open the hardest board the
+generator makes holding zero coins, one free hint, and a board that is not saved
+if they leave, where two positions in five reached by casual play have no
+winning line at all. Scaling fixes that without a lock, and converges on the old
+fixed shape past roughly level 400 — so nothing changes for the player it was
+originally tuned for.
+
+Measured across a career: furthest 1 → 6 colours / cap 4 / 2 spare, par 14; 100
+→ 8c/4/**1**; 200 → 10c/5/1; 400+ → 12c/5/1, par 32. Ahead of the player's own
+ladder in every mode at every point sampled, 0 rejections, generation ≤ 28ms.
+
+Two things `brewParamsFor` has to keep doing:
+
+- **Skip the breather.** `paramsForLevel` drops a band on every tenth level, so
+  a player whose furthest ends in a zero would get a quietly easier brew that
+  day, for a reason nobody could read off the screen. `+ 1` steps off it.
+- **Take the max across modes**, so pushing Hard and then opening the brew from
+  Easy cannot draw an easier board.
+
+`furthest` is read **live**, not pinned for the day. Open the brew, leave it,
+clear a level, come back, and the shape moves up with you. Nothing needs
+defending there: the brew is never written to `session.v1`, so returning always
+meant a board from move zero anyway, and pinning it would cost a stored field
+and a migration to make a board slightly less current.
+
+It pays **per star** (`bonusPuzzlePerStar`, 40 → 40/80/120), not flat. Flat was
+right while the board was always the ceiling; with the shape following the
+player it would hand the same coins to a six-colour brew and a twelve-colour
+one. The Rewards row advertises `up to +120` for the same reason — a row
+promising 120 for any completion is a small lie a player notices exactly once.
 
 ### The daily reward
 

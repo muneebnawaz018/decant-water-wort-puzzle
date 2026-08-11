@@ -1,8 +1,10 @@
 import type { LevelParams } from '@/core/types';
+import { BREW_LEAD } from './economy';
+import { paramsForLevel } from './levelParams';
 import { generateLevel, type GeneratedLevel } from './waterGenerator';
 
 /**
- * The daily bonus puzzle — one board a day, harder than anything on the curve.
+ * The daily bonus puzzle — one board a day, ahead of wherever the player is.
  *
  * It used to be the level you were already on. The Rewards row opened whatever
  * `gameStore` happened to be holding, so a player on stage 3 pressed "Today's
@@ -11,9 +13,8 @@ import { generateLevel, type GeneratedLevel } from './waterGenerator';
  *
  * Three things make it its own thing:
  *
- * 1. **Its own shape.** Twelve colours and one spare tube — the hardest board
- *    this game can produce, which no mode reaches before level 501 and Easy
- *    never reaches at all.
+ * 1. **Its own shape**, on the Hard curve and `BREW_LEAD` levels beyond the
+ *    furthest the player has reached in any mode — see `brewParamsFor`.
  * 2. **Its own seed.** Keyed by the day, on a salt no mode uses, so it can
  *    never collide with a level a player has already solved.
  * 3. **Its own reward.** Paid by `bonusStore`, not by `progress` — it is not a
@@ -23,24 +24,45 @@ import { generateLevel, type GeneratedLevel } from './waterGenerator';
  */
 
 /**
- * The bonus board's shape. Deliberately the ceiling.
+ * The bonus board's shape: the Hard curve, `BREW_LEAD` levels past the player.
  *
- * Twelve colours is every piece the palette has, and one spare tube is the
- * tightest a board is allowed to be — with none it is unplayable rather than
- * hard. `capacity: 5` follows the top of the curve, and the scramble is above
- * the curve's 110 because a harder board needs a longer scramble to be more
- * than a long board.
+ * **It used to be a constant at the ceiling** — twelve colours, one spare — and
+ * that shape was right for the player it was written for and wrong for
+ * everyone else. Nothing gates the Rewards row on progress, so somebody who
+ * installed the game an hour ago could open the hardest board it can produce,
+ * holding zero coins, one free hint, and a board that is not saved if they
+ * leave. Two positions in five reached by casual play at that shape have no
+ * winning line at all. As a first taste of a feature whose whole job is a
+ * daily habit, it teaches the player the brew is not for them.
  *
- * Worth knowing what this costs the player: at twelve colours the palette
- * collapses for a deuteranope, which is why the colourblind glyphs exist and
- * why this is the board most likely to be played with them on.
+ * Scaling fixes that without a lock. The brew is always harder than anything
+ * on the player's own ladder, at every stage of the game, and it converges on
+ * the old fixed shape once they pass roughly level 400 — so for the player the
+ * constant was written for, nothing changes.
+ *
+ * `furthest` is the highest level reached across **all three modes**, so a
+ * player who has pushed Hard cannot get an easy brew by opening it from Easy.
+ *
+ * **The breather is skipped on purpose.** `paramsForLevel` drops a difficulty
+ * band on every tenth level, so a player whose furthest happens to end in a
+ * zero would get a quietly easier brew that day, for a reason nobody could
+ * work out from the screen. `+ 1` steps off that without disturbing the curve.
+ *
+ * The scramble is lifted above the curve's own figure for the same reason the
+ * fixed shape used to be: a harder board needs a longer walk to be more than a
+ * long board.
+ *
+ * Worth knowing what the top of this costs the player: at twelve colours the
+ * palette collapses for a deuteranope, which is why the colourblind glyphs
+ * exist and why this is the board most likely to be played with them on.
  */
-const BONUS_PARAMS: LevelParams = {
-  colourCount: 12,
-  capacity: 5,
-  extraTubes: 1,
-  scrambleSteps: 130,
-};
+export function brewParamsFor(furthest: number): LevelParams {
+  const target = Math.max(1, Math.floor(furthest)) + BREW_LEAD;
+  const level = target % 10 === 0 ? target + 1 : target;
+  const params = paramsForLevel(level, 'fiendish');
+
+  return { ...params, scrambleSteps: Math.round(params.scrambleSteps * 1.15) };
+}
 
 /**
  * Salt for the bonus seed.
@@ -75,43 +97,49 @@ export function dayIndex(now: number): number {
 }
 
 /**
- * The bonus board for a given day.
+ * The bonus board for a given day, at the shape that day's player has earned.
  *
- * Deterministic, like every board in this game: the same day gives the same
- * puzzle on every device, so two players can compare it. Nothing is stored —
- * the day index is enough to rebuild it.
+ * Deterministic in the way that matters: the seed is the day and nothing else,
+ * so the board is stable for a given player all day and rebuilds identically
+ * after a reinstall. Nothing is stored.
+ *
+ * **Two players on the same day no longer get the same board**, and that is the
+ * price of scaling — the shape follows `furthest`, so a beginner and a veteran
+ * get different puzzles. Nothing in the app reads the old property: there is no
+ * leaderboard, no sharing and no compare, so it was a future option rather than
+ * a present feature, and day-one playability is worth more than keeping it.
+ *
+ * `furthest` is read live rather than pinned for the day. Open the brew, leave
+ * it unsolved, clear a level, come back, and the shape moves up with you. That
+ * needs no defending: the brew is not saved either way, so returning always
+ * meant a board from move zero, and pinning it would cost a stored field and a
+ * migration to make a board slightly *less* current.
  */
-export function generateBonus(day: number): GeneratedLevel {
+export function generateBonus(day: number, furthest: number): GeneratedLevel {
   return generateLevel(day, 'fiendish', {
-    params: BONUS_PARAMS,
+    params: brewParamsFor(furthest),
     /**
-     * The strict gate. This board is the hardest thing the generator makes, so
-     * it gets the tightest terms in the game.
+     * The strict gate. Whatever shape this board takes, it is the one board a
+     * day, so it gets the tightest look terms in the game.
      *
      * The first bonus boards shipped with five tubes already a single pour
-     * from finished — the hardest shape in the game reading as half played
-     * before it was touched. `maxLongRunMass` is now the check that catches
-     * that, and it catches far more than `maxCappedTubes` ever could: the
-     * capped check only sees a run of `capacity - 1`, while the mass counts
-     * every segment sitting in a run of three or more. Both are kept, since a
-     * near-finished tube is worth naming on its own.
+     * from finished — reading as half played before they were touched.
+     * `maxLongRunMass` is now the check that catches that, and it catches far
+     * more than `maxCappedTubes` ever could: the capped check only sees a run
+     * of `capacity - 1`, while the mass counts every segment sitting in a run
+     * of three or more. Both are kept, since a near-finished tube is worth
+     * naming on its own.
      *
      * Three is one 3-run on the whole board — the floor the walk can actually
      * reach at capacity 5 with a single spare, where five segments of a colour
-     * cannot always be prised apart. A gate the generator usually misses is
-     * worse than a slightly looser one it always makes, because a missed gate
-     * falls back to the best board seen.
+     * cannot always be prised apart. Capacity-4 shapes reach zero, so this is
+     * slack they never need. A gate the generator usually misses is worse than
+     * a slightly looser one it always makes, because a missed gate falls back
+     * to the best board seen.
      */
     maxLongRunMass: 3,
     maxCappedTubes: 1,
     maxSolvedTubes: 0,
-    /**
-     * A hard difficulty floor, which no level gets — levels use a floor under
-     * their median so it always passes, and reach upward with `sampleSize`
-     * instead. This board can afford a real bar: it is generated once a day on
-     * a press, so it can burn attempts a level load cannot.
-     */
-    minMoves: 28,
     /**
      * Far above the level default, because the strict gate needs the attempts,
      * and a big sample because `generateLevel` keeps the hardest board it

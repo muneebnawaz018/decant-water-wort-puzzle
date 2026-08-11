@@ -12,8 +12,6 @@ export interface InversePour {
 }
 
 export interface AcceptanceOptions {
-  /** Floor on the true minimum-pour lower bound. */
-  minMoves?: number;
   /** Board must be at least this broken up, on 0..1. Doc §5 asks for 60%. */
   minFragmentation?: number;
   /** Tubes allowed to start already finished. Doc §5 allows one freebie. */
@@ -92,7 +90,6 @@ export interface AcceptanceReport {
 }
 
 const DEFAULTS: Required<Omit<AcceptanceOptions, 'minFragmentation'>> = {
-  minMoves: 4,
   maxSolvedTubes: 1,
   maxCappedTubes: Infinity,
   maxLongRunMass: Infinity,
@@ -356,20 +353,6 @@ export function isAcceptable(
   if (clumped > config.maxLongRunMass) {
     reasons.push(`${clumped} segments already stacked in runs`);
   }
-  /**
-   * The difficulty floor, and it is measured in pours rather than in shape.
-   *
-   * `moveLowerBound` never overestimates the true optimum, so a floor here is
-   * a floor on par itself — the honest difficulty dial doc §5 asked for and
-   * the code substituted fragmentation for, on the grounds that an optimal
-   * search was unaffordable. Half of that is still true: the *exact* search
-   * costs up to seconds, so it stays off the load path. The bound costs a
-   * pass over the tubes, and on a well-mixed board it lands within a few
-   * moves of the optimum, which is close enough to gate on.
-   */
-  if (lowerBound < config.minMoves) {
-    reasons.push(`needs only ${lowerBound} moves`);
-  }
   if (spread < config.minFragmentation) {
     reasons.push(`fragmentation ${spread.toFixed(2)} below ${config.minFragmentation}`);
   }
@@ -456,12 +439,7 @@ export function generateLevel(
   const penalty = (report: AcceptanceReport): number =>
     over(report.longRunMass, merged.maxLongRunMass) * 4 +
     over(report.cappedTubes, merged.maxCappedTubes) * 3 +
-    over(report.solvedTubes, merged.maxSolvedTubes) * 5 +
-    // Short of the difficulty floor is a shortfall like any other, and it was
-    // missing here: a board rejected for being too easy fell through to a
-    // ranking that did not look at difficulty at all, so the fallback could
-    // hand back the easiest board of the batch.
-    over(merged.minMoves ?? 0, report.lowerBound) * 2;
+    over(report.solvedTubes, merged.maxSolvedTubes) * 5;
 
   const better = (candidate: AcceptanceReport, incumbent: AcceptanceReport): boolean => {
     const gap = penalty(candidate) - penalty(incumbent);

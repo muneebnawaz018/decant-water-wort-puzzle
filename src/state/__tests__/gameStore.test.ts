@@ -837,18 +837,28 @@ describe('the daily bonus puzzle', () => {
     expect(store().loadBonus(NOW)).toBe(false);
   });
 
-  it('pays flat, and pays once', () => {
+  /**
+   * On stars, not flat. The brew's shape follows the player now, so one figure
+   * for every brew would pay a six-colour board and a twelve-colour one the
+   * same — and there is no fail state, so a finished brew always pays at least
+   * one star's worth.
+   */
+  it('pays on stars, and pays once', () => {
     useEconomyStore.setState({ coins: 0 });
     store().loadBonus(NOW);
     solveBoard();
 
-    expect(useEconomyStore.getState().coins).toBe(EARNINGS.bonusPuzzle);
-    expect(store().earnedCoins).toBe(EARNINGS.bonusPuzzle);
+    const stars = store().earned;
+    expect(stars).toBeGreaterThanOrEqual(1);
+
+    const due = stars * EARNINGS.bonusPuzzlePerStar;
+    expect(useEconomyStore.getState().coins).toBe(due);
+    expect(store().earnedCoins).toBe(due);
 
     // Redo re-enters the win path. It must not pay a second time.
     store().undo();
     store().redo();
-    expect(useEconomyStore.getState().coins).toBe(EARNINGS.bonusPuzzle);
+    expect(useEconomyStore.getState().coins).toBe(due);
   });
 
   /**

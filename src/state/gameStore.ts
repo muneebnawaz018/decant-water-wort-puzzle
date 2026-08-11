@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import type { Colour, PourMove, WaterState } from '@/core/types';
 import { optimalLine } from '@/core/solver';
 import { applyPour, canPour, isSolved } from '@/core/waterCore';
-import type { Difficulty } from '@/game/difficulty';
+import { DIFFICULTIES, type Difficulty } from '@/game/difficulty';
 import { dayIndex, generateBonus } from '@/game/dailyPuzzle';
 import { EARNINGS, FREE_HINTS, PRICES } from '@/game/economy';
 import { lineMap, positionKey, suggestPour, type HintSearch } from '@/game/hint';
@@ -423,22 +423,33 @@ export const useGameStore = create<GameState>((set, get) => {
   /**
    * What finishing the daily bonus puzzle pays.
    *
-   * Flat, and nothing is written to `progress` — the board is not a level, so
-   * it unlocks nothing and belongs in no star total. `bonusStore` holds the
-   * only record of it, which is also the cooldown.
+   * **On stars, at `bonusPuzzlePerStar` each**, so 40, 80 or 120. It used to be
+   * a flat 120 on the reasoning that the brew was always the hardest board the
+   * generator makes, where a rating would mostly measure patience. The brew
+   * follows the player now, so a flat payout would hand the same coins to a
+   * six-colour board and a twelve-colour one.
+   *
+   * Stars are already how this game says how well a board was played, and they
+   * need no separate difficulty dial bolted on: there is no fail state, so a
+   * finished brew always pays at least one star's worth.
+   *
+   * Nothing is written to `progress` — the board is not a level, so it unlocks
+   * nothing and belongs in no star total. `bonusStore` holds the only record of
+   * it, which is also the cooldown.
    *
    * Ordered so the mark lands first: `complete` is idempotent within a day, so
    * a second call cannot pay twice however the win path is re-entered — and a
    * redo of the winning pour does re-enter it.
    */
-  const payBonus = (): number => {
+  const payBonus = (stars: number): number => {
     const store = useBonusStore.getState();
     const now = Date.now();
     if (!store.available(now) && store.solvedDay === dayIndex(now)) return 0;
 
+    const paid = Math.max(1, Math.floor(stars)) * EARNINGS.bonusPuzzlePerStar;
     store.complete(now);
-    useEconomyStore.getState().add(EARNINGS.bonusPuzzle);
-    return EARNINGS.bonusPuzzle;
+    useEconomyStore.getState().add(paid);
+    return paid;
   };
 
   const persistSession = (): void => {
@@ -642,7 +653,7 @@ export const useGameStore = create<GameState>((set, get) => {
           // The bonus board pays flat and writes nothing to progress. `payFor`
           // would file it as a completion of whatever `level` happens to hold,
           // which on a bonus board is the day index.
-          if (current.bonus) lastPayout = payBonus();
+          if (current.bonus) lastPayout = payBonus(stars);
           else {
             const paid = payFor(
               next,
@@ -816,7 +827,7 @@ export const useGameStore = create<GameState>((set, get) => {
           // The bonus board pays flat and writes nothing to progress. `payFor`
           // would file it as a completion of whatever `level` happens to hold,
           // which on a bonus board is the day index.
-          if (current.bonus) lastPayout = payBonus();
+          if (current.bonus) lastPayout = payBonus(stars);
           else {
             const paid = payFor(
               next,
@@ -1056,7 +1067,22 @@ export const useGameStore = create<GameState>((set, get) => {
       if (!useBonusStore.getState().available(now)) return false;
 
       const day = dayIndex(now);
-      const generated = generateBonus(day);
+      /**
+       * The furthest level reached in **any** mode, which is what the brew's
+       * shape is built against.
+       *
+       * Across all three rather than the mode being played, so a player who
+       * has pushed Hard cannot draw an easy brew by switching to Easy first.
+       * Read live: the brew is not saved, so re-opening one left unsolved
+       * always meant a board from move zero, and letting the shape move up
+       * with the player costs nothing to allow.
+       */
+      const record = get().record;
+      const furthest = DIFFICULTIES.reduce(
+        (best, mode) => Math.max(best, progressFor(record, mode).furthestLevel),
+        1
+      );
+      const generated = generateBonus(day, furthest);
       clearSession();
 
       set({

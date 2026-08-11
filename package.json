@@ -70,7 +70,7 @@
     "lint:md": "markdownlint-cli2",
     "prebuild": "expo prebuild  --clean",
     "prepare": "husky",
-    "start": "expo start --dev-client",
+    "start": "expo start --dev-client --clear",
     "test": "jest",
     "test:watch": "jest --watch",
     "typecheck": "tsc --noEmit"

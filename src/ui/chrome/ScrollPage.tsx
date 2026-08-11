@@ -63,6 +63,16 @@ export const ScrollPage = memo(function ScrollPage({
         // has to be scrollable clear of it.
         contentContainerStyle={[styles.content, padding.scrollTailWithNav]}
         showsVerticalScrollIndicator={false}
+        /*
+          A tap on a button with the keyboard up presses the button.
+
+          React Native defaults this to `never`, which spends the first tap
+          dismissing the keyboard and swallows it — so a button under an open
+          keyboard needs pressing twice, and the first press looks broken.
+          `handled` gives the tap to whatever child handles it and still
+          dismisses the keyboard on a tap that lands on nothing.
+        */
+        keyboardShouldPersistTaps="handled"
       >
         {children}
       </ScrollView>
