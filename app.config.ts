@@ -46,6 +46,21 @@ const config: ExpoConfig = {
       // what the bar should look like and ignores the plist, so the bar comes
       // back the moment React Native's controller is on screen.
       UIViewControllerBasedStatusBarAppearance: false,
+
+      /**
+       * Declares this app a game to iOS — the other half of Android's
+       * `appCategory`, which `plugins/withGameCategory.js` sets.
+       *
+       * It drives Screen Time's "Games" grouping and the category the App
+       * Store files the app under. Unlike Android's, this one is expressible
+       * in the Expo config, so it needs no plugin.
+       *
+       * App Store Connect's category picker overrides it for the listing
+       * itself; the plist value is what the device reads, and the two should
+       * agree. Puzzle rather than plain `games` because the store wants a
+       * subcategory and picking it here keeps one source for the answer.
+       */
+      LSApplicationCategoryType: 'public.app-category.puzzle-games',
     },
   },
   android: {
@@ -74,6 +89,11 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-dev-client',
+
+    // `android:appCategory="game"` on `<application>` — the platform-standard
+    // signal every skin's game mode reads. iOS's counterpart is
+    // `LSApplicationCategoryType`, set in `ios.infoPlist` above.
+    './plugins/withGameCategory.js',
     [
       // Hides the status bar from the launch window onward, on both platforms.
       //

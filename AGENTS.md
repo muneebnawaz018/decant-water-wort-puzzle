@@ -137,6 +137,14 @@ cannot see through — `babel-preset-expo` and `babel-plugin-module-resolver` ar
 named as strings inside `babel.config.js`, and `expo-updates` arrives as a
 native transitive of `expo-dev-client`.
 
+`plugins/*.js` is in `ignore` for the same blind spot, one level up: a config
+plugin is named as a **path string** in `app.config.ts`'s `plugins` array and is
+never imported, so knip sees an unreferenced file with an unused default export.
+`entry` is the wrong instrument here and was tried — `includeEntryExports` is on,
+so knip then flags the plugin's own `module.exports` instead. The eslint rules
+next door look like the same case and are not: `eslint.config.mjs` genuinely
+imports them, so they sit in the import graph.
+
 Two ESLint rules in `script/eslint-rules/` hold this project's own invariants,
 both errors:
 

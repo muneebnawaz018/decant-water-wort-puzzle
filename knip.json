@@ -2,7 +2,7 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": ["App.tsx", "script/*.mjs", "script/eslint-rules/*.cjs"],
   "project": ["**/*.{ts,tsx,js,jsx,mjs,cjs}"],
-  "ignore": ["babel.config.js"],
+  "ignore": ["babel.config.js", "plugins/*.js"],
   "ignoreDependencies": [
     "babel-preset-expo",
     "babel-plugin-module-resolver",
