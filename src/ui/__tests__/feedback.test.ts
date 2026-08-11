@@ -26,12 +26,13 @@ const notification = Haptics.notificationAsync as jest.Mock;
 const calls = () =>
   impact.mock.calls.length + selection.mock.calls.length + notification.mock.calls.length;
 
-const pour = (solved = false) => ({
+const pour = (solved = false, completed = false) => ({
   kind: 'poured' as const,
   move: { from: 0, to: 1, count: 1 },
   solved,
   colour: 0,
   destFilled: 0,
+  completed,
 });
 
 beforeEach(() => {

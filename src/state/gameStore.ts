@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 import type { Colour, PourMove, WaterState } from '@/core/types';
 import { optimalLine } from '@/core/solver';
-import { applyPour, canPour, isSolved } from '@/core/waterCore';
+import { applyPour, canPour, isSolved, isTubeComplete } from '@/core/waterCore';
 import { DIFFICULTIES, type Difficulty } from '@/game/difficulty';
 import { dayIndex, generateBonus } from '@/game/dailyPuzzle';
 import { EARNINGS, FREE_HINTS, PRICES } from '@/game/economy';
@@ -301,6 +301,16 @@ export type TapOutcome =
        * needs both to animate the pour, and they are gone once it lands. */
       colour: Colour;
       destFilled: number;
+      /**
+       * Whether this pour finished the destination vial — doc §7's "brief ring
+       * of light, sparkle burst, distinct chime".
+       *
+       * Decided here rather than by whoever reacts to it, because it cannot be
+       * worked out from the rest of this record: a vial is finished when it is
+       * full *and* uniform, and nothing above the store knows the colours
+       * underneath the one that just landed.
+       */
+      completed: boolean;
     };
 
 export const useGameStore = create<GameState>((set, get) => {
@@ -650,6 +660,7 @@ export const useGameStore = create<GameState>((set, get) => {
 
       const applied = applyPour(board, selected, index)!;
       const nowSolved = isSolved(applied.state);
+      const completed = isTubeComplete(applied.state.tubes[index]!, applied.state.capacity);
       const moves = get().history.length + 1;
 
       const stars = nowSolved ? starsFor(moves, get().par) : 0;
@@ -721,6 +732,7 @@ export const useGameStore = create<GameState>((set, get) => {
         solved: nowSolved,
         colour,
         destFilled,
+        completed,
       };
     },
 
@@ -828,6 +840,10 @@ export const useGameStore = create<GameState>((set, get) => {
       const destFilled = board.tubes[move.to]!.length;
 
       const nowSolved = isSolved(applied.state);
+      const completed = isTubeComplete(
+        applied.state.tubes[move.to]!,
+        applied.state.capacity
+      );
       const moves = get().history.length + 1;
 
       const stars = nowSolved ? starsFor(moves, get().par) : 0;
@@ -891,6 +907,7 @@ export const useGameStore = create<GameState>((set, get) => {
         solved: nowSolved,
         colour,
         destFilled,
+        completed,
       };
     },
 

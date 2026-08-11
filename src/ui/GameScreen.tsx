@@ -144,7 +144,11 @@ export const GameScreen = memo(function GameScreen({
    * from redo. Both produce the same move, so both should look the same. */
   const playPour = useCallback(
     (outcome: TapOutcome) => {
-      feedbackFor(outcome);
+      // Read rather than closed over: capacity is only wanted to pitch the pour
+      // sound, and taking it from the subscribed `board` would put this
+      // callback's identity — and so the tap gesture's — behind a value that
+      // changes on every level load.
+      feedbackFor(outcome, useGameStore.getState().board.capacity);
       if (outcome.kind !== 'poured') return;
 
       // Doc §7: lock input for the animation, or queued taps double-pour.

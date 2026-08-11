@@ -2,6 +2,14 @@ import * as Haptics from 'expo-haptics';
 import { Platform, Vibration } from 'react-native';
 
 import { strongVibration } from '../../modules/system-haptics';
+import { fillAfterPour } from '@/audio/pitch';
+import {
+  soundComplete,
+  soundIllegal,
+  soundLevel,
+  soundPour,
+  soundTap,
+} from '@/audio/sounds';
 import type { TapOutcome } from '@/state/gameStore';
 import { currentSettings } from '@/state/settingsStore';
 
@@ -106,16 +114,71 @@ function tick(): void {
 }
 
 /**
- * Haptics for a tap outcome, doc §7. Settings are read at call time rather
- * than subscribed to — a toggle should not re-render the board.
+ * The audible half of a tap outcome, doc §7.
  *
- * Sound belongs here too and is not wired: the synthesised set built for it
- * was not good enough to ship, and real recordings have not landed yet. The
- * Settings rows are marked "Soon" rather than offering a switch that does
- * nothing. `script/prepare-sounds.py` is the tool for when they arrive; this
- * function is where playback hooks back in, beside the matching haptic.
+ * Gated separately from the haptic and on its own settings — `sound` is the
+ * master and `soundTap` reads `tapSound` as well, since a tick on every touch
+ * is the one cue frequent enough to want off on its own.
+ *
+ * **A finished vial and a finished board both sound**, and they stack on
+ * purpose: the last pour of a level completes a vial *and* wins, and §7 asks
+ * for both a chime and a celebration. Hearing the vial ring under the win is
+ * the reward landing twice, which is what that moment is.
+ *
+ * `ignored` — a tap on empty glass holding nothing — stays silent, the same
+ * rule the haptics follow. Nothing happened, so nothing answers.
  */
-export function feedbackFor(outcome: TapOutcome): void {
+function sound(outcome: TapOutcome, capacity?: number): void {
+  switch (outcome.kind) {
+    case 'poured':
+      soundPour(
+        capacity === undefined
+          ? 0
+          : fillAfterPour(outcome.destFilled, outcome.move.count, capacity)
+      );
+      if (outcome.completed) soundComplete();
+      if (outcome.solved) soundLevel();
+      break;
+    case 'selected':
+    case 'deselected':
+      soundTap();
+      break;
+    // Always the thud, armed or not — unlike the haptic below, which ticks on
+    // a re-arm. The split is deliberate: the buzz tracks what the player is
+    // *holding* (the tapped vial got picked up), the sound answers what the
+    // pour *did* (nothing). One channel per question. It also happens to be
+    // the only way this cue is reachable at all: a refused pour's target
+    // always holds liquid — pouring into empty glass is always legal — so the
+    // tapped vial always re-arms, and gating the thud on `armed` silenced it
+    // on every refusal the game can actually produce.
+    case 'illegal':
+      soundIllegal();
+      break;
+    default:
+      break;
+  }
+}
+
+/**
+ * Sound and haptics for a tap outcome, doc §7.
+ *
+ * **Both answers to one event, decided in one place.** They were always meant
+ * to arrive together — a pour that buzzes without a splash reads as a phone
+ * fault rather than as liquid — and keeping the two switches apart is what
+ * lets them disagree. Each half still checks its own setting, so a player can
+ * have either alone.
+ *
+ * Settings are read at call time rather than subscribed to, on both sides: a
+ * toggle must not re-render the board.
+ *
+ * `capacity` is optional because sound is the only half that wants it — the
+ * pour is pitched by how full the destination ends up (§7), and without a
+ * capacity there is no ratio to pitch by. Callers that have a board pass it;
+ * `confirmHaptics`, which fires a synthetic pour to preview the buzz, does
+ * not, and gets the unpitched sample.
+ */
+export function feedbackFor(outcome: TapOutcome, capacity?: number): void {
+  sound(outcome, capacity);
   if (!enabled()) return;
 
   switch (outcome.kind) {
@@ -197,6 +260,9 @@ function warn(): void {
  * the player nothing, and the toast that explains it is easy to miss mid-board.
  */
 export function feedbackWarn(): void {
+  // The refusal thud, on its own gate — a control that could not do its job
+  // answers audibly whether or not the player also wants vibration.
+  soundIllegal();
   if (!enabled()) return;
   warn();
 }

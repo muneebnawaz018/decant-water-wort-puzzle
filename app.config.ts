@@ -109,22 +109,12 @@ const config: ExpoConfig = {
       'expo-status-bar',
       { hidden: true, style: 'light' },
     ],
-    [
-      'expo-audio',
-      {
-        // The plugin defaults to asking for microphone and background audio,
-        // because most apps using it record or play behind a lock screen. This
-        // one does neither: it plays short pour sounds while it is on screen.
-        //
-        // Left at the defaults, a puzzle game ships asking for RECORD_AUDIO and
-        // NSMicrophoneUsageDescription, which is a store-review question with
-        // no good answer and a permission prompt players are right to refuse.
-        microphonePermission: false,
-        recordAudioAndroid: false,
-        enableBackgroundRecording: false,
-        enableBackgroundPlayback: false,
-      },
-    ],
+    // No expo-audio plugin, because no expo-audio: sound plays through the
+    // local `modules/system-sound` (AVAudioEngine / SoundPool), which needs no
+    // permissions and no manifest entries. Its predecessor's plugin config —
+    // switching off the microphone permission and background-audio services
+    // the expo-audio plugin adds by default — went with it; nothing should ask
+    // for RECORD_AUDIO on a puzzle game's behalf again.
     [
       /**
        * AdMob. The plugin writes the App ID into `AndroidManifest.xml` and

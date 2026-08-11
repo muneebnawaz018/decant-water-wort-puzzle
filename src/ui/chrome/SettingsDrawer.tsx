@@ -170,21 +170,28 @@ export const SettingsDrawer = memo(function SettingsDrawer() {
             </SettingRow>
           </SettingGroup>
 
-          {/*
-            Audio is marked rather than offered. There are no sound assets in
-            the build, so a switch here would be a control that visibly moves
-            and changes nothing — which a player reads as a broken game, not a
-            missing feature. The badge says which it is.
-          */}
           <SettingGroup title="Sound & feel">
+            {/*
+              Real switches now that the game has a voice: five recorded
+              one-shots in `assets/audio`, played through `src/audio/sounds.ts`.
+              They were badged for a build with no sound assets at all, because
+              a control that visibly moves and changes nothing reads as a broken
+              game rather than a missing feature.
+            */}
             <SettingRow icon="sound" label="Sound">
-              <SoonBadge />
+              <Toggle setting="sound" label="Sound" />
             </SettingRow>
+            {/*
+              Still marked, and alone in this group: the effects landed and the
+              music tracks did not. `musicTrack` and its three names are already
+              in the store, so this is a row waiting on audio rather than on
+              code.
+            */}
             <SettingRow icon="music" label="Music">
               <SoonBadge />
             </SettingRow>
             <SettingRow icon="tap" label="Sound on tap">
-              <SoonBadge />
+              <Toggle setting="tapSound" label="Sound on tap" />
             </SettingRow>
             {/*
               "In game", not "Vibration" — the switch only covers the board now,

@@ -32,6 +32,15 @@ jest.mock('../../../modules/system-haptics', () => ({
   strongVibration: { once: jest.fn(), pattern: jest.fn() },
 }));
 
+/**
+ * The sound module is mocked for a different reason than the motor: not to pin
+ * a branch, but because its wrapper imports `expo`, whose import-time side
+ * effects reach into the gutted `react-native` mock above and die. `null` is
+ * exactly what the wrapper exports with no native runtime, so the audio layer
+ * behaves here as it does in every other suite — silently.
+ */
+jest.mock('../../../modules/system-sound', () => ({ systemSound: null }));
+
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn(),
   selectionAsync: jest.fn(),

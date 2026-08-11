@@ -79,6 +79,7 @@ export function confirmHaptics(): void {
         solved: false,
         colour: 0,
         destFilled: 0,
+        completed: false,
       });
     },
   });

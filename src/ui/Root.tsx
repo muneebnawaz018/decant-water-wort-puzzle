@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { gradients } from '@/theme/colors';
 
+import { primeSounds } from '@/audio/sounds';
 import { useGameStore } from '@/state/gameStore';
 import { useNavStore, type NavDestination } from '@/state/navStore';
 import { useOverlayStore } from '@/state/overlayStore';
@@ -90,6 +91,13 @@ export function Root() {
     if (handedOff.current) return;
     handedOff.current = true;
     hideNativeSplash();
+    // Here rather than at the board, and rather than at import. Players load
+    // their files asynchronously — and in development have to be fetched off
+    // Metro to disk first — so one built at the moment it is first needed
+    // plays nothing. This is the earliest point safely off the launch path.
+    // Not awaited: nothing on screen depends on it, and a failure leaves the
+    // game silent rather than broken.
+    void primeSounds();
   }, []);
 
   const showHome = useCallback(() => setScreen('home'), []);

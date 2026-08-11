@@ -1129,10 +1129,9 @@ have one, and that rule is held structurally rather than by remembering:
 The modal's scrim is deliberately not wrapped. Tapping outside a dialog to
 dismiss it is the one press in the app that should feel like nothing.
 
-Sound is not wired, and the Settings rows for it show a **Soon** badge rather
-than a switch. A control that visibly moves and changes nothing reads as a
-broken game, not a missing feature. `Rate us` is marked the same way and is
-deliberately not tappable — there is no store listing to send a rating to yet.
+`Rate us` shows a **Soon** badge and is deliberately not tappable — there is no
+store listing to send a rating to yet. A control that visibly moves and changes
+nothing reads as a broken game, not a missing feature.
 
 **`Restore purchases` is not in the drawer at all**, and its absence is the
 decision rather than an oversight. A badged row promises a feature that is
@@ -1141,25 +1140,75 @@ nothing for money and the shop's coins are device-local. It comes back in the
 same piece of work that adds the purchase SDK — both stores require it then,
 and the phase 2 notes above describe what it has to do.
 
-An audio layer was built and removed. `expo-audio` works fine and the design
-was sound — an imperative player pool, no hooks, settings read at call time,
-pour pitch driven by destination fill per doc §7. What sank it was the audio
-itself: synthesised effects, generated rather than sourced to keep the
-no-third-party-asset rule, and they were not good enough to put in front of
-anyone. Sine waves and filtered noise do not sound like liquid, and no amount
-of envelope tuning changes that.
+## Sound
 
-The lesson to carry: **realistic audio has to be recorded, not synthesised.**
-The route when it is picked up again is a library take — Sonniss's GDC bundle
-is royalty-free with no attribution — or a phone recording of an actual glass,
-which for this game is both easy and originally owned. `script/prepare-sounds.py`
-survives for that: it cuts long library recordings down to one-shots, handling
-onset detection, resampling, levels and edge fades. `feedback.ts` is where
-playback hooks back in, beside the matching haptic.
+Five recorded one-shots in `assets/audio`, played by `src/audio/sounds.ts`.
+Effects only — **Music is still the one badged row in that group**, because the
+tracks have not been sourced. `musicTrack` and its three names are already in
+the store, so that row waits on audio rather than on code.
 
-The store still carries `sound`, `music`, `musicTrack` and `tapSound`. They are
-kept rather than removed because dropping them means a storage migration for a
-feature that is coming back.
+An audio layer was built and removed before this one, and the reason governs
+what may be added here. `expo-audio` worked fine and the design was right — an
+imperative player pool, no hooks, settings read at call time, pour pitch driven
+by destination fill. What sank it was the audio itself: synthesised effects,
+generated rather than sourced, and not good enough to put in front of anyone.
+Sine waves and filtered noise do not sound like liquid, and no envelope tuning
+changes that. **So: recorded sources only.** Every file's origin and licence is
+in `assets/audio/CREDITS.md`, and a file with no entry there does not ship.
+
+What ships now is CC0 — Kenney for glass, bell and thud, OpenGameArt for the
+pour. Cut to length by `script/prepare-sounds.py`, which is the only way these
+files should ever be written: drop a source in `assets/audio/source/` (gitignored)
+and run it. It handles onset detection, mono, 44.1kHz, per-cue levels and edge
+fades, and its `TARGETS` table holds the **deliberately unequal peaks** — `tap`
+lands about 13dB under `complete`, so a player can tell from sound alone whether
+something mattered.
+
+**Cues are loaded through `expo-asset` to a local file, never handed to
+`createAudioPlayer` as a `require()` reference.** This looks like an
+indirection and is a bug fix. A `require('*.wav')` resolves to a file inside
+the bundle in release and to a **Metro URL** in development — and Metro serves
+assets with no `Content-Type` _and_ `X-Content-Type-Options: nosniff`, so
+CoreMedia is handed no format and forbidden from guessing one. It cannot pick a
+decoder for a perfectly valid file. The symptom is total silence with
+`FigFilePlayer signalled err=-12864` in the device log, once per player, and
+`FigAssetCreateWithURL: url <http … ???>` above it showing the fetch going over
+the network. `Asset.downloadAsync()` puts a real file on disk and `localUri`
+keeps its extension, which is all CoreMedia wants. In release the asset is
+already local, so it costs nothing. **Debug and release differ here, so audio
+that works in one proves nothing about the other.**
+
+Three more decisions in `sounds.ts` worth keeping:
+
+- **Pitch is `playbackRate` with `shouldCorrectPitch = false`,** because
+  `expo-audio` has no independent pitch control. Rate and pitch move together
+  like tape, which caps the usable range: the ±3 semitones in `pitch.ts` are
+  bounded by the pour animation, not by taste, since a rate far from 1 finishes
+  before the liquid lands. That coupling is also why the pour sample is a
+  **glug rather than a splash** — pitch is only audible on a source that has
+  some, and the splashes in the same pack are broadband noise that sounds
+  identical shifted.
+- **One player per cue, and retriggering restarts it.** Different cues overlap
+  naturally, so a pour that finishes a vial rings over its own splash; the same
+  cue twice cuts itself off, which is right for a double-tap and costs a fifth
+  of the memory a real pool would.
+- **`mixWithOthers`, and the silent switch is respected.** A puzzle with no
+  timer is what someone plays with a podcast on. Taking audio focus to click at
+  them would be rude, and a phone set to silent has already answered the
+  question.
+
+`feedbackFor` now decides sound and haptics together, which is the point: they
+answer one event, and a pour that buzzes without a splash reads as a phone
+fault. Each half still checks its own setting.
+
+**`expo-audio` is stubbed globally in `jest.setup.js`**, beside the Nitro stub
+and for the same reason — it reaches for a native class at _import_, so any
+suite that merely pulls in `feedback.ts` dies before its first assertion.
+
+**Nobody has heard these in the game.** They were picked by measurement — the
+`illegal` thud is the darkest of 245 candidates at 197Hz, `complete` is a bell
+with a 1.5s ring — which says they are plausible, not that they are right. The
+last set died on an ear judgement, and that judgement still has to happen.
 
 ## Tablets
 
