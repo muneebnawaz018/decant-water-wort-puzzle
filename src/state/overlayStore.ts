@@ -28,6 +28,25 @@ export interface ModalSpec {
   cancelLabel?: string | null;
   onConfirm?: () => void;
   /**
+   * Confirming costs the player something, so *cancel* gets the emphasis.
+   *
+   * It moves the cancel to the right slot and the lit gold face, and sends
+   * confirm left as a ghost. Two dialogs set it — leaving a board and switching
+   * difficulty — and both share the same shape: the press that opened them was
+   * very likely a mis-tap, and the answer worth making easy is the one that
+   * undoes it.
+   *
+   * **Opt-in, not the default for every confirm.** Most dialogs here ask
+   * something benign — turn vibration on, enable reminders, watch for coins —
+   * and lighting up `Not now` in those would steer players away from the thing
+   * they had just asked for. The flag marks the dialogs where the safe answer is
+   * genuinely the better one, rather than making the app timid everywhere.
+   *
+   * Ignored alongside `onSecondary`: an offer already claims the right slot, and
+   * a dialog whose two buttons both pay has no destructive side to protect.
+   */
+  destructive?: boolean;
+  /**
    * A second *action* beside confirm, rather than a way out.
    *
    * The left slot in a two-button dialog is normally Cancel and does nothing

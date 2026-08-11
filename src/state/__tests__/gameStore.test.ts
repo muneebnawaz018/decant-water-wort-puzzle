@@ -874,6 +874,39 @@ describe('the daily bonus puzzle', () => {
     expect(store().bonus).toBe(false);
     expect(store().level).toBe(2);
   });
+
+  /**
+   * `level` holds the day index here, so `level + 1` is tomorrow's date, not a
+   * level. `loadLevel` does not merely open a board — it writes the number
+   * through `setCurrentLevel` and saves it, so one press would file the mode
+   * as being on level 20,677 and leave `firstUnsolved` and the Stages grid to
+   * make sense of it.
+   */
+  it('refuses to advance off the end of a bonus board', () => {
+    store().loadLevel(3);
+    store().loadBonus(NOW);
+    const day = store().level;
+    const before = JSON.stringify(store().record);
+
+    store().nextLevel();
+
+    expect(store().bonus).toBe(true);
+    expect(store().level).toBe(day);
+    expect(JSON.stringify(store().record)).toBe(before);
+  });
+
+  /**
+   * The day index is a plausible-looking level number, which is what made the
+   * leak survive: "Leave level 20676?" reads like a bug in level generation
+   * rather than a date. Anything rendering `level` has to consult `bonus`
+   * first — this pins that the two are genuinely different scales, so a
+   * reader that forgets cannot accidentally look right.
+   */
+  it('keeps the day index well clear of any real level number', () => {
+    store().loadBonus(NOW);
+    expect(store().bonus).toBe(true);
+    expect(store().level).toBeGreaterThan(10_000);
+  });
 });
 
 describe('restart and the spare vial', () => {

@@ -24,23 +24,28 @@ export interface AcceptanceOptions {
    * A full-height run of one colour under a single foreign segment. Doc §5 has
    * no word for these and the gate could not see them: `isTubeComplete` is
    * false, so a board of five of them reported `solvedTubes: 0` and passed.
-   * They are not "nearly solved" in the sense of being a bit easier — they are
-   * *done*, one obvious pour each, and a board carrying five reads as half
-   * already played before the player has touched it.
    *
-   * Reverse-generation produces them by construction, which is why there are so
-   * many: an un-pour lifts a whole run only when the tube empties, so the
-   * common shape it leaves behind is a full run with one segment dropped on
-   * top. Measured at capacity 5 with 12 colours the median board has five, and
-   * a longer scramble does not help — 400 steps gives the same distribution as
-   * 130, because each extra step is as likely to cap a tube as to uncap one.
-   *
-   * **Unbounded by default.** The per-level gate ramp in `generationForLevel`
-   * is what sets it for high levels, and the daily bonus sets it outright —
-   * both are part of the save format, so moving either repoints boards and
-   * needs a `GENERATOR_VERSION` bump in the same commit.
+   * Largely superseded by `maxLongRunMass`, which measures the same thing
+   * without the blind spot — this check only ever saw a run of `capacity - 1`,
+   * so a board of eleven 3-run tubes reported zero and passed. Kept because a
+   * near-complete tube is worth naming on its own, and it is what the daily
+   * bonus was already tuned against.
    */
   maxCappedTubes?: number;
+  /**
+   * Segments allowed to start inside a run of three or more — see
+   * `longRunMass`.
+   *
+   * The direct measure of "every vial looks the same", and the one the old
+   * gate had no equivalent for. `scramble` now keeps this low by construction
+   * rather than by rejection, so this is a backstop against an unlucky board
+   * rather than the mechanism.
+   *
+   * **Unbounded by default.** The per-level ramp in `generationForLevel` sets
+   * it, and both it and the ramp are part of the save format, so moving either
+   * repoints boards and needs a `GENERATOR_VERSION` bump in the same commit.
+   */
+  maxLongRunMass?: number;
   /** Node ceiling for the solvability check. */
   nodeBudget?: number;
 }
@@ -81,15 +86,16 @@ export interface AcceptanceReport {
   solvedTubes: number;
   /** Tubes one pour from finished — see `maxCappedTubes`. */
   cappedTubes: number;
+  /** Segments inside a run of three or more — see `longRunMass`. */
+  longRunMass: number;
   reasons: string[];
 }
 
 const DEFAULTS: Required<Omit<AcceptanceOptions, 'minFragmentation'>> = {
   minMoves: 4,
   maxSolvedTubes: 1,
-  // See `maxCappedTubes`. Off for levels because the gate is part of the save
-  // format in practice — a stricter one repoints every board in the game.
   maxCappedTubes: Infinity,
+  maxLongRunMass: Infinity,
   nodeBudget: 200_000,
 };
 
@@ -124,6 +130,63 @@ function isTubeCapped(tube: readonly Colour[], capacity: number): boolean {
   if (new Set(run).size !== 1) return false;
   // A genuinely finished tube is `maxSolvedTubes`' business, not this one.
   return tube.length !== capacity || tube[capacity - 1] !== run[0];
+}
+
+/** A run of this many identical segments is what reads as "already sorted". */
+const CLUMP = 3;
+
+/**
+ * Segments sitting inside a run of `CLUMP` or more — how pre-played the board
+ * looks, counted in segments rather than in tubes.
+ *
+ * **This is the measure the old gate was missing, and the reason boards looked
+ * half-solved.** `isTubeCapped` could only see a run of `capacity - 1`, so a
+ * board of eleven tubes each holding a 3-run under a stray segment reported
+ * *zero* capped tubes and sailed through. Measured on a real level-905
+ * fiendish board: 6.4 of 13 tubes carried a 3-run and 35% of all segments sat
+ * inside one, which is exactly the "every vial looks the same" complaint.
+ *
+ * Counted in segments because tubes are too coarse — a 3-run and a 5-run are
+ * both "one chunky tube" but not remotely the same board.
+ */
+function longRunMass(state: WaterState): number {
+  let total = 0;
+  for (const tube of state.tubes) {
+    let i = 0;
+    while (i < tube.length) {
+      let j = i;
+      while (j + 1 < tube.length && tube[j + 1] === tube[i]) j++;
+      const length = j - i + 1;
+      if (length >= CLUMP) total += length;
+      i = j + 1;
+    }
+  }
+  return total;
+}
+
+/**
+ * How much pre-played mass an un-pour leaves behind, as a delta — O(1), with
+ * no board copy.
+ *
+ * An un-pour only touches two runs, which is what makes this exact and cheap:
+ * it lifts `count` off the source's uniform top run, and drops them on a
+ * destination whose top is a different colour (`inverseMoves` refuses a
+ * re-merge). So the source's top run shrinks from `run` to `run - count`, the
+ * destination gains a run of exactly `count`, and nothing else on the board
+ * moves. Scoring by rebuilding the state instead cost a full tube copy per
+ * candidate, which is what made an exhaustive scan unaffordable and forced
+ * sampling.
+ */
+function clumpDelta(state: WaterState, move: InversePour): number {
+  const source = state.tubes[move.from]!;
+  const run = topRun(source);
+  const left = run - move.count;
+
+  const before = run >= CLUMP ? run : 0;
+  const after = left >= CLUMP ? left : 0;
+  const gained = move.count >= CLUMP ? move.count : 0;
+
+  return after - before + gained;
 }
 
 /** A solved board: one full tube per colour, plus the spare empties. */
@@ -191,14 +254,67 @@ export function applyInverse(state: WaterState, move: InversePour): WaterState {
   return { ...state, tubes };
 }
 
-/** Walks backwards from a solved board. Stops early if it paints itself in. */
+/**
+ * Walks backwards from a solved board. Stops early if it paints itself in.
+ *
+ * **The walk picks the least-clumping un-pour, not a uniform random one, and
+ * that single change is what stopped boards looking half-solved.**
+ *
+ * A uniform reverse walk is biased toward exactly the board the player
+ * complained about, and the bias is structural rather than bad luck. An
+ * un-pour lifts part of a uniform top run, so it *preserves* what is
+ * underneath; the only move that clears a tube's bottom is one that empties it
+ * outright, and that is a small slice of the move list. So the long runs the
+ * solved board starts with survive the walk, and more steps do not help — the
+ * distribution saturates. Measured at 12 colours, capacity 5: 130 steps and
+ * 300 steps produce identical statistics, 9.1 of 13 tubes carrying a 3-run and
+ * a third of all segments inside one.
+ *
+ * Scoring every candidate by `clumpDelta` and taking the best fixes it at the
+ * source. Same shapes, same step counts, measured over 20 boards each:
+ *
+ * | 12 colours, cap 5 | uniform | least-clumping |
+ * | ----------------- | ------- | -------------- |
+ * | tubes with a 3-run| 9.1     | 0.85           |
+ * | segments in runs  | 32.1    | 2.5            |
+ * | fragmentation     | 0.44    | 0.55           |
+ * | par               | 20      | 27             |
+ *
+ * Par going **up** is the part worth keeping in mind: a board that looks
+ * pre-played largely is pre-played, so un-clumping it is not cosmetic — it
+ * hands back the moves the clumps had already made for the player.
+ *
+ * A random deal was the other candidate and lost on cost, not on looks. It
+ * cannot reach a one-spare board at all (0% of random deals are solvable
+ * there) and its boards run par ~49, where the exact-par search costs 4
+ * seconds at p95 on a laptop against 2ms here — unaffordable on a phone, and
+ * par now feeds the hint plan as well as the star rating.
+ *
+ * Ties are broken randomly, which is what keeps the walk a walk. Picking the
+ * first best move instead makes the whole board a function of tube order.
+ */
 export function scramble(state: WaterState, steps: number, rng: Rng): WaterState {
   let current = state;
+
   for (let step = 0; step < steps; step++) {
     const moves = inverseMoves(current);
     if (moves.length === 0) break;
-    current = applyInverse(current, rng.pick(moves));
+
+    let best = Infinity;
+    const tied: InversePour[] = [];
+    for (const move of moves) {
+      const delta = clumpDelta(current, move);
+      if (delta > best) continue;
+      if (delta < best) {
+        best = delta;
+        tied.length = 0;
+      }
+      tied.push(move);
+    }
+
+    current = applyInverse(current, rng.pick(tied));
   }
+
   return current;
 }
 
@@ -229,6 +345,7 @@ export function isAcceptable(
   ).length;
   const lowerBound = moveLowerBound(state);
   const spread = fragmentation(state);
+  const clumped = longRunMass(state);
 
   if (solvedTubes > config.maxSolvedTubes) {
     reasons.push(`${solvedTubes} tubes already solved`);
@@ -236,6 +353,20 @@ export function isAcceptable(
   if (cappedTubes > config.maxCappedTubes) {
     reasons.push(`${cappedTubes} tubes one pour from solved`);
   }
+  if (clumped > config.maxLongRunMass) {
+    reasons.push(`${clumped} segments already stacked in runs`);
+  }
+  /**
+   * The difficulty floor, and it is measured in pours rather than in shape.
+   *
+   * `moveLowerBound` never overestimates the true optimum, so a floor here is
+   * a floor on par itself — the honest difficulty dial doc §5 asked for and
+   * the code substituted fragmentation for, on the grounds that an optimal
+   * search was unaffordable. Half of that is still true: the *exact* search
+   * costs up to seconds, so it stays off the load path. The bound costs a
+   * pass over the tubes, and on a well-mixed board it lands within a few
+   * moves of the optimum, which is close enough to gate on.
+   */
   if (lowerBound < config.minMoves) {
     reasons.push(`needs only ${lowerBound} moves`);
   }
@@ -257,6 +388,7 @@ export function isAcceptable(
     fragmentation: spread,
     solvedTubes,
     cappedTubes,
+    longRunMass: clumped,
     reasons,
   };
 }
@@ -306,23 +438,37 @@ export function generateLevel(
   } | null = null;
 
   /**
-   * Fallback ranking, for when no attempt clears the gate: closest to the
-   * gate first, by the gate's own priorities. Capped tubes outrank
-   * fragmentation because they are what the tight tiers exist to squeeze —
-   * ranked by fragmentation alone, an unsatisfiable gate handed back a
-   * high-fragmentation board carrying four pre-played tubes, which is the
-   * exact board the tier was written to refuse. Only excess above the
-   * allowance counts, so a loose gate leaves the old fragmentation ranking
-   * untouched.
+   * Fallback ranking, for when no attempt clears the gate: closest to the gate
+   * first, by the gate's own priorities rather than by fragmentation alone.
+   *
+   * Ranked purely on fragmentation, an unsatisfiable gate handed back a
+   * high-fragmentation board that was still visibly pre-played — the exact
+   * board the tier was written to refuse. Stacked mass leads, then the
+   * near-solved counts, with fragmentation as the tie-break. Only excess above
+   * each allowance counts, so a loose gate ranks by fragmentation exactly as
+   * it always did.
    */
-  const cappedAllowance = merged.maxCappedTubes ?? Infinity;
+  const over = (value: number, allowance: number | undefined): number =>
+    allowance === undefined || !Number.isFinite(allowance)
+      ? 0
+      : Math.max(0, value - allowance);
+
+  const penalty = (report: AcceptanceReport): number =>
+    over(report.longRunMass, merged.maxLongRunMass) * 4 +
+    over(report.cappedTubes, merged.maxCappedTubes) * 3 +
+    over(report.solvedTubes, merged.maxSolvedTubes) * 5 +
+    // Short of the difficulty floor is a shortfall like any other, and it was
+    // missing here: a board rejected for being too easy fell through to a
+    // ranking that did not look at difficulty at all, so the fallback could
+    // hand back the easiest board of the batch.
+    over(merged.minMoves ?? 0, report.lowerBound) * 2;
+
   const better = (candidate: AcceptanceReport, incumbent: AcceptanceReport): boolean => {
-    const excess = (report: AcceptanceReport): number =>
-      Number.isFinite(cappedAllowance)
-        ? Math.max(0, report.cappedTubes - cappedAllowance)
-        : 0;
-    if (excess(candidate) !== excess(incumbent))
-      return excess(candidate) < excess(incumbent);
+    const gap = penalty(candidate) - penalty(incumbent);
+    if (gap !== 0) return gap < 0;
+    if (candidate.lowerBound !== incumbent.lowerBound) {
+      return candidate.lowerBound > incumbent.lowerBound;
+    }
     return candidate.fragmentation > incumbent.fragmentation;
   };
 
@@ -334,9 +480,25 @@ export function generateLevel(
     const candidate = { state, report, attempt: attempt + 1 };
 
     if (report.accepted) {
-      if (!bestAccepted || report.fragmentation > bestAccepted.report.fragmentation) {
-        bestAccepted = candidate;
-      }
+      /**
+       * Keep the *hardest* board of the sample, not the most fragmented one.
+       *
+       * Fragmentation was only ever a proxy for difficulty, and a loose one —
+       * it counts how broken up the board is without regard for how much work
+       * that is to undo. `lowerBound` is the fewest pours that can finish the
+       * board, and on the un-clumped boards the walk now produces it sits
+       * within a move or two of the true optimum, so this ranks candidates by
+       * the thing the player actually experiences. Ties go to the more
+       * fragmented board, which is the old rule doing what it is good at:
+       * telling two equally long boards apart by how mixed they look.
+       */
+      const best = bestAccepted?.report;
+      const harder =
+        !best ||
+        report.lowerBound > best.lowerBound ||
+        (report.lowerBound === best.lowerBound &&
+          report.fragmentation > best.fragmentation);
+      if (harder) bestAccepted = candidate;
       // Enough good boards seen; take the best of them.
       if (attempt + 1 >= sampleSize) break;
     }

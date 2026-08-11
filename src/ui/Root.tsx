@@ -108,8 +108,18 @@ export function Root() {
    */
   const gameOrigin = useRef<Screen>('home');
 
-  const showGame = useCallback((from: Screen) => {
+  /**
+   * Whether the board on screen was opened as the daily brew.
+   *
+   * Paired with the store's own `bonus` flag by the effect below, which is the
+   * only way to notice that the store is no longer the one this screen was
+   * opened against.
+   */
+  const openedBonus = useRef(false);
+
+  const showGame = useCallback((from: Screen, bonusBoard = false) => {
     gameOrigin.current = from;
+    openedBonus.current = bonusBoard;
     setScreen('game');
   }, []);
 
@@ -134,7 +144,7 @@ export function Root() {
    */
   const playFromDaily = useCallback(() => {
     if (!useGameStore.getState().loadBonus(Date.now())) return;
-    showGame('daily');
+    showGame('daily', true);
   }, [showGame]);
 
   /** Both ways off the board confirm first once it has been played on. */
@@ -144,6 +154,33 @@ export function Root() {
   );
   const showComplete = useCallback(() => setScreen('complete'), []);
   const navigate = useCallback((destination: NavDestination) => setScreen(destination), []);
+
+  /**
+   * Leaves the board if the store stopped holding the board it was opened for.
+   *
+   * **This is a Fast Refresh guard, and it cannot fire in a release build.**
+   * `screen` is React state and `gameOrigin` is a ref, so both survive a
+   * refresh; `gameStore` is module state, so editing it — or anything it
+   * imports — builds a *new* store, which initialises to `bonus: false` on the
+   * mode's current level. Root goes on rendering the board, so a brew in
+   * progress silently became whatever level Continue points at, and pours from
+   * then on were recorded against that level. Nothing persists `screen`, so a
+   * cold start always begins at the splash and no shipped path can reach this.
+   *
+   * Worth holding anyway: it costs one comparison, and the invariant it states
+   * — the board may only be mounted while the store agrees which board it is —
+   * is the thing that was quietly untrue.
+   *
+   * Only the brew/level distinction is checked, because that is the one the
+   * store cannot recover on its own. A level rebuilds from its own record and
+   * its session; the brew is deliberately never saved.
+   */
+  const bonusBoard = useGameStore((state) => state.bonus);
+  useEffect(() => {
+    if (screen !== 'game' || openedBonus.current === bonusBoard) return;
+    openedBonus.current = bonusBoard;
+    setScreen(gameOrigin.current);
+  }, [screen, bonusBoard]);
 
   /**
    * Requests raised by chrome that has no route of its own — currently the coin

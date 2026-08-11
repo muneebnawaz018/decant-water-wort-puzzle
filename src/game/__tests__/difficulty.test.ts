@@ -104,45 +104,110 @@ describe('difficulty modes', () => {
 
 /**
  * The growth dial past the shape ceiling. Colours cap at 12, capacity at 5,
- * spares floor at 1 — so what keeps climbing after a curve tops out is the
- * acceptance gate, and these pin that it actually engages.
+ * spares floor at 1 and the scramble saturates, so what keeps climbing after a
+ * curve tops out is selection pressure — `generateLevel` keeps the hardest
+ * board of a sample that grows with the level.
  */
-describe('the gate ramp', () => {
-  it('leaves gentle, the early game, and breathers untightened', () => {
-    expect(generationForLevel(2000, 'gentle').minFragmentation).toBeUndefined();
-    expect(generationForLevel(400, 'classic').minFragmentation).toBeUndefined();
-    expect(generationForLevel(300, 'fiendish').minFragmentation).toBeUndefined();
-    // A breather keeps the loose gate along with its easier row.
-    expect(generationForLevel(1310, 'fiendish').minFragmentation).toBeUndefined();
-  });
-
-  it('tightens monotonically with level', () => {
-    const floors = [501, 701, 1001, 1501].map(
-      (level) => generationForLevel(level, 'classic').minFragmentation!
-    );
-    for (let i = 1; i < floors.length; i++) {
-      expect(floors[i]!).toBeGreaterThanOrEqual(floors[i - 1]!);
+describe('the difficulty ramp', () => {
+  it('raises selection pressure with level, in every mode', () => {
+    for (const mode of DIFFICULTIES) {
+      const samples = [1, 101, 501, 1501, 5001].map(
+        (level) => generationForLevel(level, mode).sampleSize!
+      );
+      for (let i = 1; i < samples.length; i++) {
+        expect(samples[i]!).toBeGreaterThanOrEqual(samples[i - 1]!);
+      }
+      // And it actually moves, rather than being flat and monotone by default.
+      expect(samples[samples.length - 1]!).toBeGreaterThan(samples[0]!);
     }
-    expect(generationForLevel(1501, 'fiendish').maxCappedTubes).toBeLessThan(
-      generationForLevel(801, 'fiendish').maxCappedTubes!
-    );
   });
 
-  it('reaches the daily bonus construction at fiendish 1301+', () => {
-    const gate = generationForLevel(1305, 'fiendish');
-    expect(gate.maxSolvedTubes).toBe(0);
-    expect(gate.maxCappedTubes).toBe(1);
+  it('spends the pressure where each mode wants it', () => {
+    // Hard reaches deepest into the tail, Easy barely reaches at all — the
+    // relaxation promise applies to how hard the generator digs, not just to
+    // the shape it digs in.
+    const at = (mode: Parameters<typeof generationForLevel>[1]) =>
+      generationForLevel(2001, mode).sampleSize!;
+    expect(at('fiendish')).toBeGreaterThan(at('classic'));
+    expect(at('classic')).toBeGreaterThan(at('gentle'));
   });
 
-  it('generates boards that honour the tightened gate', () => {
-    // The whole point, end to end: an endgame fiendish board starts with no
-    // solved tube and — where the gate is satisfiable — barely any capped
-    // ones. The untightened generator's median at this shape was five capped,
-    // half the board pre-played.
-    const { report } = generateLevel(905, 'fiendish');
-    expect(report.solvedTubes).toBe(0);
-    expect(report.cappedTubes).toBeLessThanOrEqual(2);
-    expect(report.fragmentation).toBeGreaterThanOrEqual(0.55);
+  /**
+   * The floor is deliberately *under* the median board, and this is the test
+   * that keeps it there. Ramped above the median it rejected 27 of 30 boards
+   * at classic 201 — capacity-4 boards land on their median nearly every time,
+   * so a bar one move above it is a bar almost nothing clears, and every
+   * rejection is a level falling back instead of being chosen.
+   */
+  it('keeps the difficulty floor satisfiable', () => {
+    for (const mode of DIFFICULTIES) {
+      for (const level of [1, 55, 201, 501, 905, 1501, 5001]) {
+        const { report } = generateLevel(level, mode);
+        expect({ mode, level, accepted: report.accepted }).toEqual({
+          mode,
+          level,
+          accepted: true,
+        });
+      }
+    }
+  }, 120_000);
+
+  it('relaxes on a breather', () => {
+    // An easier row, no selection pressure, and slack on the look.
+    const breather = generationForLevel(1310, 'fiendish');
+    const normal = generationForLevel(1311, 'fiendish');
+    expect(breather.sampleSize!).toBeLessThan(normal.sampleSize!);
+    expect(breather.maxLongRunMass!).toBeGreaterThan(normal.maxLongRunMass!);
+  });
+});
+
+/**
+ * The complaint this rewrite answers: "almost all vials have similar colour
+ * patterns". They did, and it was structural — a uniform reverse walk
+ * preserves whatever sits under the run it lifts, so the long runs a solved
+ * board starts with survived the scramble. A real level-905 board carried a
+ * 3-run in 6.4 of 13 tubes with a third of its segments stacked.
+ */
+describe('boards do not start half-sorted', () => {
+  const stacked = (state: { tubes: readonly (readonly number[])[] }) => {
+    let tubes = 0;
+    for (const tube of state.tubes) {
+      let best = 0;
+      let run = 0;
+      for (let i = 0; i < tube.length; i++) {
+        run = i > 0 && tube[i] === tube[i - 1] ? run + 1 : 1;
+        best = Math.max(best, run);
+      }
+      if (best >= 3) tubes++;
+    }
+    return tubes;
+  };
+
+  it('leaves almost nothing pre-stacked, at every level and mode', () => {
+    for (const mode of DIFFICULTIES) {
+      for (const level of [1, 205, 505, 905, 1505, 5005]) {
+        const { state, report } = generateLevel(level, mode);
+        // The gate's own measure, in segments.
+        expect({ mode, level, mass: report.longRunMass }).toEqual({
+          mode,
+          level,
+          mass: expect.any(Number),
+        });
+        expect(report.longRunMass).toBeLessThanOrEqual(state.capacity >= 5 ? 3 : 0);
+        // And in tubes: at most one, against 6.4 of 13 before.
+        expect(stacked(state)).toBeLessThanOrEqual(1);
+        expect(report.solvedTubes).toBe(0);
+      }
+    }
+  }, 120_000);
+
+  it('holds capacity-4 boards at zero, which the walk reaches every time', () => {
+    for (const level of [505, 905, 5005]) {
+      const { state, report } = generateLevel(level, 'gentle');
+      expect(state.capacity).toBe(4);
+      expect(report.longRunMass).toBe(0);
+      expect(stacked(state)).toBe(0);
+    }
   });
 });
 
@@ -168,10 +233,15 @@ describe('determinism', () => {
 
   it('pins the board for level 30 against a recorded fingerprint, per mode', () => {
     // Not arbitrary: these are the values the generator produced when the
-    // curves were frozen — re-recorded at version 2, when the modes got their
-    // own tables and the gate ramp landed. A change here means saved progress
-    // now points at a different puzzle, and needs a deliberate migration — not
-    // a re-recording.
+    // curves were frozen — re-recorded at version 2, which covers the mode
+    // tables, the least-clumping walk and the selection ramp together. A
+    // change here means saved progress now points at a different puzzle, and
+    // needs a deliberate migration — not a re-recording.
+    //
+    // Gentle's is unchanged from version 1, and that is not a mistake: level
+    // 30 is a breather, so it drops to a three-colour board, and three colours
+    // leave the walk no clumps to avoid. The walk only diverges where there is
+    // something to fix.
     //
     // The migration exists and has a handle: bump `GENERATOR_VERSION`, which
     // makes `loadProgress` drop every stored `best` (they measured boards that
@@ -187,11 +257,9 @@ describe('determinism', () => {
         .state.tubes.map((tube) => tube.join(''))
         .join('|');
 
-    // Classic is byte-identical to version 1 below level 501, on purpose —
-    // it is the tuned curve, and this pin is the proof the rewrite kept it.
-    expect(fingerprint('classic')).toBe('30|2221|10|3010||3231');
+    expect(fingerprint('classic')).toBe('312||0010|3302|112|32');
     expect(fingerprint('gentle')).toBe('|1|2201|220|0101|');
-    expect(fingerprint('fiendish')).toBe('|2240|0143|4431|3301||2021');
+    expect(fingerprint('fiendish')).toBe('221|220|104|0141||3340|334');
     expect(GENERATOR_VERSION).toBe(2);
   });
 

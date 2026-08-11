@@ -29,16 +29,41 @@ export function confirmExitLevel(leave: () => void): void {
   const started = moves > 0 || game.extraTaken;
 
   overlay.modal({
-    title: `Leave level ${game.level}?`,
-    body: started
-      ? `${plural(moves, 'move')} in. Your progress is saved.`
-      : 'No moves made yet.',
+    // The bonus board has no level number worth showing. `level` still holds
+    // one — it is the day index, which is how the generator seeds the puzzle —
+    // and printing it asked the player to leave level 20676. The header already
+    // calls this board by name; the dialog uses the same words.
+    title: game.bonus ? "Leave today's brew?" : `Leave level ${game.level}?`,
+    body: bodyFor(game.bonus, started, moves),
     confirmLabel: 'Leave',
     // One word, like every other dialog here. The buttons split the card in
     // half — about 113dp each — so a two-word label wraps to two lines and the
     // pair stops matching. `confirmDifficultyChange` already says `Stay` for
     // the same "don't go" answer, so the two dialogs read alike.
     cancelLabel: 'Stay',
+    // Stay takes the lit face and the right slot. This dialog only appears
+    // because a back press on a board is nearly always a mis-tap — the comment
+    // above says so — and it makes no sense to open it and then emphasise the
+    // mistake. See `destructive` on `ModalSpec`.
+    destructive: true,
     onConfirm: leave,
   });
+}
+
+/**
+ * What leaving actually costs, which is not the same on both boards.
+ *
+ * A level is written to `session.v1` after every pour, so "your progress is
+ * saved" is a promise the store keeps. A bonus board is deliberately never
+ * saved — `saveSession` returns early on it, because the record is keyed by
+ * difficulty and level and a bonus board has neither — so the same sentence on
+ * that board was a lie the player only discovers after acting on it.
+ *
+ * It is not lost for the day, though: `bonusStore.complete` runs on the solve
+ * and nowhere else, so today's puzzle is still there. Only the moves go.
+ */
+function bodyFor(bonus: boolean, started: boolean, moves: number): string {
+  if (!started) return 'No moves made yet.';
+  if (bonus) return `${plural(moves, 'move')} in. Leaving starts the brew over.`;
+  return `${plural(moves, 'move')} in. Your progress is saved.`;
 }

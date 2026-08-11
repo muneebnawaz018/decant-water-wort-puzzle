@@ -33,9 +33,16 @@ interface CurveRow {
 
 /**
  * Easy. The relaxation promise, kept structurally: capacity stays 4, spares
- * never drop below 2, and the acceptance gate never tightens. Colours are the
- * only thing that grows, and slowly — the mode plateaus once they reach 12,
- * on purpose.
+ * never drop below 2, and the gate ramp is the shallowest of the three.
+ *
+ * **Ten colours is the ceiling, and the reason is par cost rather than
+ * difficulty.** Capacity 4 with two spare tubes is the most expensive shape in
+ * the game to search — all that empty space branches — and the exact-par
+ * search runs on the JS thread. Measured worst case on a laptop: 138ms at ten
+ * colours, 209ms at eleven, 418ms at twelve, and Hermes on a phone is several
+ * times slower again. Par is deferred, so it lands after the board is drawn,
+ * but a second-long block right then is a stutter on the calmest mode in the
+ * game. Ten holds the worst case where it cannot be felt.
  */
 const GENTLE_CURVE: readonly CurveRow[] = [
   {
@@ -44,7 +51,7 @@ const GENTLE_CURVE: readonly CurveRow[] = [
   },
   {
     maxLevel: 90,
-    params: { colourCount: 4, capacity: 4, extraTubes: 2, scrambleSteps: 16 },
+    params: { colourCount: 4, capacity: 4, extraTubes: 3, scrambleSteps: 16 },
   },
   {
     maxLevel: 160,
@@ -63,20 +70,12 @@ const GENTLE_CURVE: readonly CurveRow[] = [
     params: { colourCount: 8, capacity: 4, extraTubes: 2, scrambleSteps: 56 },
   },
   {
-    maxLevel: 540,
+    maxLevel: 560,
     params: { colourCount: 9, capacity: 4, extraTubes: 2, scrambleSteps: 66 },
   },
   {
-    maxLevel: 660,
-    params: { colourCount: 10, capacity: 4, extraTubes: 2, scrambleSteps: 76 },
-  },
-  {
-    maxLevel: 790,
-    params: { colourCount: 11, capacity: 4, extraTubes: 2, scrambleSteps: 84 },
-  },
-  {
     maxLevel: Infinity,
-    params: { colourCount: 12, capacity: 4, extraTubes: 2, scrambleSteps: 90 },
+    params: { colourCount: 10, capacity: 4, extraTubes: 2, scrambleSteps: 76 },
   },
 ];
 
@@ -211,60 +210,124 @@ export function paramsForLevel(
 }
 
 /**
+ * The typical minimum-pour count the scrambler produces for a shape.
+ *
+ * `moveLowerBound` is `runs - colours`, so a board whose colours are each
+ * broken into `k` runs scores `colours * (k - 1)`. The least-clumping walk
+ * lands on a strikingly consistent `k` — measured across every shape the
+ * curves reach, 3.0 at capacity 4 and 3.2 at capacity 5, from four colours to
+ * twelve. That regularity is what makes a difficulty floor expressible as a
+ * formula rather than as a table of hand-picked numbers per band.
+ *
+ * Capacity 5 sits higher because five segments can hold more runs than four.
+ */
+function typicalBound(params: LevelParams): number {
+  const splits = params.capacity >= 5 ? 3.2 : 3.0;
+  return params.colourCount * (splits - 1);
+}
+
+/**
+ * How hard the generator is told to look, by level and mode.
+ *
+ * **This is the growth dial, and it is selection pressure rather than a
+ * threshold.** `generateLevel` keeps the hardest accepted board of the sample
+ * — hardest by `moveLowerBound`, which never overestimates the true optimum
+ * and, on the un-clumped boards the walk now produces, sits within a move of
+ * it (measured gap 0 to 1, worst 2). So drawing more samples reaches further
+ * into the hard tail of what the shape can produce, and nothing can ever be
+ * unsatisfiable: there is no bar to fail, only a bigger pile to pick the best
+ * from.
+ *
+ * That property is the whole reason this is a sample count and not a floor.
+ * The first attempt at this dial *was* a floor, ramped above the median bound,
+ * and it rejected 27 of 30 boards at classic 201 — capacity-4 boards land on
+ * their median almost every time, so a bar one move above it is a bar almost
+ * nothing clears. Every rejected board is wasted work and a level that falls
+ * back to whatever the fallback ranking liked.
+ *
+ * Measured effect at the endgame, par of the chosen board against par of a
+ * single unfiltered scramble: classic 26 → 28, fiendish 27 → 31. A few moves,
+ * honestly earned. Every water sort has a ceiling set by its widest board;
+ * this reaches that ceiling instead of shipping the same board with a
+ * different seed.
+ *
+ * Ramped on a log of the level so the early game moves quickly and the late
+ * game keeps inching, rather than stepping between bands and then stopping.
+ * Capped where the cost stops being worth it — a scramble is about a
+ * millisecond, and this runs on the level-load path.
+ */
+function samplesFor(level: number, difficulty: Difficulty): number {
+  const { start, floor, ceiling } = {
+    gentle: { start: 200, floor: 6, ceiling: 10 },
+    classic: { start: 100, floor: 8, ceiling: 20 },
+    fiendish: { start: 40, floor: 8, ceiling: 24 },
+  }[difficulty];
+
+  if (level <= start) return floor;
+  // Doubling the level adds a fixed slice of the range; five doublings reach
+  // the ceiling. Level 100 → 200 is worth as much as 800 → 1600.
+  const doublings = Math.log2(level / start);
+  return Math.round(Math.min(ceiling, floor + ((ceiling - floor) * doublings) / 5));
+}
+
+/**
  * How the acceptance gate tightens with level — the growth dial the shape
  * params cannot provide.
  *
- * Colours cap at 12, capacity at 5, spares floor at 1 and scramble saturates,
- * so past the top of a curve the *shape* cannot get harder. What can is the
- * gate: rejecting boards that start with tubes already solved, tubes one lift
- * from solved, or too little mixing. The daily bonus puzzle proved the
- * mechanism — same 12 colours as an endgame level, but `maxSolvedTubes: 0` and
- * `maxCappedTubes: 1` make it the hardest board in the game. The median
- * untightened endgame board starts with five capped tubes, which reads as half
- * pre-played; squeezing that to two or one is growth a player feels long after
- * the shape dials are pinned.
+ * Colours cap at 12, capacity at 5, spares floor at 1, and the scramble
+ * saturates (130 steps and 300 steps produce identical statistics), so past
+ * the top of a curve the *shape* cannot get harder. Two things still can:
+ *
+ * 1. **The par floor** — `minMoves`, above. The honest dial.
+ * 2. **The look** — `maxLongRunMass`, how much of the board starts stacked in
+ *    runs of three or more. `scramble` keeps this near zero by construction
+ *    now, so the gate is a backstop rather than the mechanism; before it, the
+ *    median endgame board had a third of its segments pre-stacked and eleven
+ *    of thirteen tubes carrying a 3-run, which is what made every vial look
+ *    the same.
  *
  * Breathers keep the untightened gate along with their easier row.
  *
- * Attempts and sample size rise with the gate, because a tighter gate accepts
- * fewer of the boards the scrambler produces. When no attempt passes,
- * `generateLevel` still returns the best board seen — the ramp degrades into
- * "the hardest board the attempts found", never a failure.
+ * `sampleSize` is the third dial and the quiet one: `generateLevel` keeps the
+ * hardest accepted board of the sample, so drawing more samples reaches
+ * further into the tail. Cheap — a scramble is about a millisecond.
  *
- * These thresholds are save format: they decide which attempt a level accepts,
- * so moving them repoints boards exactly like editing a curve does. Same rule
- * as everything else here — bump `GENERATOR_VERSION` in the same commit.
+ * All of this is save format: it decides which attempt a level accepts, so
+ * moving any of it repoints boards exactly like editing a curve does. Bump
+ * `GENERATOR_VERSION` in the same commit.
  */
 function gateForLevel(level: number, difficulty: Difficulty): GenerateOptions {
-  if (difficulty === 'gentle' || isBreather(level)) return {};
+  const params = paramsForLevel(level, difficulty);
 
-  // The fragmentation ceilings are measured, not aspirational. Capacity-5
-  // boards land between 0.50 and 0.68 on their own, but jointly with zero
-  // solved tubes and a capped-tube cap the feasible region tops out around
-  // 0.56–0.63 — ramps aimed higher rejected every attempt at the tight tiers,
-  // which costs the whole attempt budget on every load and degrades the level
-  // into whatever the fallback ranking prefers.
-  if (difficulty === 'classic') {
-    if (level <= 500) return {};
-    return {
-      minFragmentation: Math.min(0.55, 0.5 + Math.floor((level - 500) / 100) * 0.01),
-      maxSolvedTubes: level > 700 ? 0 : 1,
-      maxCappedTubes: level > 1300 ? 2 : level > 900 ? 3 : level > 600 ? 4 : Infinity,
-      maxAttempts: level > 900 ? 120 : 80,
-      sampleSize: level > 900 ? 10 : 8,
-    };
+  /**
+   * Capacity 4 can be held at zero stacked segments — the walk reaches it
+   * every time. At capacity 5 one stubborn 3-run survives on most boards,
+   * because five segments of a colour cannot always be split with only one
+   * spare tube to work in, so the allowance is three: one run, not two.
+   */
+  const maxLongRunMass = params.capacity >= 5 ? 3 : 0;
+
+  // A breather is a breather: an easier row, no selection pressure, and a
+  // little slack on the look.
+  if (isBreather(level)) {
+    return { maxLongRunMass: maxLongRunMass + 3, sampleSize: 4, maxAttempts: 40 };
   }
 
-  // Fiendish: starts tightening at 401 and reaches the daily bonus's gate —
-  // zero solved tubes, one capped — by 1301. Endgame Hard is the bonus
-  // puzzle's construction, every level.
-  if (level <= 400) return {};
   return {
-    minFragmentation: Math.min(0.56, 0.5 + Math.floor((level - 400) / 100) * 0.01),
-    maxSolvedTubes: 0,
-    maxCappedTubes: level > 1300 ? 1 : level > 900 ? 2 : level > 600 ? 3 : 4,
-    maxAttempts: level > 1300 ? 240 : level > 900 ? 160 : 100,
-    sampleSize: level > 900 ? 10 : 8,
+    /**
+     * A floor, not a target — deliberately under the median so it can always
+     * be met. Its job is to throw out the bottom of the distribution, the
+     * board that happens to fall together far too easily; reaching *up* is
+     * `sampleSize`'s job, and the two were conflated in the version of this
+     * that made classic 201 unsatisfiable.
+     */
+    minMoves: Math.floor(typicalBound(params) * 0.9),
+    maxLongRunMass,
+    // A pre-solved tube is free progress and reads as a mistake at any level.
+    // Only the earliest boards, where it is an on-ramp, still allow one.
+    maxSolvedTubes: level <= 20 && difficulty === 'gentle' ? 1 : 0,
+    sampleSize: samplesFor(level, difficulty),
+    maxAttempts: 60,
   };
 }
 

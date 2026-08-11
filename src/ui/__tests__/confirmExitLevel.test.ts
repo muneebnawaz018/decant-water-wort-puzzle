@@ -74,6 +74,33 @@ describe('confirmExitLevel', () => {
     expect(modal()?.body).toContain('0 moves in');
   });
 
+  // The bonus board's `level` is the day index — five digits of internal
+  // bookkeeping the player has no name for. It was reaching the dialog as
+  // "Leave level 20676?".
+  describe('on the daily bonus puzzle', () => {
+    beforeEach(() => {
+      useGameStore.getState().loadBonus(Date.now());
+    });
+
+    it('names the board rather than printing the day index', () => {
+      confirmExitLevel(jest.fn());
+
+      expect(modal()?.title).toBe("Leave today's brew?");
+      expect(modal()?.title).not.toContain('level');
+    });
+
+    // The promise the level board can keep and this one cannot: `saveSession`
+    // returns early on a bonus board, so the moves do not survive the exit.
+    it('does not promise the moves are saved', () => {
+      playOne();
+      confirmExitLevel(jest.fn());
+
+      expect(modal()?.body).toContain('1 move in');
+      expect(modal()?.body).toContain('starts the brew over');
+      expect(modal()?.body).not.toContain('saved');
+    });
+  });
+
   // An undone pour leaves no trace: `moves` is `history.length`, so undoing
   // back to the start puts the wording back to untouched.
   it('reads as untouched again once every move has been undone', () => {

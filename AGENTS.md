@@ -183,7 +183,11 @@ phase 2), `expo-updates` (ship level-gen fixes without a store review).
 - Level generation is reverse-generation from a solved board, with an acceptance
   gate (doc §5). Seeded, so level N is reproducible.
 - Difficulty is driven by **extra empty tubes**, not colour count. 2 spare →
-  1 spare is the big jump; spend it late.
+  1 spare is the big jump; spend it late. Past the shape ceiling the dial is
+  selection pressure — see the difficulty section.
+- **The scramble must not clump.** A uniform reverse walk preserves the runs a
+  solved board starts with, and produces boards that look half-played. Score
+  un-pours and take the least-clumping one.
 - No timer, no fail state. The genre sells relaxation.
 - Lock input for the 350ms pour animation or queued taps cause double pours.
 - **A refused pour re-arms the tube that was tapped.** The selection used to
@@ -245,18 +249,79 @@ leaves capacity 4, and never tightens its gate — the relaxation promise held
 structurally. A board never drops below one spare tube anywhere. Each mode
 keeps its **own** unlocks, current level, and best scores (keyed by mode).
 
-**Difficulty keeps growing after the shape dials max out, via the acceptance
-gate.** Colours cap at 12 (palette), capacity at 5 (solver cost), spares floor
-at 1 and scramble saturates — so `generationForLevel` ramps the _gate_ instead:
-fragmentation floor rising, then zero pre-solved tubes, then capped tubes
-squeezed down. Classic ramps from 501; fiendish from 401, reaching the daily
-bonus's construction (`maxSolvedTubes: 0`, `maxCappedTubes: 1`) by 1301 — the
-untightened endgame median was five capped tubes, half the board pre-played.
-The frag ceilings (0.55 classic, 0.56 fiendish) are measured joint-feasibility,
-not aspiration: aimed higher, every attempt failed the gate and the whole
-attempt budget burned on each load. When no attempt passes, `generateLevel`
-falls back to the closest-to-gate board — ranked by capped-tube excess first,
-fragmentation second. Breathers (every 10th level) keep the loose gate.
+### The scramble picks the least-clumping un-pour
+
+**This is the fix for "almost all vials have similar colour patterns", and it
+is one line of the walk.** A uniform reverse walk is biased toward
+half-solved-looking boards structurally, not by luck: an un-pour lifts part of
+a uniform top run, so it _preserves_ whatever sits underneath, and the only
+move that clears a tube's bottom is one that empties it. The long runs the
+solved board starts with therefore survive the scramble — and more steps do not
+help, because the distribution saturates (130 steps and 300 produce identical
+statistics).
+
+`scramble` now scores every candidate un-pour with `clumpDelta` and takes the
+best, ties broken randomly. The delta is O(1) — an un-pour touches exactly two
+runs, so no board copy is needed, which is what makes scanning every candidate
+cheaper than sampling a few used to be. Measured at 12 colours, capacity 5, 20
+boards each:
+
+| 12c / cap 5        | uniform | least-clumping |
+| ------------------ | ------- | -------------- |
+| tubes with a 3-run | 9.1     | 0.85           |
+| segments in runs   | 32.1    | 2.5            |
+| fragmentation      | 0.44    | 0.55           |
+| par                | 20      | 27             |
+
+Par going **up** is the part to remember: a board that looks pre-played largely
+is pre-played, so un-clumping is not cosmetic — it hands back the moves the
+clumps had already made for the player.
+
+A **random deal** was the other candidate and lost on cost, not on looks. It
+cannot produce a one-spare board at all (0% of random deals are solvable there)
+and its boards run par ~49, where the exact-par search costs 4s at p95 on a
+laptop against 2ms here — unaffordable on a phone, and par now feeds the hint
+plan as well as the rating.
+
+`maxLongRunMass` in the gate is the matching measure: segments sitting in a run
+of 3+. It replaces `maxCappedTubes` as the real check, which had a blind spot
+that caused the whole bug — it only ever saw a run of `capacity - 1`, so a
+board of eleven 3-run tubes reported **zero** capped tubes and passed.
+
+### Difficulty past the shape ceiling is selection pressure
+
+Colours cap at 12 (palette), capacity at 5 (par-search cost), spares floor at 1,
+and the scramble saturates — so past the top of a curve the _shape_ cannot get
+harder. What still can is how hard the generator looks: `generateLevel` keeps
+the **hardest accepted board of the sample** (by `moveLowerBound`, not by
+fragmentation), and `samplesFor` grows the sample with the level, ramped on
+`log2` so early levels move fast and late ones keep inching. Measured lift at
+the endgame: classic par 26 → 28, fiendish 27 → 31.
+
+`moveLowerBound` is the right ranking key now for a reason worth keeping: on
+un-clumped boards it sits within a move of the true optimum (measured gap p50
+0–1, max 2), so ranking by it is ranking by par. Fragmentation was only ever a
+proxy and is now just the tie-break.
+
+**`minMoves` is a floor, not a target — deliberately under the median (0.9 ×
+`typicalBound`) so it always passes.** The first attempt at this dial ramped it
+_above_ the median and rejected 27 of 30 boards at classic 201: capacity-4
+boards land on their median almost every time, so a bar one move above it is a
+bar nothing clears, and every rejection is a level falling back instead of being
+chosen. Reaching up is `sampleSize`'s job; throwing out the trivial bottom of
+the distribution is this one's. The current sweep rejects **0 of 630** boards
+across all three modes from level 1 to 5030.
+
+`typicalBound(params)` = `colours × (splits − 1)`, splits 3.0 at capacity 4 and
+3.2 at capacity 5 — the walk breaks each colour into ~3 runs with startling
+consistency across every shape, which is what lets the floor be a formula
+instead of a table of hand-picked numbers.
+
+Gentle tops out at **10 colours**, and the reason is par cost rather than
+difficulty: capacity 4 with two spares is the most expensive shape to search
+(all that empty space branches), measuring 138ms worst at ten colours, 209ms at
+eleven, 418ms at twelve on a laptop. Par is deferred, but a second-long block
+just after the board appears is a stutter on the calmest mode in the game.
 
 **Determinism is load-bearing and must not be broken.** No board is ever stored;
 level N in a mode is rebuilt from `seedForLevel(level, DIFFICULTY_SALT[mode])`.

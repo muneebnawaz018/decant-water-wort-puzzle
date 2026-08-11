@@ -1037,9 +1037,20 @@ export const useGameStore = create<GameState>((set, get) => {
      * would replay bonus moves onto that level's board, which the session's own
      * legality check would then reject on every launch.
      *
-     * `level` holds the day index while this is set. Nothing reads it as a
-     * level — `bonus` gates the progress write — and it is what makes the HUD
-     * and the seed agree about which board is on screen.
+     * **`level` holds the day index while this is set, and every reader has to
+     * know that.** The comment here used to claim nothing read it as a level,
+     * which was wrong four times over: the HUD printed "Level 20676", the
+     * Complete screen offered "Level 20677", the leave dialog asked "Leave
+     * level 20676?" and the mode-switch dialog warned about it by number.
+     * 20676 is not a seed or a bug — it is today's date, counted in days since
+     * 1970, which is exactly what makes it look like a plausible level number
+     * and stay wrong all day.
+     *
+     * Reusing the field is still right: it is what makes the HUD, the seed and
+     * `refinePar` agree about which board is on screen. But `bonus` is the
+     * only thing that says how to read it, so **anything that renders `level`
+     * or does arithmetic on it must check `bonus` first**. The tests in
+     * `gameStore.test.ts` pin the arithmetic case.
      */
     loadBonus: (now) => {
       if (!useBonusStore.getState().available(now)) return false;
@@ -1076,7 +1087,24 @@ export const useGameStore = create<GameState>((set, get) => {
       return true;
     },
 
-    nextLevel: () => get().loadLevel(get().level + 1),
+    /**
+     * The next level up — and never `day + 1` off the bonus board.
+     *
+     * `level` holds the day index while `bonus` is set, so this read 20677 on
+     * a solved brew, and `loadLevel` does not merely open a board: it writes
+     * the number through `setCurrentLevel` and saves it. One press would have
+     * filed the mode as being on level 20,677, which `firstUnsolved` and the
+     * Stages grid then have to make sense of.
+     *
+     * `CompleteScreen` already routes the bonus board's button to Home rather
+     * than here, so nothing reaches this today. It is guarded anyway because
+     * the cost of the next caller forgetting is a corrupted progress record,
+     * and the guard is one line.
+     */
+    nextLevel: () => {
+      if (get().bonus) return;
+      get().loadLevel(get().level + 1);
+    },
 
     /**
      * Opens what Continue should open: an unfinished board, or the frontier.

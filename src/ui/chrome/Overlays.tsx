@@ -124,6 +124,47 @@ const ModalHost = memo(function ModalHost() {
   const showSecondary = modal.onSecondary !== undefined;
   const showLeft = showSecondary || modal.cancelLabel !== null;
 
+  /**
+   * Which button gets the right slot and the lit face.
+   *
+   * Three arrangements, and working them out here rather than inside the JSX is
+   * what keeps it readable — the labels, the glyphs, the handlers and the styles
+   * were each branching on the same two conditions in four separate expressions,
+   * and adding a third arrangement to that would have meant twelve.
+   *
+   * - **A question.** Confirm on the right, lit. The pair reads "back out / go
+   *   on", and go-on belongs at the end of that line — which is where every
+   *   platform dialog puts it, so a `Switch` on the left is a Cancel where the
+   *   muscle memory says Confirm.
+   * - **An offer** (`onSecondary`). Both buttons pay and one pays more, so the
+   *   offer takes the right and the lit face, and the plain confirm steps left
+   *   as a ghost.
+   * - **A warning** (`destructive`). The roles swap again: staying put takes the
+   *   right and the lit face, and the action that costs something steps left.
+   *   The dialog exists because the press that opened it was probably a mistake,
+   *   so the emphasis belongs on the answer that undoes it.
+   *
+   * The glyph follows the *action*, not the slot — `confirmIcon` travels with
+   * confirm wherever it lands.
+   */
+  const destructive = modal.destructive === true && !showSecondary;
+
+  const left = showSecondary
+    ? { label: modal.confirmLabel ?? 'OK', icon: modal.confirmIcon, onPress: confirm }
+    : destructive
+      ? { label: modal.confirmLabel ?? 'OK', icon: modal.confirmIcon, onPress: confirm }
+      : { label: modal.cancelLabel ?? 'Cancel', icon: undefined, onPress: closeModal };
+
+  const right = showSecondary
+    ? {
+        label: modal.secondaryLabel ?? 'More',
+        icon: modal.secondaryIcon,
+        onPress: secondary,
+      }
+    : destructive
+      ? { label: modal.cancelLabel ?? 'Cancel', icon: undefined, onPress: closeModal }
+      : { label: modal.confirmLabel ?? 'OK', icon: modal.confirmIcon, onPress: confirm };
+
   return (
     <Animated.View
       style={styles.scrim}
@@ -145,62 +186,31 @@ const ModalHost = memo(function ModalHost() {
             34dp.
           */}
           <View style={showLeft ? styles.buttons : styles.buttonsSingle}>
-            {/*
-              Two slots, and which button lands in which depends on what the
-              left one holds.
-
-              Against a *cancel*, confirm sits on the right. The pair reads
-              "back out / go on" and go-on belongs at the end of that line —
-              which is also where every platform dialog puts it, so a Switch on
-              the left is a Cancel where the muscle memory says Confirm.
-
-              Against an *offer*, the roles swap. Both buttons pay and one pays
-              more, so the offer is what the row is steering towards: it takes
-              the right and the primary face, and the plain confirm steps left
-              as a ghost.
-            */}
             {showLeft ? (
               <GlossButton
-                label={
-                  showSecondary
-                    ? (modal.confirmLabel ?? 'OK')
-                    : (modal.cancelLabel ?? 'Cancel')
-                }
+                label={left.label}
                 variant="ghost"
-                /* The glyph follows the *action*, not the slot. Against an
-                   offer this slot holds confirm and takes `confirmIcon`;
-                   against a question it is Cancel, which carries none — a mark
-                   on "not now" is decoration on a way out. */
                 trailing={
-                  showSecondary && modal.confirmIcon ? (
-                    <Icon
-                      name={modal.confirmIcon}
-                      size={s(15)}
-                      color={apothecary.goldLight}
-                    />
+                  left.icon ? (
+                    <Icon name={left.icon} size={s(15)} color={apothecary.goldLight} />
                   ) : undefined
                 }
-                onPress={showSecondary ? confirm : closeModal}
+                onPress={left.onPress}
                 size="dialog"
                 style={styles.button}
               />
             ) : null}
             <GlossButton
-              label={
-                showSecondary
-                  ? (modal.secondaryLabel ?? 'More')
-                  : (modal.confirmLabel ?? 'OK')
-              }
+              label={right.label}
               variant="primary"
               /* `onGold`, because this is the lit face. The same glyph would be
                  invisible here in the ghost button's pale gold. */
-              trailing={(() => {
-                const name = showSecondary ? modal.secondaryIcon : modal.confirmIcon;
-                return name ? (
-                  <Icon name={name} size={s(15)} color={ui.onGold} />
-                ) : undefined;
-              })()}
-              onPress={showSecondary ? secondary : confirm}
+              trailing={
+                right.icon ? (
+                  <Icon name={right.icon} size={s(15)} color={ui.onGold} />
+                ) : undefined
+              }
+              onPress={right.onPress}
               size="dialog"
               style={showLeft ? styles.button : styles.buttonSingle}
             />

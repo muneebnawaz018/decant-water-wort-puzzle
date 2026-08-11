@@ -85,35 +85,46 @@ export function generateBonus(day: number): GeneratedLevel {
   return generateLevel(day, 'fiendish', {
     params: BONUS_PARAMS,
     /**
-     * The strict gate, and this board is the only thing in the game that gets
-     * it.
+     * The strict gate. This board is the hardest thing the generator makes, so
+     * it gets the tightest terms in the game.
      *
      * The first bonus boards shipped with five tubes already a single pour
      * from finished — the hardest shape in the game reading as half played
-     * before it was touched. `maxCappedTubes` is the check that sees them;
-     * `waterGenerator.ts` explains why it is off everywhere else (a stricter
-     * gate repoints every level a player has already solved, and this board is
-     * the one with no history to repoint).
+     * before it was touched. `maxLongRunMass` is now the check that catches
+     * that, and it catches far more than `maxCappedTubes` ever could: the
+     * capped check only sees a run of `capacity - 1`, while the mass counts
+     * every segment sitting in a run of three or more. Both are kept, since a
+     * near-finished tube is worth naming on its own.
      *
-     * One rather than zero. Zero is reachable but rare — roughly one attempt in
-     * two hundred — and a gate the generator usually misses is worse than a
-     * slightly looser one it always makes: a missed gate falls back to the best
-     * board seen, which is exactly the five-capped board this exists to stop.
+     * Three is one 3-run on the whole board — the floor the walk can actually
+     * reach at capacity 5 with a single spare, where five segments of a colour
+     * cannot always be prised apart. A gate the generator usually misses is
+     * worse than a slightly looser one it always makes, because a missed gate
+     * falls back to the best board seen.
      */
+    maxLongRunMass: 3,
     maxCappedTubes: 1,
     maxSolvedTubes: 0,
     /**
-     * Far above the level default of 40, because the strict gate needs the
-     * attempts — a passing board is a few percent of tries at this shape, and
-     * missing the gate falls back to the worst case this is here to prevent.
+     * A hard difficulty floor, which no level gets — levels use a floor under
+     * their median so it always passes, and reach upward with `sampleSize`
+     * instead. This board can afford a real bar: it is generated once a day on
+     * a press, so it can burn attempts a level load cannot.
+     */
+    minMoves: 28,
+    /**
+     * Far above the level default, because the strict gate needs the attempts,
+     * and a big sample because `generateLevel` keeps the hardest board it
+     * accepts — the same selection pressure levels use, turned up as far as it
+     * goes.
      *
      * Affordable because it runs once a day, on a press, rather than on every
-     * level load. Measured at ~14ms a board over a year of days on a laptop;
-     * Hermes on a phone is several times slower, so budget tens of
-     * milliseconds — once, when the player opens the puzzle.
+     * level load. Hermes on a phone is several times slower than the machine
+     * this was measured on, so budget tens of milliseconds — once, when the
+     * player opens the puzzle.
      */
     maxAttempts: 400,
-    sampleSize: 8,
+    sampleSize: 40,
     // Mixed rather than used raw: consecutive days would otherwise be
     // consecutive seeds, and `mulberry32` on adjacent seeds is well behaved but
     // there is no reason to lean on it.
