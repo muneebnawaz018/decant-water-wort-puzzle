@@ -7,9 +7,6 @@ import { readJson, writeJson } from './storage';
 export interface Settings {
   /** Master sound. Everything audible is gated on this (spec §7). */
   sound: boolean;
-  music: boolean;
-  /** Index into `MUSIC_TRACKS`. */
-  musicTrack: number;
   /** A tick on every vial tap, separate from pour and win sounds. */
   tapSound: boolean;
   haptics: boolean;
@@ -28,17 +25,11 @@ export interface Settings {
   skin: string;
 }
 
-/** Spec §7. "Off" is the absence of a track, so it is not in the list. */
-const MUSIC_TRACKS = ['Herbarium', 'Rainfall', 'Lo-fi'] as const;
-
-export type ToggleKey =
-  'sound' | 'music' | 'tapSound' | 'haptics' | 'colourblind' | 'dailyReminder';
+export type ToggleKey = 'sound' | 'tapSound' | 'haptics' | 'colourblind' | 'dailyReminder';
 
 export interface SettingsState extends Settings {
   toggle: (key: ToggleKey) => void;
   set: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
-  /** Advances to the next track, wrapping. Returns the new track's name. */
-  cycleMusic: () => string;
   setDifficulty: (difficulty: Difficulty) => void;
 }
 
@@ -46,8 +37,6 @@ const KEY = 'settings.v3';
 
 const DEFAULTS: Settings = {
   sound: true,
-  music: true,
-  musicTrack: 0,
   tapSound: true,
   haptics: true,
   colourblind: false,
@@ -60,9 +49,6 @@ function load(): Settings {
   const stored = readJson<Partial<Settings>>(KEY, {});
   return {
     sound: stored.sound ?? DEFAULTS.sound,
-    music: stored.music ?? DEFAULTS.music,
-    musicTrack:
-      (Math.floor(stored.musicTrack ?? 0) + MUSIC_TRACKS.length) % MUSIC_TRACKS.length,
     tapSound: stored.tapSound ?? DEFAULTS.tapSound,
     haptics: stored.haptics ?? DEFAULTS.haptics,
     colourblind: stored.colourblind ?? DEFAULTS.colourblind,
@@ -76,21 +62,9 @@ function load(): Settings {
 }
 
 function persist(state: Settings): void {
-  const {
-    sound,
-    music,
-    musicTrack,
-    tapSound,
-    haptics,
-    colourblind,
-    dailyReminder,
-    difficulty,
-    skin,
-  } = state;
+  const { sound, tapSound, haptics, colourblind, dailyReminder, difficulty, skin } = state;
   writeJson(KEY, {
     sound,
-    music,
-    musicTrack,
     tapSound,
     haptics,
     colourblind,
@@ -117,13 +91,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     persist(get());
   },
 
-  cycleMusic: () => {
-    const next = (get().musicTrack + 1) % MUSIC_TRACKS.length;
-    set({ musicTrack: next, music: true });
-    persist(get());
-    return MUSIC_TRACKS[next]!;
-  },
-
   setDifficulty: (difficulty) => {
     if (get().difficulty === difficulty) return;
     set({ difficulty });
@@ -133,21 +100,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
 /** Read settings outside React — handlers should not subscribe to them. */
 export function currentSettings(): Settings {
-  const {
-    sound,
-    music,
-    musicTrack,
-    tapSound,
-    haptics,
-    colourblind,
-    dailyReminder,
-    difficulty,
-    skin,
-  } = useSettingsStore.getState();
+  const { sound, tapSound, haptics, colourblind, dailyReminder, difficulty, skin } =
+    useSettingsStore.getState();
   return {
     sound,
-    music,
-    musicTrack,
     tapSound,
     haptics,
     colourblind,

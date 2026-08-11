@@ -1077,9 +1077,10 @@ Two new stores: `economyStore` (coins, daily streak, owned cosmetics) and
 callbacks or re-rendering the screen below). Settings grew to spec §8 and the
 key moved to `settings.v3`.
 
-The music icon's behaviour is spec §7 and is deliberately odd: with master
-sound off it is dimmed and opens a modal offering to turn sound back on; with
-sound on it cycles the music track and toasts the name. Keep that exact logic.
+Spec §7's music-icon behaviour — dimmed with sound off, cycling tracks and
+toasting their names with sound on — is **not implemented and will not be**.
+The game has no background music; see the Sound section for why the whole
+feature was removed rather than left badged.
 
 ## Changing mode
 
@@ -1142,73 +1143,184 @@ and the phase 2 notes above describe what it has to do.
 
 ## Sound
 
-Five recorded one-shots in `assets/audio`, played by `src/audio/sounds.ts`.
-Effects only — **Music is still the one badged row in that group**, because the
-tracks have not been sourced. `musicTrack` and its three names are already in
-the store, so that row waits on audio rather than on code.
+Five recorded one-shots in `assets/audio`, played by `src/audio/sounds.ts`
+through **`modules/system-sound`**, a local Expo module of this project's own.
+Effects only, and **there is no music** — see the end of this section, because
+its absence is a decision rather than a gap.
 
-An audio layer was built and removed before this one, and the reason governs
-what may be added here. `expo-audio` worked fine and the design was right — an
-imperative player pool, no hooks, settings read at call time, pour pitch driven
-by destination fill. What sank it was the audio itself: synthesised effects,
-generated rather than sourced, and not good enough to put in front of anyone.
-Sine waves and filtered noise do not sound like liquid, and no envelope tuning
-changes that. **So: recorded sources only.** Every file's origin and licence is
-in `assets/audio/CREDITS.md`, and a file with no entry there does not ship.
+### It does not use `expo-audio`, and the reason cost an evening
 
-What ships now is CC0 — Kenney for glass, bell and thud, OpenGameArt for the
-pour. Cut to length by `script/prepare-sounds.py`, which is the only way these
-files should ever be written: drop a source in `assets/audio/source/` (gitignored)
-and run it. It handles onset detection, mono, 44.1kHz, per-cue levels and edge
-fades, and its `TARGETS` table holds the **deliberately unequal peaks** — `tap`
-lands about 13dB under `complete`, so a player can tell from sound alone whether
-something mattered.
+`expo-audio` was installed, worked, shipped a whole audio layer — and is now
+uninstalled, plugin and all. It wraps `AVPlayer`, which is a **streaming-media
+pipeline**, and on the iOS 26 simulator that pipeline never finishes loading a
+local file: `isLoaded` stays false forever and `FigFilePlayer` signals
+`err=-12864` at the render stage, on byte-identical files that the same build
+plays perfectly on an iOS 18 simulator. Silence, no JS error, nothing to catch.
 
-**Cues are loaded through `expo-asset` to a local file, never handed to
-`createAudioPlayer` as a `require()` reference.** This looks like an
-indirection and is a bug fix. A `require('*.wav')` resolves to a file inside
-the bundle in release and to a **Metro URL** in development — and Metro serves
-assets with no `Content-Type` _and_ `X-Content-Type-Options: nosniff`, so
-CoreMedia is handed no format and forbidden from guessing one. It cannot pick a
-decoder for a perfectly valid file. The symptom is total silence with
-`FigFilePlayer signalled err=-12864` in the device log, once per player, and
-`FigAssetCreateWithURL: url <http … ???>` above it showing the fetch going over
-the network. `Asset.downloadAsync()` puts a real file on disk and `localUri`
-keeps its extension, which is all CoreMedia wants. In release the asset is
-already local, so it costs nothing. **Debug and release differ here, so audio
-that works in one proves nothing about the other.**
+The replacement plays decoded buffers through the primitives games actually
+use — `AVAudioEngine` (iOS 8+) and `SoundPool` (Android API 1) — so every
+device that can install the app can play its sounds. The module mirrors
+`modules/system-haptics` file for file: `expo-module.config.json`, a podspec, a
+Swift `Module` and a Kotlin `ModuleDefinition`, and an `index.ts` exporting
+`requireOptionalNativeModule<SystemSoundModule>('SystemSound')`, which is
+`null` under Jest and therefore needs no mock.
 
-Three more decisions in `sounds.ts` worth keeping:
+Four things about it that are load-bearing:
 
-- **Pitch is `playbackRate` with `shouldCorrectPitch = false`,** because
-  `expo-audio` has no independent pitch control. Rate and pitch move together
-  like tape, which caps the usable range: the ±3 semitones in `pitch.ts` are
-  bounded by the pour animation, not by taste, since a rate far from 1 finishes
-  before the liquid lands. That coupling is also why the pour sample is a
-  **glug rather than a splash** — pitch is only audible on a source that has
-  some, and the splashes in the same pack are broadband noise that sounds
-  identical shifted.
-- **One player per cue, and retriggering restarts it.** Different cues overlap
-  naturally, so a pour that finishes a vial rings over its own splash; the same
-  cue twice cuts itself off, which is right for a double-tap and costs a fifth
-  of the memory a real pool would.
-- **`mixWithOthers`, and the silent switch is respected.** A puzzle with no
-  timer is what someone plays with a podcast on. Taking audio focus to click at
-  them would be rude, and a phone set to silent has already answered the
-  question.
+- **iOS builds one chain per cue**: `AVAudioPlayerNode → AVAudioUnitVarispeed →
+mainMixer`, with the session set to `.playback` + `.mixWithOthers`. The
+  varispeed unit is what pitches the pour; both engines are tape-style, rate
+  and pitch moving together, which is exactly what `pitch.ts` wants and means
+  there is no `shouldCorrectPitch` to remember to switch off.
+- **The engine starts lazily, on the first `play`.** Starting it at load costs
+  a running audio graph on the launch path for a game that may never make a
+  sound.
+- **Retriggering a cue restarts it** (`stop` → `scheduleBuffer` → `play`), so a
+  hurried double-tap is one tap rather than two smeared together, while
+  _different_ cues overlap freely.
+- **Android checks `ready`** — `SoundPool` loads asynchronously and playing an
+  id before its `OnLoadCompleteListener` fires is a silent no-op.
 
-`feedbackFor` now decides sound and haptics together, which is the point: they
-answer one event, and a pour that buzzes without a splash reads as a phone
-fault. Each half still checks its own setting.
+**`playbackRate` on `expo-audio` is a getter-only property that TypeScript
+types as writable.** Assigning to it throws at runtime, the throw was swallowed
+by the `try`/`catch` around playback, and so `play()` never ran at all — hours
+of "the file is fine, the volume is fine, why is there no sound". Recorded here
+because the trap is not in the types, and because the shape of it recurs: a
+`catch` around the whole of a playback call hides the one line that is wrong.
 
-**`expo-audio` is stubbed globally in `jest.setup.js`**, beside the Nitro stub
-and for the same reason — it reaches for a native class at _import_, so any
-suite that merely pulls in `feedback.ts` dies before its first assertion.
+### Cues are loaded through `expo-asset`, never as a bare `require()`
 
-**Nobody has heard these in the game.** They were picked by measurement — the
-`illegal` thud is the darkest of 245 candidates at 197Hz, `complete` is a bell
-with a 1.5s ring — which says they are plausible, not that they are right. The
-last set died on an ear judgement, and that judgement still has to happen.
+A `require('*.m4a')` resolves to a file inside the bundle in release and to a
+**Metro URL** in development — and Metro serves assets with no `Content-Type`
+_and_ `X-Content-Type-Options: nosniff`, so a decoder is handed no format and
+forbidden from guessing one. `Asset.downloadAsync()` puts real bytes on disk
+and `localUri` keeps the extension. In release the asset is already local, so
+it costs nothing. **Debug and release differ here, so audio that works in one
+proves nothing about the other.**
+
+`primeSounds()` does that resolution once, from `Root`'s first layout, and a
+cue that fails to load simply stays silent — audio is a garnish on a puzzle
+game, and a device that cannot load a sound should not crash.
+
+### The cues, and where they come from
+
+Recorded sources only. An audio layer was built and deleted before this one and
+the reason still governs the file: its effects were **synthesised**, and sine
+waves and filtered noise do not sound like liquid or wood. Every file's origin
+and licence is in `assets/audio/CREDITS.md`, and a file with no entry there
+does not ship.
+
+- `tap` — Kenney glass, CC0.
+- `pour` — water poured into a glass **that already holds water** (Freesound,
+  carroll27, CC0). Two rejected takes are recorded in CREDITS and both failed
+  on _subject_ rather than quality: a 0.23s bubble glug could not cover a
+  1850ms animation, and a bottle-neck pour sounded like someone **drinking**,
+  because a narrow neck glugging is the sound a throat makes.
+- `complete`, `level`, `illegal` — **arranged from a real marimba**
+  (VSCO 2 CE, sgossner, CC0): a rising fifth, a walk up to a ringing chord, and
+  a low damped falling fifth. Kenney's originals were a bell and a chiptune
+  cue, and the chiptune one was received as "some Nokia mobile msg ring" —
+  which is what a digital arpeggio is. Modern casual games use tuned acoustic
+  percussion; a wooden bar has a soft attack and a decay that gets out of the
+  way. This is **arrangement, not synthesis** — no object in the world makes
+  the sound of a puzzle going right, so the notes are chosen but every sample
+  is a struck bar.
+
+`script/prepare-sounds.py` is the only way these files should ever be written:
+drop a source in `assets/audio/source/` (gitignored) and run it. It cuts on the
+onset, forces mono/44.1k, sets per-cue levels, fades edges to true zero, and
+**encodes the shipped `.m4a` itself** — that encode used to be a hand-run
+ffmpeg line, which is how a re-levelled `.wav` ships beside last month's audio.
+Its `ARRANGEMENTS` table holds the played cues, `damp` mutes a bar's ring, and
+`punch` is a soft limiter — see below.
+
+### Two things measurement got wrong before an ear got them right
+
+Both were reported by playing the game, not by reading a number, and both are
+the reason the last line of this section exists:
+
+1. **A chord's peak is not its loudness.** The win fanfare peaked 4dB above
+   every other cue and was reported as _quieter_ in play. Five bars struck at
+   once sum into a spike two milliseconds long, and normalising to that spends
+   the whole headroom on something nobody can hear. `punch` (a `tanh` soft
+   limiter, gradual knee so wood does not go buzzy) rounds the peaks off before
+   the normalise, and lifted its sustained level 6.5dB with no change to any
+   gain.
+2. **Tempo has to move a lot to be felt.** The fanfare's run went 65ms → 120ms
+   a note, which is a doubling, is measurable, and was reported as "no
+   difference". 240 was then too slow. It sits at 170.
+
+### Timing is enforced, not tuned
+
+`src/audio/sounds.ts` schedules the long cues against the pour animation
+(`POUR_MS`, `PHASE`) rather than firing them at the tap: the tube spends the
+first 15% of the animation flying to its target, and a pour heard then reads as
+the phone answering rather than as liquid.
+
+**No two long cues may start within `MIN_GAP_MS` of each other**, and that is a
+rule the code holds rather than three constants that have to agree. Hand-spaced
+delays were tried twice and drifted back both times, for a structural reason:
+each is tuned against its own animation phase and nothing checks them against
+one another. The last move of a level fires three cues, each over a second
+long, so they ran together as one noise.
+
+Each cue asks for the moment it would like and a scheduler hands out the next
+free slot. The two kinds yield differently, which is the whole design: **the
+rewards wait** (a finished vial and a solved board describe a state the board
+is now in, so a beat late still reads correctly) and **the pour is dropped** (it
+belongs to one second of animation and means nothing outside it — better silent
+than late). `tap` and `illegal` bypass the scheduler entirely, because feedback
+that arrives on a schedule is not feedback.
+
+`src/audio/__tests__/spacing.test.ts` pins the gap itself rather than today's
+numbers, including that the reward is never the thing dropped.
+
+### The dials
+
+- **`VOLUME` in `sounds.ts`** is the loudness dial — one number, scaling every
+  cue together so the ladder survives. The files stay at the digital ceiling on
+  purpose: a quiet master throws away resolution and cannot be raised later
+  without re-encoding, so the ceiling lives in the assets and the taste lives
+  in code where changing it is a reload.
+- **`TRIM`** is per-cue and deliberately short — two entries, both corrections
+  an ear made to a measured ladder. The pour is turned _down_ because it is the
+  only **continuous** cue (every other sound is a strike that decays, so its
+  peak is heard for milliseconds; the pour holds near peak for over a second)
+  and the win is turned _up_ because its energy is spread across a chord.
+- **`TARGETS` in `prepare-sounds.py`** holds the ladder itself, in deliberately
+  unequal peaks.
+
+### No music, and that is the decision
+
+There is no background track, no `music` setting, no `musicTrack`, and no row
+in the drawer. All of it existed as a badged placeholder and was removed rather
+than filled in.
+
+A puzzle with no timer and no fail state is what people play with a podcast or
+their own music on. An app that starts singing at them is the one they silence
+outright — and silencing an app costs it the effects too, which are the half
+that carries information here. The cost of building it was real as well: a loop
+that does not grate needs two or three minutes of seamless audio, which is
+where CC0 material thins out badly, and one track is 2–4MB against the ~80KB
+the entire effects set weighs.
+
+If it ever comes back it needs a decision about defaulting **off**, and the
+`mixWithOthers` session above is what makes not fighting the player's own audio
+the default today.
+
+### Testing
+
+**`modules/system-sound` needs no Jest mock** — `requireOptionalNativeModule`
+returns `null` with no native runtime and the audio layer treats that as "play
+nothing", which is exactly the production behaviour on a device that failed to
+load a cue. `feedbackAndroid.test.ts` is the exception and mocks it explicitly,
+because its gutted `react-native` mock kills the `expo` import underneath.
+`spacing.test.ts` mocks it the other way, with a fake that records call times,
+since what it tests is _when_ `play` happens.
+
+**They have been heard on a simulator only.** A phone speaker is where a bright
+chime turns shrill, and that judgement has not happened yet — the previous set
+died on exactly such a judgement after measuring fine.
 
 ## Tablets
 

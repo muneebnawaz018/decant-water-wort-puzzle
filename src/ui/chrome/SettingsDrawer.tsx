@@ -182,14 +182,15 @@ export const SettingsDrawer = memo(function SettingsDrawer() {
               <Toggle setting="sound" label="Sound" />
             </SettingRow>
             {/*
-              Still marked, and alone in this group: the effects landed and the
-              music tracks did not. `musicTrack` and its three names are already
-              in the store, so this is a row waiting on audio rather than on
-              code.
+              No Music row, and its absence is a decision rather than a gap.
+              The game has no background track and is not getting one: a puzzle
+              with no timer is what people play with a podcast or their own
+              music on, and an app that starts singing is the one they silence
+              outright — which costs the effects too. The store fields, the
+              three track names and the cycling icon went with it; a setting
+              for a feature nobody is building is just a row that has to keep
+              being explained.
             */}
-            <SettingRow icon="music" label="Music">
-              <SoonBadge />
-            </SettingRow>
             <SettingRow icon="tap" label="Sound on tap">
               <Toggle setting="tapSound" label="Sound on tap" />
             </SettingRow>
@@ -245,12 +246,7 @@ const DrawerMark = memo(function DrawerMark() {
   return <AppMark size={s(34)} level={battery.level} source={battery.source} />;
 });
 
-/**
- * One switch bound to one setting.
- *
- * Turning master sound off drags music down with it (spec §7). Leaving music
- * "on" while nothing can be heard is a state the player cannot make sense of.
- */
+/** One switch bound to one setting. */
 const Toggle = memo(function Toggle({
   setting,
   label,
@@ -276,9 +272,6 @@ const Toggle = memo(function Toggle({
     }
 
     store.toggle(setting);
-    if (setting === 'sound' && !useSettingsStore.getState().sound) {
-      store.set('music', false);
-    }
   }, [setting]);
 
   return <Switch value={value} onChange={onChange} label={label} />;
