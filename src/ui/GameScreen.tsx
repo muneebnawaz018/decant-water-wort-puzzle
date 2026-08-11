@@ -12,7 +12,7 @@ import { useEconomyStore } from '@/state/economyStore';
 import { showRewarded } from '@/ads/rewarded';
 import { overlay } from '@/state/overlayStore';
 import { useSettingsStore } from '@/state/settingsStore';
-import { useGameStore, type TapOutcome } from '@/state/gameStore';
+import { useGameStore, type PaidOutside, type TapOutcome } from '@/state/gameStore';
 import { s } from '@/theme/scale';
 import { compactCoins, plural } from '@/utils';
 import { ChromeIconButton } from './chrome/ScreenHeader';
@@ -42,6 +42,15 @@ const HINT_REFUSAL = {
   unsure: "Couldn't find a hint for this board",
   blocked: `A hint costs ${PRICES.hint} coins — not enough`,
 } as const;
+
+/**
+ * Whether a control actually did its job, and what to say if it did not.
+ *
+ * The reason travels back rather than being toasted on the spot, because an
+ * ad-paid press has one more thing to add to it — and two toasts for one press
+ * means the second wipes the first before it can be read.
+ */
+type RunResult = { ok: true } | { ok: false; reason: string };
 
 interface GameScreenProps {
   width: number;
@@ -192,78 +201,221 @@ export const GameScreen = memo(function GameScreen({
    * button follows. Being unable to afford it has to feel like the control
    * declining, not like an undo that did nothing.
    */
-  const undo = useCallback(() => {
-    const outcome = useGameStore.getState().undo();
-    if (outcome.kind === 'blocked') {
-      feedbackWarn();
-      overlay.toast(`Undo costs ${outcome.price} coins — not enough`);
-      return;
-    }
-    // Undo's last step on a level with a spare vial out: the vial goes back,
-    // free. Announced because the board changing shape is a bigger thing than a
-    // pour and the player may not have meant to go that far — and because
-    // nothing else in the app tells them the vial can be put back at all.
-    if (outcome.kind === 'vialRemoved') {
-      overlay.toast('Spare vial put back');
-      return;
-    }
-    // Silent when the move was already paid for: a charge the player did not
-    // incur should not be announced, and the board moving is the feedback.
-    if (outcome.kind !== 'undone') return;
-    if (outcome.charged > 0) {
-      // What it cost and what is left, in that order. A deduction with no
-      // balance beside it makes the player check the pill at the top of the
-      // screen to find out where they are — and the board is where they are
-      // looking. Read after the charge, so it is the balance they now have.
-      const left = compactCoins(useEconomyStore.getState().coins);
-      overlay.toast(`Undo · −${outcome.charged} coins · ${left} left`);
-      return;
-    }
-    // The last free one is worth announcing; the ones before it are not. A
-    // player told "2 left" after every undo is being nagged about a budget
-    // they have not reached — but arriving at the board's first *charged* undo
-    // with no warning is worse.
-    //
-    // `spentAllowance` is what keeps it to that one moment. Both a free undo
-    // and a re-undo of a move already paid for report `charged: 0`, so on the
-    // flag alone this fired again every time the player rewound the same move
-    // — a warning about a budget, raised by the action that does not touch it.
-    if (outcome.spentAllowance && outcome.freeLeft === 0) {
-      // The balance goes with the price. This is the one moment the player is
-      // told undo has started costing, and the price only means something
-      // against what they have — 10 each is nothing at 4,000 and is the last
-      // two undos at 25. Compact, because a balance is the tail of a sentence
-      // here and `12,480` pushes the line into a second row on a narrow phone.
-      const balance = compactCoins(useEconomyStore.getState().coins);
-      overlay.toast(`Free undos used — ${PRICES.undo} coins each · ${balance} left`);
-    }
+  /**
+   * A refusal, worded once.
+   *
+   * It toasts on an ordinary press and stays quiet on an ad-paid one, because
+   * there the caller has something more to say — see `askToPay`. Returning the
+   * words rather than printing them is what keeps the player from getting two
+   * toasts for one press, the second wiping the first.
+   */
+  const refuse = useCallback((reason: string, paid?: PaidOutside): RunResult => {
+    feedbackWarn();
+    if (!paid) overlay.toast(reason);
+    return { ok: false, reason };
   }, []);
+
+  const runUndo = useCallback(
+    (paid?: PaidOutside): RunResult => {
+      const outcome = useGameStore.getState().undo(paid);
+      if (outcome.kind === 'blocked') {
+        return refuse(`Undo costs ${outcome.price} coins — not enough`, paid);
+      }
+      // Nothing to take back, or the board is mid-pour. Silent on an ordinary
+      // press — a dead control that says nothing is the right amount of noise
+      // — but it is exactly the case an ad must not disappear into.
+      if (outcome.kind === 'ignored') {
+        return refuse('That move could not be taken back', paid);
+      }
+      // Undo's last step on a level with a spare vial out: the vial goes back,
+      // free. Announced because the board changing shape is a bigger thing than
+      // a pour and the player may not have meant to go that far — and because
+      // nothing else in the app tells them the vial can be put back at all.
+      if (outcome.kind === 'vialRemoved') {
+        overlay.toast('Spare vial put back');
+        return { ok: true };
+      }
+      if (outcome.charged > 0) {
+        // What it cost and what is left, in that order. A deduction with no
+        // balance beside it makes the player check the pill at the top of the
+        // screen to find out where they are — and the board is where they are
+        // looking. Read after the charge, so it is the balance they now have.
+        const left = compactCoins(useEconomyStore.getState().coins);
+        overlay.toast(`Undo · −${outcome.charged} coins · ${left} left`);
+        return { ok: true };
+      }
+      // The last free one is worth announcing; the ones before it are not. A
+      // player told "2 left" after every undo is being nagged about a budget
+      // they have not reached — but arriving at the board's first *charged* undo
+      // with no warning is worse.
+      //
+      // `spentAllowance` is what keeps it to that one moment. Both a free undo
+      // and a re-undo of a move already paid for report `charged: 0`, so on the
+      // flag alone this fired again every time the player rewound the same move
+      // — a warning about a budget, raised by the action that does not touch it.
+      if (outcome.spentAllowance && outcome.freeLeft === 0) {
+        // The balance goes with the price. This is the one moment the player is
+        // told undo has started costing, and the price only means something
+        // against what they have — 10 each is nothing at 4,000 and is the last
+        // two undos at 25. Compact, because a balance is the tail of a sentence
+        // here and `12,480` pushes the line into a second row on a narrow phone.
+        const balance = compactCoins(useEconomyStore.getState().coins);
+        overlay.toast(`Free undos used — ${PRICES.undo} coins each · ${balance} left`);
+      }
+      return { ok: true };
+    },
+    [refuse]
+  );
+
+  /**
+   * A paid press asks first, and offers a second way to pay.
+   *
+   * The coins used to come out on the press itself. That is fine for a free
+   * one and wrong the moment it costs: undo and hint sit under a thumb during
+   * a board, they are the two easiest controls in the game to hit by accident,
+   * and a silent deduction is the one outcome a player cannot undo — the coins
+   * are gone and the toast telling them so has already faded.
+   *
+   * So the dialog does two jobs. It is a confirmation, which is what a mis-tap
+   * needs, and it is where the ad lives — the player picks whether this one
+   * costs coins or a video, which is a choice they never had.
+   *
+   * The ad takes the right slot and the lit face, the same arrangement the
+   * daily reward's doubling offer uses: both answers deliver the thing, and the
+   * one being steered towards is the one that costs the player nothing.
+   */
+  const askToPay = useCallback(
+    (spec: {
+      slot: 'undo' | 'hint';
+      title: string;
+      price: number;
+      run: (paid?: PaidOutside) => RunResult;
+    }) => {
+      overlay.modal({
+        title: spec.title,
+        body: `${spec.price} coins, or watch a short video instead.`,
+        confirmLabel: `Pay ${spec.price}`,
+        confirmIcon: 'coin',
+        secondaryLabel: 'Watch ad',
+        secondaryIcon: 'video',
+        // No cancel button. The scrim dismisses, and a third button on a
+        // question with two answers is the shape `Overlays` already refuses.
+        cancelLabel: null,
+        onConfirm: () => spec.run(),
+        onSecondary: () => {
+          void showRewarded(spec.slot).then((outcome) => {
+            if (outcome === 'earned') {
+              const result = spec.run('ad');
+              if (result.ok) return;
+
+              /*
+                A watched ad always pays.
+
+                The action can still refuse after the video — the hint's search
+                does not run until then, so `stuck` is reachable, and either
+                control can come back `ignored` if the board moved underneath
+                the offer. Both would otherwise spend the ad on nothing, and the
+                undo case would do it in silence.
+
+                Paying the price in coins is the honest settlement rather than a
+                consolation: the player agreed to a video *as the price of this
+                thing*, and if the thing cannot be delivered they should be left
+                holding what the video was worth. It also cannot be farmed — the
+                offer only opens from a control that is genuinely priced.
+              */
+              useEconomyStore.getState().add(spec.price);
+              feedbackWarn();
+              overlay.toast(`${result.reason} — ${spec.price} coins added instead`);
+              return;
+            }
+            feedbackWarn();
+            // Two failures, two sentences. A closed ad is the player's own
+            // choice and needs no apology; an empty auction is the app failing
+            // to deliver what it offered, so that one names the way through
+            // that still works.
+            overlay.toast(
+              outcome === 'dismissed'
+                ? 'Ad closed early — nothing spent'
+                : 'No ad available — coins still work'
+            );
+          });
+        },
+      });
+    },
+    []
+  );
+
+  /**
+   * Free presses go straight through; priced ones raise the dialog.
+   *
+   * The condition is the badge's own, so the button and the dialog cannot
+   * disagree about what a press costs. It is an estimate in two rare cases the
+   * store decides differently on — a fallback hint, or a position already
+   * answered — and both resolve in the player's favour: `Pay` charges nothing,
+   * because the store re-checks and waives it.
+   */
+  const undo = useCallback(() => {
+    if (undoPrice === 0) {
+      runUndo();
+      return;
+    }
+    askToPay({
+      slot: 'undo',
+      title: 'Take that move back?',
+      price: undoPrice,
+      run: runUndo,
+    });
+  }, [undoPrice, runUndo, askToPay]);
+
   const redo = useCallback(() => playPour(useGameStore.getState().redo()), [playPour]);
   const restart = useCallback(() => useGameStore.getState().restart(), []);
-  const hint = useCallback(() => {
-    // It points rather than plays: the source is armed and the destination
-    // ringed, and the player still makes the pour.
-    const outcome = useGameStore.getState().hint();
-    if (outcome.kind === 'ignored') return;
-
-    if (outcome.kind === 'shown') {
-      // Silent when it was free, and when it was already on the board. A charge
-      // the player did not incur must not be announced.
-      if (outcome.charged > 0) {
-        // The same shape as a charged undo, balance and all — two meters that
-        // read differently would make one of them look broken. Read after the
-        // charge, so it is the balance the player now has.
-        const left = compactCoins(useEconomyStore.getState().coins);
-        overlay.toast(`Hint · −${outcome.charged} coins · ${left} left`);
+  const runHint = useCallback(
+    (paid?: PaidOutside): RunResult => {
+      // It points rather than plays: the source is armed and the destination
+      // ringed, and the player still makes the pour.
+      const outcome = useGameStore.getState().hint(paid);
+      // Mid-pour, or the board is already solved. Silent on an ordinary press;
+      // named when an ad paid for it, so the watch is accounted for.
+      if (outcome.kind === 'ignored') {
+        return refuse('The board moved — no hint given', paid);
       }
+
+      if (outcome.kind === 'shown') {
+        // Silent when it was free, and when it was already on the board. A
+        // charge the player did not incur must not be announced.
+        if (outcome.charged > 0) {
+          // The same shape as a charged undo, balance and all — two meters that
+          // read differently would make one of them look broken. Read after the
+          // charge, so it is the balance the player now has.
+          const left = compactCoins(useEconomyStore.getState().coins);
+          overlay.toast(`Hint · −${outcome.charged} coins · ${left} left`);
+        }
+        return { ok: true };
+      }
+
+      // The button ticked on the way in. Answer a refusal differently, or being
+      // turned down feels the same as being helped.
+      //
+      // `stuck` is the one that matters here: the search runs *after* the ad,
+      // so a player can watch a video and be told the board cannot be won. The
+      // ad is still paid for — see `askToPay`.
+      return refuse(HINT_REFUSAL[outcome.kind], paid);
+    },
+    [refuse]
+  );
+
+  const hint = useCallback(() => {
+    if (hintPrice === 0) {
+      runHint();
       return;
     }
-
-    // The button ticked on the way in. Answer a refusal differently, or being
-    // turned down feels the same as being helped.
-    feedbackWarn();
-    overlay.toast(HINT_REFUSAL[outcome.kind]);
-  }, []);
+    askToPay({
+      slot: 'hint',
+      title: 'Show the next move?',
+      price: hintPrice,
+      run: runHint,
+    });
+  }, [hintPrice, runHint, askToPay]);
   const addVial = useCallback(() => {
     /*
       Doc §10's rewarded slot, and the highest-value one in the game: it is

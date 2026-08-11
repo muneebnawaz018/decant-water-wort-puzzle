@@ -323,6 +323,42 @@ describe('what an undo costs', () => {
     expect(coins()).toBe(before);
   });
 
+  /**
+   * The rewarded ad as the other way to pay.
+   *
+   * The thing worth pinning is not that it skips the charge — it is that it
+   * skips *only* the charge. An ad-paid undo has to leave the same marks a
+   * coin-paid one does, or the player watches a video and then gets billed
+   * for the same move the moment they change their mind about it twice.
+   */
+  it('takes an ad instead of coins, and still marks the move paid', () => {
+    exhaustAllowance();
+    const before = coins();
+
+    expect(store().undo('ad')).toMatchObject({ kind: 'undone', charged: 0 });
+    expect(coins()).toBe(before);
+
+    // Back down the same move: already paid for, so free either way.
+    store().redo();
+    expect(store().undo()).toMatchObject({ kind: 'undone', charged: 0 });
+    expect(coins()).toBe(before);
+  });
+
+  it('does not let an ad spend a free undo', () => {
+    exhaustAllowance();
+    const used = store().freeUndosUsed;
+
+    store().undo('ad');
+    expect(store().freeUndosUsed).toBe(used);
+  });
+
+  it('never refuses an ad-paid undo for want of coins', () => {
+    exhaustAllowance();
+    useEconomyStore.setState({ coins: 0 });
+
+    expect(store().undo('ad')).toMatchObject({ kind: 'undone', charged: 0 });
+  });
+
   it('does not spend the allowance on a move already paid for', () => {
     exhaustAllowance();
     store().undo();
@@ -429,6 +465,31 @@ describe('the hint, through the store', () => {
     const second = store().hint();
     if (second.kind !== 'shown') throw new Error('unreachable');
     expect(second.charged).toBe(PRICES.hint);
+  });
+
+  /**
+   * The ad pays the coins and nothing else — `hintsUsed` and `paidHints` move
+   * exactly as they would on a purchase, so re-showing this answer after the
+   * player selects another vial stays free rather than asking for a second ad.
+   */
+  it('takes an ad instead of coins, and still records the hint', () => {
+    const first = store().hint();
+    if (first.kind !== 'shown') throw new Error('unreachable');
+    store().tapTube(first.move.to);
+
+    useEconomyStore.setState({ coins: 0 });
+    const used = store().hintsUsed;
+
+    const second = store().hint('ad');
+    if (second.kind !== 'shown') throw new Error('unreachable');
+    expect(second.charged).toBe(0);
+    expect(useEconomyStore.getState().coins).toBe(0);
+    expect(store().hintsUsed).toBe(used + 1);
+
+    // Selecting elsewhere drops the display but not the purchase. The answer
+    // was earned, so pressing again re-shows it for nothing.
+    store().tapTube(second.move.from);
+    expect(store().hint()).toMatchObject({ kind: 'shown', charged: 0 });
   });
 
   it('refuses rather than reveals when the coins are not there', () => {

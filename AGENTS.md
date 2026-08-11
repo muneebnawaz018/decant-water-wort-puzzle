@@ -107,6 +107,53 @@ npm run doctor          # expo-doctor, must stay at 20/20
 iOS needs Xcode + `pod` (CocoaPods); Android needs JDK 17 and the SDK. No `web`
 script: MMKV has no web build and the game is phone-only.
 
+### `npm run doctor` is a wrapper, and why
+
+`script/doctor.mjs`, not `expo-doctor` directly. Doctor's nineteen other checks
+run untouched and stay fatal; only its dependency-version check is replaced.
+
+Expo publishes patches to an SDK continuously and doctor compares against its
+**live network** recommendation, so the gate went red every week or two on patch
+drift alone (`57.0.9` against `57.0.10`) with nothing changed here. Chasing each
+one costs a prebuild, a rebuild and a re-test for bug fixes the app may not even
+be hitting, and a gate that cries wolf stops being read.
+
+**`expo.install.exclude` was tried first and is the wrong tool** — worth
+recording so nobody reaches for it again. The name suggests a filter; it is a
+blindfold. Excluded packages leave version validation entirely, at every
+severity, and leave `npx expo install --fix` with them. Measured rather than
+assumed: with eight packages excluded, `expo-asset` was set to `11.0.0` against
+a required `~57.0.10` and doctor still reported 20/20. `expo` itself had to be
+on that list to silence the noise, so an SDK 58 upgrade would have left all
+eight behind on SDK 57 — silently, at the worst possible moment.
+
+The wrapper sets `EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK` and does the
+version check itself against `node_modules/expo/bundledNativeModules.json` —
+the manifest shipped _inside_ the installed `expo` package, saying what this SDK
+expects. **That local file is the whole trick**, because it moves only when
+`expo` does:
+
+| Case                                      | Result                      |
+| ----------------------------------------- | --------------------------- |
+| Patch drift against Expo's newest release | invisible — the noise, gone |
+| A package installed at the wrong version  | fails (major difference)    |
+| SDK bumped, packages left behind          | fails (minor or worse)      |
+
+That last row is the case `install.exclude` would have hidden, and it is the
+one worth having a gate for at all.
+
+The trade, stated plainly: a patch Expo publishes _after_ your installed SDK was
+cut is invisible here. That is the design, not an oversight — sync patches
+deliberately at release time with `npx expo install --check`, and look hardest
+at `expo-splash-screen`, the one package whose patch could move something
+visible, since the two-splash handoff depends on exact numbers.
+
+`drift()` compares major and minor against the range's floor rather than calling
+`semver`. Severity is the only question being asked, every value in that file is
+a plain `~x.y.z`, and `semver` is in `node_modules` only as a transitive of
+npm's own tree — reaching for an undeclared package is how a script breaks on an
+unrelated dependency bump.
+
 Full command reference, cache/clean escalation, and the RN 0.6x → 0.86
 differences live in `docs/02-commands.md`.
 

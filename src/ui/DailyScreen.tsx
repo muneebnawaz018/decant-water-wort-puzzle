@@ -158,7 +158,23 @@ export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScree
         // rather than a double-pay or a stuttering replay.
         if (useOverlayStore.getState().celebration) return;
 
-        useEconomyStore.getState().claimDaily(Date.now());
+        /*
+          What was actually paid, not what the tile advertised.
+
+          `claimDaily` answers 0 when the clock says nothing is owed, and the
+          toast used to quote `DAILY_REWARDS[currentIndex]` regardless — so a
+          claim that paid nothing still announced a payout and still threw
+          confetti. The two can only disagree in a narrow window (the dialog
+          sits open across the unlock, or another surface claims underneath
+          it), which is exactly the kind of gap that ships.
+        */
+        const paid = useEconomyStore.getState().claimDaily(Date.now());
+        if (paid === 0) {
+          overlay.closeModal();
+          overlay.toast('That reward has already been collected');
+          return;
+        }
+
         // The reminder is anchored to the claim, so a new claim moves it.
         // Fire and forget: nothing on screen waits for the OS.
         void syncReminders();
@@ -172,22 +188,22 @@ export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScree
           // Raised on the burst's finish, not with it. The celebration layer is
           // full-screen and drawn above the toast, so a toast shown at the same
           // moment spends its whole life behind confetti.
-          overlay.toast(claimToast(DAILY_REWARDS[currentIndex]!, balance));
+          overlay.toast(claimToast(paid, balance));
         });
       },
       /**
        * Double it — doc §8's highest-value rewarded slot.
        *
-       * **The ad is not wired, and this pays anyway.** Spec §10 puts the SDK in
-       * phase 2; until it lands the choice is between a button that opens an
-       * offer and does nothing, and one that is generous early. The second
-       * keeps the whole flow — offer, payment, burst, toast, dismissal —
-       * exercisable now rather than after the SDK.
+       * **The ad gates the bonus and nothing else.** A refusal claims nothing
+       * at all — the base reward is still sitting there and Collect still pays
+       * it — because claiming and then skipping only the bonus would spend the
+       * day's reward on a video the player did not watch.
        *
-       * When the SDK arrives this becomes: show the ad, pay the bonus from its
-       * completion callback. `claimDaily` stays where it is regardless — the
-       * base reward is owed either way, and an ad that fails to load or is
-       * skipped must not cost the player their daily claim.
+       * `double_daily_reward` is not in `paysWithoutAd`, so an empty auction
+       * pays nothing here. That is the right way round: the bonus sits on top
+       * of a reward the player already has, so a failed fill costs them nothing
+       * they held — unlike the spare vial, where an unfilled ad would leave a
+       * board with no way out.
        */
       onSecondary: () => {
         if (useOverlayStore.getState().celebration) return;
@@ -216,6 +232,29 @@ export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScree
           // the claim already paid one share: doubling means adding the
           // difference, not the whole amount again.
           const paid = useEconomyStore.getState().claimDaily(Date.now());
+
+          /*
+            The claim came back empty *after* the ad was watched.
+
+            Only reachable in a narrow window — the dialog sits open across the
+            claim window closing, or another surface claims underneath it — but
+            without this the player got a coin shower and a receipt for zero
+            coins, which is the app telling them it paid when it did not.
+
+            The bonus share is credited anyway, on the rule the board controls
+            follow: a watched ad always pays. The ad was the price of the
+            doubling specifically, so the doubling is what it settles; the base
+            reward is a claim, and a claim that has already happened is not
+            something an ad can buy again.
+          */
+          if (paid === 0) {
+            const bonus = DAILY_REWARDS[currentIndex]! * (EARNINGS.adMultiplier - 1);
+            useEconomyStore.getState().add(bonus);
+            overlay.closeModal();
+            overlay.toast(`Reward already collected — ${bonus} coins added instead`);
+            return;
+          }
+
           useEconomyStore.getState().add(paid * (EARNINGS.adMultiplier - 1));
           void syncReminders();
 

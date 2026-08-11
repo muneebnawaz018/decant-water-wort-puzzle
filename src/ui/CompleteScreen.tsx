@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, {
   cancelAnimation,
@@ -124,6 +124,8 @@ export const CompleteScreen = memo(function CompleteScreen({
    * buttons wide.
    */
   const [doubled, setDoubled] = useState(false);
+  /** Whether the bonus has been credited. See `pay`. */
+  const paidOnce = useRef(false);
 
   // The cross goes home, the same place the bonus puzzle's Done button goes.
   // Through `useTapHandler` so it ticks like every other control here.
@@ -142,6 +144,22 @@ export const CompleteScreen = memo(function CompleteScreen({
   const paid = doubled ? reward * EARNINGS.adMultiplier : reward;
 
   const pay = useCallback(() => {
+    /*
+      Paid at most once, whatever the caller believes.
+
+      `double` guards on `doubled`, but that is a value captured before a
+      thirty-second video — and `pay` credits coins with no check of its own,
+      so the only thing between a second earned ad and a second payout is
+      `showRewarded`'s in-flight lock. That lock is correct; a ref costs
+      nothing, and money is the one place worth holding the opinion twice.
+
+      A ref rather than reading `doubled`: state captured in this closure is
+      just as stale as the caller's, and `setDoubled` does not land until the
+      next render.
+    */
+    if (paidOnce.current) return;
+    paidOnce.current = true;
+
     setDoubled(true);
     // `- 1` because the run already paid one share. Doubling adds the
     // difference, not the whole amount again.

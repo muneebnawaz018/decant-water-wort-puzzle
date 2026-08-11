@@ -36,6 +36,22 @@ import {
 } from './session';
 import { useSettingsStore } from './settingsStore';
 
+/**
+ * The price was settled outside the wallet — a rewarded ad was watched.
+ *
+ * **Not the same as free.** Everything except the coins happens exactly as it
+ * would on a paid press: the undo depth goes into `paidUndos`, the hint's
+ * position goes into `paidHints` and `hintsUsed` moves. That is what stops the
+ * player being charged a second time for the answer they have already earned —
+ * take the move back again, or press Hint again after selecting a vial, and it
+ * is free, the same as if they had spent the coins.
+ *
+ * A single flag rather than a `price: 0` argument, because zero is already a
+ * meaningful price here: it is what a *free* undo or the level's first hint
+ * costs, and those consume an allowance this must not touch.
+ */
+export type PaidOutside = 'ad';
+
 /** What an undo did, so the UI can answer a refusal differently from a success. */
 type UndoOutcome =
   /**
@@ -196,8 +212,11 @@ export interface GameState {
   /**
    * Takes back the last move, for `UNDO_COST` coins the first time each is
    * taken back. Returns what the UI should say about it.
+   *
+   * `paid` means the price has already been settled some other way — today
+   * that is a rewarded ad. See `PaidOutside`.
    */
-  undo: () => UndoOutcome;
+  undo: (paid?: PaidOutside) => UndoOutcome;
   /** Replays the most recently undone move. Same shape as `tapTube`'s
    * outcome, so the renderer can animate it exactly like a fresh pour. */
   redo: () => TapOutcome;
@@ -205,8 +224,10 @@ export interface GameState {
   /**
    * Points at a pour on a winning line, for `PRICES.hint` coins once the
    * level's free one is gone. Returns what the UI should say about it.
+   *
+   * `paid` as on `undo`.
    */
-  hint: () => HintOutcome;
+  hint: (paid?: PaidOutside) => HintOutcome;
   /** Adds one empty tube. Spec §10's rewarded slot; one per level. */
   addTube: () => boolean;
   /**
@@ -703,7 +724,7 @@ export const useGameStore = create<GameState>((set, get) => {
       };
     },
 
-    undo: () => {
+    undo: (paid) => {
       const {
         history,
         future,
@@ -749,12 +770,16 @@ export const useGameStore = create<GameState>((set, get) => {
        */
       const depth = history.length - 1;
       const charge = undoCharge(paidUndos, depth, freeUndosUsed, difficulty);
+      // An ad settles the coins and nothing else — `withUndoPaid` below still
+      // marks the depth, so this move stays taken back however many times the
+      // player changes their mind about it.
+      const cost = paid ? 0 : charge.coins;
       // Affordability is checked here; the coins move only after the paid mark
       // is on disk, below. Deduct-first had a crash window in the hostile
       // direction — coins gone, mark lost, and the same undo billed again on
       // relaunch. This way round the window hands out a free undo instead.
-      if (charge.coins > 0 && useEconomyStore.getState().coins < charge.coins) {
-        return { kind: 'blocked', price: charge.coins };
+      if (cost > 0 && useEconomyStore.getState().coins < cost) {
+        return { kind: 'blocked', price: cost };
       }
 
       // Replaying from the start is cheaper to reason about than inverting a
@@ -778,10 +803,10 @@ export const useGameStore = create<GameState>((set, get) => {
       persistSession();
       // The mark is saved; now the wallet. Cannot refuse — the balance was
       // checked above and nothing here runs concurrently.
-      if (charge.coins > 0) useEconomyStore.getState().spend(charge.coins);
+      if (cost > 0) useEconomyStore.getState().spend(cost);
       return {
         kind: 'undone',
-        charged: charge.coins,
+        charged: cost,
         freeLeft: freeUndosFor(difficulty) - freeUndosUsed - (charge.usesAllowance ? 1 : 0),
         spentAllowance: charge.usesAllowance,
       };
@@ -940,7 +965,7 @@ export const useGameStore = create<GameState>((set, get) => {
      * 3. **Charge before revealing.** A player who cannot pay learns the
      *    price, not the move.
      */
-    hint: () => {
+    hint: (paid) => {
       const { board, locked, solved, hintsUsed, heldHint, paidHints } = get();
       if (locked || solved) return { kind: 'ignored' };
 
@@ -982,7 +1007,11 @@ export const useGameStore = create<GameState>((set, get) => {
        */
       const alreadyDelivered = paidHints.includes(key);
       const counted = search.optimal && !alreadyDelivered;
-      const price = !counted || hintsUsed < FREE_HINTS ? 0 : PRICES.hint;
+      // An ad settles the coins and nothing else. `counted` is untouched, so
+      // the position still goes into `paidHints` and re-showing this answer
+      // after selecting another vial stays free — the same as if it had been
+      // bought.
+      const price = paid || !counted || hintsUsed < FREE_HINTS ? 0 : PRICES.hint;
       // Checked here, deducted after `persistSession` below — the same order
       // as undo, and for the same reason: a crash between the wallet and the
       // record must err toward a free hint, never a double bill.

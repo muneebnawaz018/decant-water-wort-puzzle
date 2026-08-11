@@ -34,6 +34,17 @@ export type AdSlot =
   | 'double_level_reward'
   | 'double_daily_reward'
   /**
+   * The two board controls that cost coins, offered as an alternative price
+   * rather than as a bonus.
+   *
+   * They are the only slots where the player already had a way through — the
+   * coins — so a failed fill costs them nothing: the dialog they were offered
+   * this from is still there with Pay on it. That is why neither pays without
+   * an ad, unlike `spare_vial`.
+   */
+  | 'undo'
+  | 'hint'
+  /**
    * Home's standalone offer: a flat `EARNINGS.rewardedAd` for one watch.
    *
    * The only slot the player can reach without having earned anything first,

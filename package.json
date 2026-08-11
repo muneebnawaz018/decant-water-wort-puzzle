@@ -60,7 +60,7 @@
     "ios": "expo run:ios --device \"iPhone 17 Pro\"",
     "ios:pad": "expo run:ios --device \"iPad Pro 11-inch (M4)\"",
     "check:all": "node script/check-all.mjs",
-    "doctor": "npx --yes expo-doctor",
+    "doctor": "node script/doctor.mjs",
     "format": "node script/format.mjs",
     "format:check": "prettier --check .",
     "lint": "eslint . --no-warn-ignored --max-warnings=0",
