@@ -130,17 +130,24 @@ only changed JS and want the link updated in a couple of minutes.
 ### Getting a build to a tester
 
 `publish:apk` builds exactly what `build:apk` builds, then pushes the APK to a
-GitHub release tagged `latest`, overwriting
-whatever was there. GitHub serves the newest release's assets from a fixed
-path, so this URL never changes and always hands back the current build:
+GitHub release tagged `latest`, overwriting whatever was there. The release is
+reused rather than replaced, so this page never changes and always lists the
+current build:
 
 ```text
-https://github.com/muneebnawaz018/decant-water-wort-puzzle/releases/latest/download/decant.apk
+https://github.com/muneebnawaz018/decant-water-wort-puzzle/releases
 ```
 
-Open it on an Android phone and it downloads. Nothing is automatic — GitHub does
-not build anything, a release is a file you attach — so a new build reaches
+Open it on an Android phone and tap `decant.apk`. Nothing is automatic — GitHub
+does not build anything, a release is a file you attach — so a new build reaches
 testers only when this command is run.
+
+**Not `/releases/latest/download/decant.apk`.** That shortcut is the obvious one
+and it 404s here. `/releases/latest` resolves to the newest release that is _not_
+a pre-release, and this release is created with `--prerelease` — so a repo whose
+only release is a pre-release has no "latest", and everything under that path is
+missing. Dropping the flag would make the direct link work; the badge is kept
+because it is honest about what these builds are.
 
 The tag is a bucket name, not a version, and nothing here tags a commit: moving
 a real tag every build rewrites history for a file that is not source.

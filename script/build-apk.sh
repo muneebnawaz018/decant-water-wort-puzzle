@@ -178,13 +178,25 @@ printf '  R8 is on in release. Play through a level before sharing.\n'
 # ---------------------------------------------------------------------------
 # 5. Publishing, if asked.
 #
-# One release, reused forever. GitHub serves the newest release's assets from a
-# fixed path, so overwriting the file inside a release tagged `latest` gives a
-# URL that never changes and always hands back the current build:
+# One release, reused forever. Overwriting the asset inside a release tagged
+# `latest` gives testers a page that never changes and always lists the current
+# build:
 #
-#   https://github.com/<owner>/<repo>/releases/latest/download/decant.apk
+#   https://github.com/<owner>/<repo>/releases
 #
-# `--clobber` is what makes it an overwrite rather than an error, and the
+# **The releases page, not `/releases/latest/download/decant.apk`.** That direct
+# link is the obvious one and it 404s here, for a reason that is easy to lose an
+# afternoon to: GitHub's `/releases/latest` resolves to the newest release that
+# is *not* a pre-release, and this one is created with `--prerelease`. A repo
+# whose only release is a pre-release therefore has no "latest" at all, so both
+# the page and the download shortcut under it are missing.
+#
+# Dropping `--prerelease` below would make the direct link work. It is kept
+# because the badge is honest — this is an unsigned test build, not a release —
+# and one extra tap on the releases page is a smaller cost than a download URL
+# that implies otherwise.
+#
+# `--clobber` is what makes the upload an overwrite rather than an error, and the
 # release is created on first run if it is not there yet. Nothing here tags a
 # commit: the tag is a bucket name, not a version, and moving it would rewrite
 # history every build.
@@ -218,8 +230,8 @@ if [ "$PUBLISH" -eq 1 ]; then
   rm -f "$PWD/decant.apk"
 
   SLUG=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
-  printf '\n  https://github.com/%s/releases/latest/download/decant.apk\n' "$SLUG"
-  printf '  Open that on an Android phone. It always serves this build.\n\n'
+  printf '\n  https://github.com/%s/releases\n' "$SLUG"
+  printf '  Open that on an Android phone and tap decant.apk. Always this build.\n\n'
 else
   printf '\n'
 fi
