@@ -218,6 +218,21 @@ export function firstUnsolved(progress: Progress): number {
   return progress.furthestLevel;
 }
 
+/**
+ * The highest level reached in any mode — one number for the whole player.
+ *
+ * The daily brew scales against it and the skin unlocks read it, and both use
+ * the max across modes for the same reason: anything keyed to "how far you
+ * are" must not change its answer because you switched tabs. Someone who has
+ * pushed Hard to 200 has reached 200, whatever Easy says.
+ */
+export function furthestAcrossModes(record: ProgressByDifficulty): number {
+  return DIFFICULTIES.reduce(
+    (best, mode) => Math.max(best, progressFor(record, mode).furthestLevel),
+    1
+  );
+}
+
 export function setCurrentLevel(
   record: ProgressByDifficulty,
   difficulty: Difficulty,

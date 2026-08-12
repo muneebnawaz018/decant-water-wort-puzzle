@@ -35,7 +35,13 @@ import {
 import { rgba } from './liquid';
 import { liquidEffect } from './liquidEffect';
 import { useUiValue } from './useUiValue';
-import { vesselHighlight, vesselPath } from './vessel';
+import {
+  HIGHLIGHT_WIDTH,
+  vesselCap,
+  vesselHighlight,
+  vesselOutline,
+  vesselPath,
+} from './vessel';
 import { DEFAULT_SKIN, skinFor } from '@/theme/skins';
 
 /** How far a selected tube lifts, doc §7. */
@@ -106,8 +112,22 @@ export const Board = memo(function Board({
     [layout, vessel]
   );
 
+  // The stroked glass is the same contour left open at the mouth. Stroking the
+  // clip path drew a line across every opening, and a tube with a lidded top
+  // reads as sealed shut — the cap below is what closed glass looks like, and
+  // only a finished tube earns one.
+  const outlines = useMemo(
+    () => layout.tubes.map((tube) => vesselOutline(tube, vessel)),
+    [layout, vessel]
+  );
+
+  const caps = useMemo(
+    () => layout.tubes.map((tube) => vesselCap(tube, vessel)),
+    [layout, vessel]
+  );
+
   const highlights = useMemo(
-    () => layout.tubes.map((tube) => vesselHighlight(tube, vessel, layout.segmentHeight)),
+    () => layout.tubes.map((tube) => vesselHighlight(tube, vessel)),
     [layout, vessel]
   );
 
@@ -136,6 +156,20 @@ export const Board = memo(function Board({
             ? full.slice(0, Math.max(0, full.length - live.animation.count))
             : full;
 
+        // A finished tube gets its stopper. `state` already holds the post-pour
+        // board, so the check waits out the animation on the receiving tube —
+        // the cap lands the moment the liquid does, not while it is arriving.
+        const sealed =
+          full.length === state.capacity &&
+          full.every((colour) => colour === full[0]) &&
+          !(live && tubeIndex === live.animation.to);
+
+        // The air gap above a full tube lives in `layout.segmentHeight` (see
+        // `FILL_HEADROOM`), so it is the same on every tube whatever its
+        // state. It was briefly derived from `sealed` here instead, which
+        // re-laid-out the whole column the frame the cap arrived.
+        const segmentHeight = layout.segmentHeight;
+
         const body = (
           <>
             {/* Empty glass. Liquid is clipped to this same shape. */}
@@ -144,7 +178,7 @@ export const Board = memo(function Board({
             <Group clip={path}>
               {segments.map((colour, segmentIndex) => {
                 const fill = theme.pieces[colour % theme.pieces.length]!;
-                const y = tube.y + tube.height - (segmentIndex + 1) * layout.segmentHeight;
+                const y = tube.y + tube.height - (segmentIndex + 1) * segmentHeight;
 
                 // Flat fill, no gradient: a gradient makes one colour read as
                 // several shades, which is exactly what breaks a cartoon look
@@ -157,7 +191,7 @@ export const Board = memo(function Board({
                       x={tube.x}
                       y={y}
                       width={tube.width}
-                      height={layout.segmentHeight + 0.5}
+                      height={segmentHeight + 0.5}
                       color={fill}
                     />
 
@@ -194,8 +228,8 @@ export const Board = memo(function Board({
                         symbol={theme.symbols[colour % theme.symbols.length]!}
                         fill={fill}
                         cx={tube.x + tube.width / 2}
-                        cy={y + layout.segmentHeight / 2}
-                        size={Math.min(tube.width, layout.segmentHeight) * 0.42}
+                        cy={y + segmentHeight / 2}
+                        size={Math.min(tube.width, segmentHeight) * 0.42}
                       />
                     ) : null}
                   </Group>
@@ -224,8 +258,17 @@ export const Board = memo(function Board({
               ) : null}
             </Group>
 
-            {/* Specular highlight down the left edge. */}
-            <Path path={highlights[tubeIndex]!} color={colours.white} opacity={0.5} />
+            {/* Specular highlight down the left edge — a centreline stroked
+                to width, so it follows the wall on a curved vessel. */}
+            <Path
+              path={highlights[tubeIndex]!}
+              style="stroke"
+              strokeWidth={tube.width * HIGHLIGHT_WIDTH}
+              strokeCap="round"
+              strokeJoin="round"
+              color={colours.white}
+              opacity={0.5}
+            />
 
             {/*
               A bold, dark outline is what reads as drawn rather than
@@ -241,13 +284,37 @@ export const Board = memo(function Board({
               prompt.
             */}
             <Path
-              path={path}
+              path={outlines[tubeIndex]!}
               style="stroke"
               strokeWidth={isSelected || isHintTarget ? 5 : 3.5}
               strokeJoin="round"
+              strokeCap="round"
               color={isSelected ? theme.accent : isHintTarget ? theme.gold : colours.white}
               opacity={isSelected || isHintTarget ? 1 : 0.32}
             />
+
+            {/* The stopper. Gold, like everything the game hands out as a
+                reward — and drawn after the stroke so it sits on the rim. */}
+            {sealed ? (
+              <>
+                {/* Painted in the liquid it seals, so the finished colour
+                    stays readable with the meniscus hidden under it. The dark
+                    stroke is what separates cap from liquid where the two
+                    meet at the rim in the same colour. */}
+                <Path
+                  path={caps[tubeIndex]!}
+                  color={theme.pieces[full[0]! % theme.pieces.length]!}
+                />
+                <Path
+                  path={caps[tubeIndex]!}
+                  style="stroke"
+                  strokeWidth={2.5}
+                  strokeJoin="round"
+                  color={ui.shadow}
+                  opacity={0.55}
+                />
+              </>
+            ) : null}
           </>
         );
 
@@ -281,6 +348,24 @@ export const Board = memo(function Board({
           theme={theme}
         />
       ) : null}
+
+      {/* Glyphs travel with the liquid, so they are drawn over the rack
+          rather than inside the destination's clip — for most of the flight
+          they are above its mouth, and a clip would swallow them. */}
+      {marks && live
+        ? Array.from({ length: live.animation.count }, (_, arrival) => (
+            <TravellingMark
+              key={`mark-${arrival}`}
+              tube={layout.tubes[live.animation.to]!}
+              layout={layout}
+              animation={live.animation}
+              geometry={live.geometry}
+              progress={live.progress}
+              arrival={arrival}
+              theme={theme}
+            />
+          ))
+        : null}
     </Canvas>
   );
 });
@@ -441,6 +526,112 @@ const RisingLevel = memo(function RisingLevel({
     <Rect x={tube.x} y={regionY} width={tube.width} height={regionHeight}>
       <Shader source={liquidEffect} uniforms={uniforms} />
     </Rect>
+  );
+});
+
+/**
+ * How much of the pour a glyph spends in the air, as a fraction of the whole
+ * animation. It leaves the source's lip this far ahead of the moment its own
+ * segment finishes filling, so mark and liquid land together.
+ */
+const MARK_FLIGHT = 0.3;
+
+/**
+ * One colourblind glyph carried from the pouring tube into the receiving one.
+ *
+ * It leaves the source's lip with the stream, rides down beside it and sinks
+ * into its slot as that segment fills. Two earlier versions were wrong in the
+ * same way and it is worth naming: the first stamped the whole set in when
+ * the animation ended, the second floated them down from the *destination's*
+ * mouth — both meant the glyph belonged to the tube it landed in. It belongs
+ * to the liquid, and the liquid comes from somewhere.
+ *
+ * Drawn unclipped over the rack, because for most of its flight it is above
+ * the destination's mouth and the tube's own clip would cut it in half.
+ *
+ * Two reactions per mark (the transform array and the fade), at most four
+ * marks, alive only for the pour — the same transient budget the splash
+ * droplets already spend three per particle on.
+ */
+const TravellingMark = memo(function TravellingMark({
+  tube,
+  layout,
+  animation,
+  geometry,
+  progress,
+  arrival,
+  theme,
+}: {
+  /** The destination tube: where this glyph is headed. */
+  tube: TubeRect;
+  layout: BoardLayout;
+  animation: PourAnimation;
+  geometry: PourGeometry;
+  progress: SharedValue<number>;
+  /** 0-based order of arrival: 0 is the first segment to land. */
+  arrival: number;
+  theme: Theme;
+}) {
+  const seg = layout.segmentHeight;
+  const finalCx = tube.x + tube.width / 2;
+  const finalCy =
+    tube.y + tube.height - (animation.destFilled + arrival + 1) * seg + seg / 2;
+
+  // Where it starts: the lip of the tilted source tube, the same point the
+  // stream leaves from.
+  const startCx = geometry.streamX;
+  const startCy = geometry.target.y;
+
+  // Its own window. `arriveAt` is the moment this segment's liquid finishes
+  // landing; the flight is backdated from there and clamped so a glyph never
+  // sets off before the tube has tipped.
+  const arriveAt =
+    PHASE.fillStart + ((arrival + 1) / animation.count) * (PHASE.fillEnd - PHASE.fillStart);
+  const departAt = Math.max(PHASE.pourStart, arriveAt - MARK_FLIGHT);
+  const width = tube.width;
+
+  const computeTransform = useCallback(
+    (input: number) => {
+      'worklet';
+      const local = phaseProgress(input, departAt, arriveAt);
+      // Sinks a touch past its slot and rises back — settling, not stopping.
+      const overshoot = 1.2;
+      const t = local - 1;
+      const eased = 1 + (overshoot + 1) * t * t * t + overshoot * t * t;
+      const left = 1 - eased;
+      // A damped drift across the fall, so it floats down rather than drops.
+      const sway = Math.sin(local * Math.PI * 3) * width * 0.07 * (1 - local);
+      return [
+        { translateX: (startCx - finalCx) * left + sway },
+        { translateY: (startCy - finalCy) * left },
+      ];
+    },
+    [departAt, arriveAt, startCx, startCy, finalCx, finalCy, width]
+  );
+
+  const computeOpacity = useCallback(
+    (input: number) => {
+      'worklet';
+      // Fades up over the first slice of the flight; a glyph appearing at full
+      // strength on the lip reads as popping out of the glass.
+      return Math.min(1, phaseProgress(input, departAt, arriveAt) * 4);
+    },
+    [departAt, arriveAt]
+  );
+
+  const transform = useUiValue(progress, computeTransform, computeTransform(0));
+  const opacity = useUiValue(progress, computeOpacity, computeOpacity(0));
+
+  return (
+    <Group transform={transform} opacity={opacity}>
+      <ColourMark
+        symbol={theme.symbols[animation.colour % theme.symbols.length]!}
+        fill={theme.pieces[animation.colour % theme.pieces.length]!}
+        cx={finalCx}
+        cy={finalCy}
+        size={Math.min(width, seg) * 0.42}
+      />
+    </Group>
   );
 });
 

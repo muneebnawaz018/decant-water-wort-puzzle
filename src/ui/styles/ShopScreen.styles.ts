@@ -15,7 +15,15 @@ const GAP = s(12);
  * not a flex box — and a constant used by both the layout and the drawing
  * belongs with the layout.
  */
-export const PREVIEW_HEIGHT = s(74);
+/**
+ * Tall enough to show a vial at its true shape.
+ *
+ * `SkinPreview` derives tube width from this (the board's 3.8:1 aspect), so
+ * this number is the whole size of the preview: at 74 the vials came out 19dp
+ * wide and the glass detail a skin *is* — a neck, a shoulder — was a couple of
+ * pixels. 110 puts them at 29dp, which is the width a real 13-tube board draws.
+ */
+export const PREVIEW_HEIGHT = s(110);
 
 export const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP, marginBottom: SPACE.section },
@@ -30,14 +38,6 @@ export const styles = StyleSheet.create({
     columns: 2,
     phoneWidth: '48%',
   }),
-  /**
-   * The slot's override while the catalogue holds a single vessel.
-   *
-   * A half-width card alone on a row reads as a grid that failed to load its
-   * second item. Full width is the honest shape for one of something, and the
-   * two-column slot above comes back the moment there is a second.
-   */
-  tileSlotSolo: { width: '100%', flexGrow: 0 },
   tile: { padding: SPACE.tile, alignItems: 'center' },
   preview: {
     flexDirection: 'row',

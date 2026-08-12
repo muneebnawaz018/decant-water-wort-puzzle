@@ -69,10 +69,13 @@ describe('the economy table', () => {
     expect(STARTING_COINS).toBe(0);
   });
 
-  it('has nothing priced while one skin ships', () => {
-    // The catalogue was cut back to the free default, so a price here would be
-    // a number for something that cannot be bought.
-    expect(Object.keys(SKIN_PRICES)).toHaveLength(0);
+  it('prices skins in whole positive coins', () => {
+    // Which ids may appear here is the catalogue's business — skins.test.ts
+    // holds the exact two-way match, since economy.ts imports nothing.
+    for (const price of Object.values(SKIN_PRICES)) {
+      expect(Number.isInteger(price)).toBe(true);
+      expect(price).toBeGreaterThan(0);
+    }
   });
 
   it('keeps any skin price above a day of play and inside a coin pack', () => {

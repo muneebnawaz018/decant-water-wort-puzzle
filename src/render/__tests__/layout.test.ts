@@ -1,4 +1,11 @@
-import { computeLayout, hitTest, rowSizes, rowsForTubeCount, segmentRect } from '../layout';
+import {
+  computeLayout,
+  FILL_HEADROOM,
+  hitTest,
+  rowSizes,
+  rowsForTubeCount,
+  segmentRect,
+} from '../layout';
 
 const BOX = { width: 360, height: 520, capacity: 4 };
 
@@ -61,9 +68,18 @@ describe('computeLayout', () => {
     }
   });
 
-  it('divides the tube evenly into segments', () => {
+  it('divides the tube into equal segments over a sliver of air', () => {
+    // The tube is `capacity` segments plus `FILL_HEADROOM` of empty glass, so
+    // a full one still shows a gap under its lip — and under the stopper a
+    // completed tube wears. The air is in the layout rather than applied when
+    // a tube seals, or the column would visibly re-lay-out as the cap lands.
     const layout = computeLayout({ ...BOX, tubeCount: 6, capacity: 5 });
-    expect(layout.segmentHeight * 5).toBeCloseTo(layout.tubes[0]!.height);
+    const height = layout.tubes[0]!.height;
+
+    expect(layout.segmentHeight * (5 + FILL_HEADROOM)).toBeCloseTo(height);
+    expect(height - layout.segmentHeight * 5).toBeCloseTo(
+      layout.segmentHeight * FILL_HEADROOM
+    );
   });
 
   it('shrinks tubes as the board gets busier', () => {

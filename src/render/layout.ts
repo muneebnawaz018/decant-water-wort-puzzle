@@ -26,6 +26,23 @@ export interface LayoutInput {
   gap?: number;
 }
 
+/**
+ * Air left above a full tube, as a fraction of one segment.
+ *
+ * A glass filled to its own rim reads as a solid block of colour, and once a
+ * completed tube wears a stopper the liquid appeared glued to the underside
+ * of it. So a tube holds `capacity` segments **plus** this much empty glass —
+ * always, not only when sealed. That last part is the whole point: derive the
+ * gap from the seal and the column visibly re-lays-out the instant the cap
+ * lands, which reads as a bug. The air is part of the vessel.
+ *
+ * Lives here rather than in `Board` so the pour agrees with it: the rising
+ * level, the stream's impact point and the arriving marks all measure against
+ * `segmentHeight`, and liquid that animates to one height and settles at
+ * another is worse than no gap at all.
+ */
+export const FILL_HEADROOM = 0.16;
+
 /** Row counts, doc §6. Past 12 tubes two rows get too cramped to tap. */
 export function rowsForTubeCount(tubeCount: number): number {
   if (tubeCount <= 4) return 1;
@@ -73,7 +90,9 @@ export function computeLayout(input: LayoutInput): BoardLayout {
 
   const tubeWidth = Math.min(widthLimited, (heightLimited / capacity) * SEGMENT_ASPECT);
   const tubeHeight = (tubeWidth * capacity) / SEGMENT_ASPECT;
-  const segmentHeight = tubeHeight / capacity;
+  // The tube is `capacity` segments of liquid plus a sliver of air, so a full
+  // one still shows glass under its lip. See `FILL_HEADROOM`.
+  const segmentHeight = tubeHeight / (capacity + FILL_HEADROOM);
 
   // Tube height is usually capped by width, so the rows are shorter than their
   // share of the box. Centre the stack, or the spare space pools between rows.

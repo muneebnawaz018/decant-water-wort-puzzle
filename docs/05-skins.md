@@ -53,24 +53,29 @@ No per-skin real-money purchase — the genre has no precedent for one; the
 eventual money SKU is a single "unlock everything" bundle when the store SDK
 lands (phase 2).
 
-| #   | Skin              | Tier              | Unlock          | Vessel geometry (`shoulder/base/mouth/neck`) |
-| --- | ----------------- | ----------------- | --------------- | -------------------------------------------- |
-| 1   | Apothecary vial   | default           | ships equipped  | `0 / 0.5 / 1 / 0` (existing)                 |
-| 2   | Lab beaker        | free, earned      | reach level 50  | `0.3 / 0.12 / 1 / 0`                         |
-| 3   | Round flask       | free, earned      | reach level 150 | `0.16 / 0.5 / 0.5 / 0.12`                    |
-| 4   | Potion bottle     | free, earned      | reach level 300 | `0.45 / 0.5 / 0.55 / 0.16`                   |
-| 5   | Sealed ampoule    | paid, 1,500 coins | shop            | `0.5 / 0.5 / 0.42 / 0.2`                     |
-| 6   | Gilded alembic    | paid, 3,000 coins | shop            | `0.2 / 0.5 / 0.5 / 0.14` + gold glass        |
-| 7   | The Nightfall Set | paid, 6,000 coins | shop            | `0.35 / 0.4 / 0.6 / 0.22` + scene + sparkle  |
+| #   | Skin              | Tier              | Unlock          | Silhouette family                           |
+| --- | ----------------- | ----------------- | --------------- | ------------------------------------------- |
+| 1   | Apothecary vial   | default           | ships equipped  | `tube` — straight walls, rounded base       |
+| 2   | Conical flask     | free, earned      | reach level 50  | `cone` — Erlenmeyer, slant walls, flat base |
+| 3   | Round flask       | free, earned      | reach level 150 | `orb` — spherical bulb under a long neck    |
+| 4   | Potion bottle     | free, earned      | reach level 300 | `pear` — swelling body, collared neck       |
+| 5   | Hourglass         | paid, 1,500 coins | shop            | `hourglass` — twin chambers, pinched waist  |
+| 6   | Gilded alembic    | paid, 3,000 coins | shop            | family TBD + gold glass                     |
+| 7   | The Nightfall Set | paid, 6,000 coins | shop            | family TBD + scene + sparkle                |
 
 Geometry notes:
 
-- Beaker and flask are the shapes the shop originally shipped, recovered from
-  git history. The ampoule's mouth is widened from its historical `0.34` to
-  `0.42`: tubes render **29dp wide on a 13-tube board**, and at `0.34` the
-  mouth collapsed to a ~10dp sliver exactly where long-term players live. Any
-  future skin obeys the same rule — **`mouth ≥ 0.42`, and every candidate is
-  eyeballed at 29dp before it ships.**
+- **One silhouette family per skin, enforced by test.** The first catalogue
+  was four corner radii on the same straight tube — beaker, flask and ampoule
+  all read as the vial with different corners, and the shop was rightly called
+  out for selling one shape five times. `Vessel` is now a discriminated union
+  and each family is its own path code in `render/vessel.ts`; those three ids
+  were retired pre-release and skins 2, 3 and 5 re-cut as real shapes.
+- **No glass narrower than `0.46` of the tube's width, anywhere** — mouth,
+  neck or waist. The colourblind glyphs draw at `0.42` of the width, centred,
+  and tighter glass clips the accessibility mark. Tubes render **29dp wide on
+  a 13-tube board**, so every candidate is also eyeballed at 29dp before it
+  ships.
 - Prices are quoted here for context but **live in `SKIN_PRICES` in
   `src/game/economy.ts`**, the only file allowed to hold a coin figure. At the
   rebalanced ~300/day engaged income they sit a few days, a week and a few

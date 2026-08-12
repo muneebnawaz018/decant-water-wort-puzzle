@@ -295,14 +295,15 @@ export const STARTING_COINS = 0;
 /**
  * Shop prices, by skin id.
  *
- * **Empty, because there is one skin and it is free.** The catalogue was cut
- * back to the default vessel — see `theme/skins.ts` — so every price here would
- * be a number for something that cannot be bought.
+ * Only skins whose unlock is `coins` appear; the free ladder unlocks by level
+ * and prices nothing. A `coins` skin missing from this table would be
+ * unsellable, and the catalogue test fails the build if one ever is.
  *
- * Kept rather than deleted: this file is the one place a coin figure is allowed
- * to live, and a second shape landing should mean adding a row here, not
- * reinventing where prices go. The old ladder was 2,500 and 6,000, priced
- * against the earnings above so the first paid skin sat a few days out and the
- * second a few weeks.
+ * 1,500 is a few days of engaged play at the rebalanced ~300/day — the same
+ * "first paid skin sits a few days out" ladder the original shop priced
+ * (2,500 against the old, richer earnings). The 3,000 and 6,000 rungs arrive
+ * with the gilded and scene skins in `docs/05-skins.md`'s later slices.
  */
-export const SKIN_PRICES: Record<string, number> = {};
+export const SKIN_PRICES: Record<string, number> = {
+  'skin.hourglass': 1500,
+};

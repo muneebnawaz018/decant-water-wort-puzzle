@@ -1,10 +1,12 @@
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { Text, View, type LayoutChangeEvent } from 'react-native';
 
 import { SkinPreview } from '@/render/SkinPreview';
+import { useEconomyStore } from '@/state/economyStore';
 import { overlay } from '@/state/overlayStore';
+import { furthestAcrossModes, loadProgress } from '@/state/progress';
 import { useSettingsStore } from '@/state/settingsStore';
-import { SKINS, type Skin } from '@/theme/skins';
+import { skinAccess, SKINS, type Skin } from '@/theme/skins';
 import { GlossButton } from './chrome/GlossButton';
 import { Panel } from './chrome/Panel';
 import { ScrollPage } from './chrome/ScrollPage';
@@ -12,7 +14,7 @@ import { SoonBadge } from './chrome/SoonBadge';
 import { SettingGroup } from './chrome/SettingRow';
 import { section } from './chrome/styles/section.styles';
 import { PREVIEW_HEIGHT, styles } from './styles/ShopScreen.styles';
-import { PRODUCTS } from '@/game/economy';
+import { PRODUCTS, SKIN_PRICES } from '@/game/economy';
 
 /**
  * The shop, spec §4.7. Cosmetic only — nothing here may affect play.
@@ -25,14 +27,21 @@ import { PRODUCTS } from '@/game/economy';
  * purchase that repaints them puts an accessibility guarantee behind a paywall.
  * A silhouette touches none of it.
  *
- * **One vessel, and nothing for sale.** Three more shapes used to sit here, two
- * of them veiled as "coming soon" — see `theme/skins.ts` for why they went.
- * The remaining tile is not decoration: it is the glass the board is drawn in,
- * and showing it is what makes the section mean something the day a second
- * shape lands.
+ * The catalogue is `docs/05-skins.md`'s slice one: the default, a free ladder
+ * that unlocks by level, and one coin skin. Every tile shows its true state —
+ * equippable, locked behind a level, or priced — and every control delivers
+ * what it says. The "coming soon" veils that used to stand here taught the
+ * player to ignore the shop, which is why nothing wears one now.
  */
 export const ShopScreen = memo(function ShopScreen() {
   const equipped = useSettingsStore((state) => state.skin);
+  // Purchases land here, so the tile flips from priced to equippable the
+  // moment `buy` succeeds.
+  const owned = useEconomyStore((state) => state.owned);
+  // Read once per visit: the frontier cannot advance while the shop is open —
+  // there is no board behind it — so subscribing would buy re-renders for a
+  // value that cannot change.
+  const furthest = useMemo(() => furthestAcrossModes(loadProgress()), []);
 
   return (
     <ScrollPage title="Shop">
@@ -43,7 +52,8 @@ export const ShopScreen = memo(function ShopScreen() {
             key={skin.id}
             skin={skin}
             equipped={skin.id === equipped}
-            solo={SKINS.length === 1}
+            furthest={furthest}
+            owned={owned}
           />
         ))}
       </View>
@@ -63,12 +73,13 @@ export const ShopScreen = memo(function ShopScreen() {
 const SkinTile = memo(function SkinTile({
   skin,
   equipped,
-  solo,
+  furthest,
+  owned,
 }: {
   skin: Skin;
   equipped: boolean;
-  /** The only vessel in the catalogue, so the card takes the whole row. */
-  solo: boolean;
+  furthest: number;
+  owned: readonly string[];
 }) {
   // Skia draws to a sized surface, so the preview cannot be a flex child that
   // works out its own width. The card measures itself once and hands the
@@ -78,13 +89,80 @@ const SkinTile = memo(function SkinTile({
     setWidth(event.nativeEvent.layout.width);
   }, []);
 
-  const press = useCallback(() => {
+  const access = skinAccess(skin, furthest, owned);
+  const price = SKIN_PRICES[skin.id];
+
+  const equip = useCallback(() => {
     useSettingsStore.getState().set('skin', skin.id);
     overlay.toast(`${skin.name} equipped`);
   }, [skin]);
 
+  /**
+   * Buying is a confirm, not a tap — 1,500 coins is days of play, and the one
+   * press that spends it should never be a mis-tap. The modal quotes the
+   * price; the balance check happens on confirm, so the answer to "can I
+   * afford it" is computed at the moment the coins actually move.
+   */
+  const buy = useCallback(() => {
+    if (price === undefined) return;
+    overlay.modal({
+      title: skin.name,
+      body: `Buy this vessel for ${price.toLocaleString()} coins? It stays yours forever.`,
+      confirmLabel: 'Buy',
+      onConfirm: () => {
+        const store = useEconomyStore.getState();
+        if (!store.buy(skin.id, price)) {
+          overlay.toast(
+            `Not enough coins — ${store.coins.toLocaleString()} of ${price.toLocaleString()}`
+          );
+          return;
+        }
+        // Bought is worn, immediately. A purchase that changes nothing on
+        // screen is the failure the old shop was cut down to avoid.
+        useSettingsStore.getState().set('skin', skin.id);
+        overlay.toast(`${skin.name} equipped`);
+      },
+    });
+  }, [skin, price]);
+
+  /*
+    One button, three truths. Each state's control does exactly what it says:
+    "Equip" equips, the price buys, and the level row is genuinely disabled —
+    a locked control that takes a press and does nothing reads as a broken
+    game, and a disabled `Pressable` is silent for free.
+  */
+  const button =
+    access.state === 'locked' ? (
+      <GlossButton
+        label={`Level ${access.level}`}
+        variant="ghost"
+        onPress={equip}
+        disabled
+        size="compact"
+        style={styles.buy}
+      />
+    ) : access.state === 'forSale' ? (
+      <GlossButton
+        label={`${(price ?? 0).toLocaleString()} coins`}
+        variant="neutral"
+        onPress={buy}
+        size="compact"
+        style={styles.buy}
+      />
+    ) : (
+      <GlossButton
+        label={equipped ? 'Equipped' : 'Equip'}
+        variant={equipped ? 'primary' : 'ghost'}
+        onPress={equip}
+        disabled={equipped}
+        on={equipped}
+        size="compact"
+        style={styles.buy}
+      />
+    );
+
   return (
-    <View style={[styles.tileSlot, solo && styles.tileSlotSolo]}>
+    <View style={styles.tileSlot}>
       <Panel contentStyle={styles.tile}>
         <View style={styles.preview} onLayout={measure}>
           <SkinPreview vessel={skin.vessel} width={width} height={PREVIEW_HEIGHT} />
@@ -95,21 +173,7 @@ const SkinTile = memo(function SkinTile({
           {skin.blurb}
         </Text>
 
-        {/*
-          The state of the thing rather than a price. "Equipped" is disabled on
-          purpose — a button that is already what it says takes a press and does
-          nothing, and a dead control is silent for free because a disabled
-          `Pressable` never fires `onPress`.
-        */}
-        <GlossButton
-          label={equipped ? 'Equipped' : 'Equip'}
-          variant={equipped ? 'primary' : 'ghost'}
-          onPress={press}
-          disabled={equipped}
-          on={equipped}
-          size="compact"
-          style={styles.buy}
-        />
+        {button}
       </Panel>
     </View>
   );

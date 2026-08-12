@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import type { Colour, PourMove, WaterState } from '@/core/types';
 import { optimalLine } from '@/core/solver';
 import { applyPour, canPour, isSolved, isTubeComplete } from '@/core/waterCore';
-import { DIFFICULTIES, type Difficulty } from '@/game/difficulty';
+import type { Difficulty } from '@/game/difficulty';
 import { dayIndex, generateBonus } from '@/game/dailyPuzzle';
 import { EARNINGS, FREE_HINTS, PRICES } from '@/game/economy';
 import { lineMap, positionKey, suggestPour, type HintSearch } from '@/game/hint';
@@ -15,6 +15,7 @@ import { useEconomyStore } from './economyStore';
 import { overlay } from './overlayStore';
 import {
   firstUnsolved,
+  furthestAcrossModes,
   loadProgress,
   progressFor,
   markBlockPaid,
@@ -27,6 +28,7 @@ import {
   type Progress,
   type ProgressByDifficulty,
 } from './progress';
+import { skinsUnlockedBetween } from '@/theme/skins';
 import {
   clearSession,
   loadSession,
@@ -452,6 +454,36 @@ export const useGameStore = create<GameState>((set, get) => {
   };
 
   /**
+   * Toast any skin this completion just unlocked.
+   *
+   * The frontier only ever advances, so the crossing itself is the once-only
+   * event and nothing needs storing. Delayed past the win animation and the
+   * milestone toast — level 50 completes block 5, so both messages fire on
+   * exactly the levels a skin unlocks on, and the later toast replaces the
+   * earlier; a reward nobody sees is not a reward.
+   */
+  const announceUnlocks = (
+    before: ProgressByDifficulty,
+    after: ProgressByDifficulty
+  ): void => {
+    const unlocked = skinsUnlockedBetween(
+      furthestAcrossModes(before),
+      furthestAcrossModes(after)
+    );
+    unlocked.forEach((skin, index) => {
+      const timer = setTimeout(
+        () => overlay.toast(`${skin.name} unlocked · equip it in the Shop`),
+        3200 + index * 2600
+      );
+      // On a device `setTimeout` returns a number and this is a no-op. Under
+      // Node (Jest) it returns a Timeout, and a pending one holds the worker
+      // open — the hint-sweep test solves a million-level board, crosses every
+      // threshold, and leaked three of these.
+      (timer as unknown as { unref?: () => void }).unref?.();
+    });
+  };
+
+  /**
    * What finishing the daily bonus puzzle pays.
    *
    * **On stars, at `bonusPuzzlePerStar` each**, so 40, 80 or 120. It used to be
@@ -698,6 +730,7 @@ export const useGameStore = create<GameState>((set, get) => {
             // Mark first, coins second — see `payFor` for why this order.
             saveProgress(next);
             settleUp(paid);
+            announceUnlocks(current.record, next);
           }
         }
 
@@ -881,6 +914,7 @@ export const useGameStore = create<GameState>((set, get) => {
             // Mark first, coins second — see `payFor` for why this order.
             saveProgress(next);
             settleUp(paid);
+            announceUnlocks(current.record, next);
           }
         }
 
@@ -1123,11 +1157,7 @@ export const useGameStore = create<GameState>((set, get) => {
        * always meant a board from move zero, and letting the shape move up
        * with the player costs nothing to allow.
        */
-      const record = get().record;
-      const furthest = DIFFICULTIES.reduce(
-        (best, mode) => Math.max(best, progressFor(record, mode).furthestLevel),
-        1
-      );
+      const furthest = furthestAcrossModes(get().record);
       const generated = generateBonus(day, furthest);
       clearSession();
 
