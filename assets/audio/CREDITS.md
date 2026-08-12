@@ -48,8 +48,8 @@ a commercial release possible for nothing costs a row in a table.
 Pack used: Interface Sounds, from `kenney.nl/assets/interface-sounds` — two
 cues, split on purpose. `tap` is `glass_002`, the board's own tick, because
 vials are glass; `click` is `click_002`, a 12ms UI click for every chrome
-button, so the menus do not sound like the game. Both sit under the "Sound on
-tap" toggle. Impact Sounds and Digital Audio were used for `complete` and
+button, so the menus do not sound like the game. Both sit under the "Taps &
+buttons" toggle. Impact Sounds and Digital Audio were used for `complete` and
 `level` and are no longer shipped — see the marimba section for why.
 
 ### Versilian Studios Chamber Orchestra 2: Community Edition

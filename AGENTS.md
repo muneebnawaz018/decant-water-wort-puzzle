@@ -1154,10 +1154,18 @@ and the phase 2 notes above describe what it has to do.
 
 ## Sound
 
-Five recorded one-shots in `assets/audio`, played by `src/audio/sounds.ts`
+Six recorded one-shots in `assets/audio`, played by `src/audio/sounds.ts`
 through **`modules/system-sound`**, a local Expo module of this project's own.
 Effects only, and **there is no music** — see the end of this section, because
 its absence is a decision rather than a gap.
+
+**Two settings, a master and a dependent.** `sound` silences everything;
+`tapSound` covers only the touch cues — the glass tick on a vial and the click
+on every chrome button. The rows are labelled **"All sounds"** and **"Taps &
+buttons"**, and the second is dimmed and unpressable while the first is off.
+Both parts of that were a fix: named `Sound` and `Sound on tap` they read as
+two independent switches, so turning the master off and seeing the other still
+green looked like a bug rather than a hierarchy.
 
 ### It does not use `expo-audio`, and the reason cost an evening
 
@@ -1221,7 +1229,11 @@ waves and filtered noise do not sound like liquid or wood. Every file's origin
 and licence is in `assets/audio/CREDITS.md`, and a file with no entry there
 does not ship.
 
-- `tap` — Kenney glass, CC0.
+- `tap` — Kenney glass, CC0. The board's own tick, because vials are glass.
+- `click` — Kenney `click_002`, CC0. **A separate cue for chrome buttons**,
+  12ms and quieter than everything else since it fires more than anything
+  else. Separate because when the menus borrowed the vial's glass tick, every
+  screen sounded like the board; chrome should answer with chrome.
 - `pour` — water poured into a glass **that already holds water** (Freesound,
   carroll27, CC0). Two rejected takes are recorded in CREDITS and both failed
   on _subject_ rather than quality: a 0.23s bubble glug could not cover a
