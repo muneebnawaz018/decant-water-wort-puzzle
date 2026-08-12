@@ -7,14 +7,30 @@ audio asset is the one thing in this repo that is not ours by default.
 The `.wav` and `.m4a` files beside this one are generated, not edited: drop a
 source recording in `source/` and run `python3 script/prepare-sounds.py`, which
 cuts the `.wav` master and encodes the `.m4a` the app ships in one step.
-Sources are gitignored (`assets/audio/source/`), because they are long, large
-and not shipped — only the cut one-shots are.
+
+**Everything is committed, including `source/`.** Three tiers, and only one of
+them ships:
+
+| Tier           | What it is                               | In the app?          |
+| -------------- | ---------------------------------------- | -------------------- |
+| `source/*.wav` | The original takes, uncut                | No                   |
+| `*.wav`        | Cut, levelled masters                    | No                   |
+| `*.m4a`        | AAC, decoded natively on iOS and Android | **Yes — these only** |
+
+The sources used to be gitignored and are not any more. They are CC0 files
+from third-party sites, and "download them again" stops being a plan the first
+time a link rots or a pack is re-uploaded with different mastering — at which
+point no cue can be re-levelled and no marimba arrangement re-voiced. 1.7MB in
+git buys a rebuild of the entire audio layer from one command. It costs the
+app nothing: Metro bundles only what `src/audio/sounds.ts` requires, which was
+verified against a production export — six `.m4a`, no `.wav`.
 
 ## Shipped one-shots
 
 | File           | Source                                            | Licence | Attribution  |
 | -------------- | ------------------------------------------------- | ------- | ------------ |
-| `tap.wav`      | Kenney — Interface Sounds                         | CC0 1.0 | not required |
+| `tap.wav`      | Kenney — Interface Sounds (`glass_002`)           | CC0 1.0 | not required |
+| `click.wav`    | Kenney — Interface Sounds (`click_002`)           | CC0 1.0 | not required |
 | `pour.wav`     | Freesound — "Water pouring into glass", carroll27 | CC0 1.0 | not required |
 | `complete.wav` | VSCO 2 CE marimba, arranged (see below)           | CC0 1.0 | not required |
 | `level.wav`    | VSCO 2 CE marimba, arranged (see below)           | CC0 1.0 | not required |
@@ -29,9 +45,12 @@ Support us by crediting Kenney or <https://kenney.nl> (this is not mandatory)."
 Credited here anyway. CC0 asks nothing, and a one-line thank-you to whoever made
 a commercial release possible for nothing costs a row in a table.
 
-Pack used: Interface Sounds, from `kenney.nl/assets/interface-sounds`. Impact
-Sounds and Digital Audio were used for `complete` and `level` and are no longer
-shipped — see the marimba section for why.
+Pack used: Interface Sounds, from `kenney.nl/assets/interface-sounds` — two
+cues, split on purpose. `tap` is `glass_002`, the board's own tick, because
+vials are glass; `click` is `click_002`, a 12ms UI click for every chrome
+button, so the menus do not sound like the game. Both sit under the "Sound on
+tap" toggle. Impact Sounds and Digital Audio were used for `complete` and
+`level` and are no longer shipped — see the marimba section for why.
 
 ### Versilian Studios Chamber Orchestra 2: Community Edition
 
@@ -99,13 +118,14 @@ The set is deliberately unequal in both level and brightness, because a player
 should be able to tell from sound alone whether what just happened mattered.
 Measured on the shipped files:
 
-| Cue        | Length | Centre pitch | Brightness | What it is             |
-| ---------- | ------ | ------------ | ---------- | ---------------------- |
-| `illegal`  | 0.60s  | 197Hz        | 644Hz      | refusal, damped, dark  |
-| `tap`      | 0.09s  | 1978Hz       | 1935Hz     | glass, touching a vial |
-| `pour`     | 1.35s  | 839Hz        | 3941Hz     | water into water       |
-| `complete` | 1.10s  | 524Hz        | 2314Hz     | rising fifth           |
-| `level`    | 1.46s  | 524Hz        | 2671Hz     | arpeggio, brightest    |
+| Cue        | Length | Centre pitch | Brightness | What it is               |
+| ---------- | ------ | ------------ | ---------- | ------------------------ |
+| `illegal`  | 0.60s  | 197Hz        | 644Hz      | refusal, damped, dark    |
+| `click`    | 0.01s  | 1120Hz       | 1494Hz     | any button in the chrome |
+| `tap`      | 0.09s  | 1978Hz       | 1935Hz     | glass, touching a vial   |
+| `pour`     | 1.35s  | 839Hz        | 3941Hz     | water into water         |
+| `complete` | 1.10s  | 525Hz        | 2314Hz     | rising fifth             |
+| `level`    | 1.75s  | 262Hz        | 3726Hz     | arpeggio to a rung chord |
 
 Two relationships in there are load-bearing rather than incidental. The refusal
 is the darkest and quietest thing in the game, four times lower than the tap —

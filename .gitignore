@@ -55,9 +55,14 @@ modules/*/ios/build/
 # not part of the shipped source. Keep a copy; do not commit it.
 docs/decant-handoff/
 
-# raw audio downloads, for whenever real sound effects land. Large, and never
-# shipped: `script/prepare-sounds.py` cuts them down to what the app uses.
-assets/audio/source/
+# `assets/audio/source/` is deliberately NOT ignored, though it was until the
+# sounds became real. Those files are the only copies of the takes the shipped
+# cues were cut from — every one is CC0 from a third-party site, and "download
+# it again" stops being a plan the day a link rots or a pack is re-uploaded
+# with different mastering. Without them `script/prepare-sounds.py` cannot
+# re-level a cue or re-voice a marimba arrangement; with them the whole audio
+# layer rebuilds from one command. 1.7MB in git, nothing in the app — Metro
+# bundles only what `src/audio/sounds.ts` requires, which is the `.m4a` set.
 
 # AdMob account IDs, per environment. The committed `.env.example` documents the
 # names; the real values belong to whoever owns the AdMob account. Not secret —

@@ -178,8 +178,19 @@ export const SettingsDrawer = memo(function SettingsDrawer() {
               a control that visibly moves and changes nothing reads as a broken
               game rather than a missing feature.
             */}
-            <SettingRow icon="sound" label="Sound">
-              <Toggle setting="sound" label="Sound" />
+            {/*
+              "All sounds", not "Sound" — the two rows are a master and a
+              dependent, and side by side under near-identical names they read
+              as a pair of equals. A player who turned "Sound" off and saw
+              "Sound on tap" still green had no way to know one governed the
+              other, and reported the tap switch as broken.
+
+              Named as the umbrella, and the row below is dimmed while this is
+              off, so the hierarchy is visible rather than something the player
+              has to work out.
+            */}
+            <SettingRow icon="sound" label="All sounds">
+              <Toggle setting="sound" label="All sounds" />
             </SettingRow>
             {/*
               No Music row, and its absence is a decision rather than a gap.
@@ -191,8 +202,14 @@ export const SettingsDrawer = memo(function SettingsDrawer() {
               for a feature nobody is building is just a row that has to keep
               being explained.
             */}
-            <SettingRow icon="tap" label="Sound on tap">
-              <Toggle setting="tapSound" label="Sound on tap" />
+            {/*
+              "Taps & buttons" says what it actually covers: the tick on a vial
+              *and* the click on every button in the app, which are two
+              different cues under one switch. "Sound on tap" named neither
+              clearly and sat one word away from the master above it.
+            */}
+            <SettingRow icon="tap" label="Taps & buttons">
+              <Toggle setting="tapSound" label="Taps & buttons" dependsOnSound />
             </SettingRow>
             {/*
               "In game", not "Vibration" — the switch only covers the board now,
@@ -246,15 +263,25 @@ const DrawerMark = memo(function DrawerMark() {
   return <AppMark size={s(34)} level={battery.level} source={battery.source} />;
 });
 
-/** One switch bound to one setting. */
+/**
+ * One switch bound to one setting.
+ *
+ * `dependsOnSound` marks a switch that the master silences — it dims and stops
+ * taking presses while `sound` is off. Its stored value is left alone, so
+ * turning the master back on restores whatever the player chose rather than a
+ * default.
+ */
 const Toggle = memo(function Toggle({
   setting,
   label,
+  dependsOnSound = false,
 }: {
   setting: ToggleKey;
   label: string;
+  dependsOnSound?: boolean;
 }) {
   const value = useSettingsStore((state) => state[setting]);
+  const master = useSettingsStore((state) => state.sound);
 
   const onChange = useCallback(() => {
     const store = useSettingsStore.getState();
@@ -274,7 +301,14 @@ const Toggle = memo(function Toggle({
     store.toggle(setting);
   }, [setting]);
 
-  return <Switch value={value} onChange={onChange} label={label} />;
+  return (
+    <Switch
+      value={value}
+      onChange={onChange}
+      label={label}
+      disabled={dependsOnSound && !master}
+    />
+  );
 });
 
 function howToPlay(): void {

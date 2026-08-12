@@ -35,12 +35,14 @@ import { rateForFill } from './pitch';
  */
 
 /**
- * The five cues, doc §7.
+ * The six cues, doc §7.
  *
  * `.m4a` — AAC survived the `AVPlayer` era of this file and stays: both
  * engines decode it natively and the files are a twentieth of the WAV size.
- * `script/prepare-sounds.py` still edits in WAV, the lossless format to cut
- * and level in; the `.wav` masters sit beside these.
+ * **Only these ship**, verified against a production export. The `.wav`
+ * masters beside them and the raw takes in `assets/audio/source/` are
+ * committed for `script/prepare-sounds.py` to rebuild from, and Metro bundles
+ * neither — it takes only what is `require`d here.
  *
  * `require` rather than `import`: these resolve through Metro's asset
  * pipeline. Listed statically because Metro cannot follow a computed
@@ -51,6 +53,7 @@ import { rateForFill } from './pitch';
 /* eslint-disable @typescript-eslint/no-require-imports */
 const SOURCES = {
   tap: require('../../assets/audio/tap.m4a'),
+  click: require('../../assets/audio/click.m4a'),
   pour: require('../../assets/audio/pour.m4a'),
   complete: require('../../assets/audio/complete.m4a'),
   level: require('../../assets/audio/level.m4a'),
@@ -296,12 +299,32 @@ export function soundIllegal(): void {
 }
 
 /**
- * Touching a vial. The one cue with its own setting, because it is the one
- * that fires most: a player can want the game to have a voice without hearing
- * a click on every single touch.
+ * Touching a vial. Under the "Taps & buttons" setting as well as the master,
+ * because it fires on every board touch: a player can want the game to have a
+ * voice without hearing a tick on every single one.
  */
 export function soundTap(): void {
   const settings = currentSettings();
   if (!settings.sound || !settings.tapSound) return;
   fire('tap');
+}
+
+/**
+ * Pressing a button — any button, everywhere. `useTapHandler` calls this, and
+ * every pressable in the chrome routes through there, so this one function is
+ * the whole "buttons make a sound" feature.
+ *
+ * Its own cue, deliberately distinct from `tap`: the vial tick is glass
+ * because vials are glass, and when the menus used it too, every screen
+ * sounded like the board. A 12ms UI click cannot be mistaken for a vial —
+ * chrome answers with chrome.
+ *
+ * Same `tapSound` gate as the vial tick. One switch governing two different
+ * sounds is the design, and the label says so: "Taps & buttons" is about
+ * whether *touches* are audible, not about which surface was touched.
+ */
+export function soundClick(): void {
+  const settings = currentSettings();
+  if (!settings.sound || !settings.tapSound) return;
+  fire('click');
 }

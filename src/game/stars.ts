@@ -126,8 +126,8 @@ const MILESTONE_MAX_STARS = MILESTONE_SIZE * 3;
  *
  * So the rate per star tapers, from `milestoneTopRate` down to
  * `milestoneFloorRate` a step every `milestoneTaper` blocks. At the numbers in
- * `economy.ts` that is block one paying up to 180 and block nine onward up to
- * 60 — roughly one extra level's worth on top of the ten levels' own payouts.
+ * `economy.ts` that is block one paying up to 120 and block seven onward up to
+ * 30 — roughly one extra level's worth on top of the ten levels' own payouts.
  *
  * Driven by stars rather than by levels finished, so a block cleared carefully
  * pays more than a block scraped through. There is no fail state, so every

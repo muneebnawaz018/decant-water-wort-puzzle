@@ -1,3 +1,4 @@
+import { EARNINGS } from '../economy';
 import { coinsFor, coinsForImprovement, starsFor } from '../stars';
 
 /** `par / moves`, the ratio the bands are defined on. */
@@ -70,8 +71,8 @@ describe('starsFor', () => {
 
 describe('coinsFor', () => {
   it('scales with stars', () => {
-    expect(coinsFor(1)).toBe(20);
-    expect(coinsFor(3)).toBe(60);
+    expect(coinsFor(1)).toBe(EARNINGS.coinsPerStar);
+    expect(coinsFor(3)).toBe(EARNINGS.coinsPerStar * 3);
   });
 });
 

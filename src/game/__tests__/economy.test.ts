@@ -16,18 +16,24 @@ import {
  * somebody should have to make on purpose.
  */
 describe('the economy table', () => {
-  it('prices an undo well below what a level pays', () => {
-    // Otherwise a careless pour costs more than finishing the board earns, and
-    // undo stops being a tool and becomes a punishment.
-    expect(PRICES.undo).toBeLessThan(EARNINGS.coinsPerStar);
+  it('prices an undo no higher than a star, so a mistake is never a wall', () => {
+    // The Aug 2026 rebalance halved earnings and left prices alone, on
+    // purpose: help now runs a real deficit, and the rewarded ad beside each
+    // button is the free way to cover it. What this still refuses is an undo
+    // costing more than a star — a careless pour costing more than the level
+    // pays back per star turns the meter into a punishment.
+    expect(PRICES.undo).toBeLessThanOrEqual(EARNINGS.coinsPerStar);
   });
 
-  it('prices a hint above an undo and below a star', () => {
+  it('prices a hint above an undo, and above a star but under a typical level', () => {
     // Above an undo because it does more — it hands over the next move rather
-    // than taking one back. Below a star so hinting through a board is a real
-    // deficit rather than a wall: the meter is meant to be usable.
+    // than taking one back. Above a single star now (the deficit is the
+    // design: it steers toward the ad), but still under the two stars an
+    // ordinary finish pays, so a hinted board loses ground without hitting a
+    // wall.
     expect(PRICES.hint).toBeGreaterThan(PRICES.undo);
-    expect(PRICES.hint).toBeLessThan(EARNINGS.coinsPerStar);
+    expect(PRICES.hint).toBeGreaterThan(EARNINGS.coinsPerStar);
+    expect(PRICES.hint).toBeLessThan(EARNINGS.coinsPerStar * 2);
   });
 
   it('gives every level at least one free hint', () => {

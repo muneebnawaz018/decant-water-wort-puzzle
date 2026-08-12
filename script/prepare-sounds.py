@@ -175,6 +175,12 @@ ARRANGEMENTS: dict[str, tuple[str, list[tuple[float, float, float]]]] = {
 
 TARGETS = [
     Target("tap", 0.090, 0.75, 0.030, "vial tap — fires on every touch, keep it under notice"),
+    # The chrome's own voice, distinct from the board's on purpose: `tap` is
+    # glass because vials are glass, and giving menu buttons the same sound
+    # made every screen sound like the game. A 12ms UI click cannot be
+    # mistaken for a vial. Quieter than the vial tap — it is the most
+    # frequently fired sound in the app.
+    Target("click", 0.080, 0.60, 0.020, "chrome button press, under everything"),
     # Sized to the animation's stream, not the whole animation. The pour runs
     # 1850ms end to end but the cue fires at the stream phase (~280ms in) and
     # the last drips fall at ~95% — a 1.35s take covers that window at every

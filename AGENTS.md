@@ -911,13 +911,22 @@ finished, so a block cleared carefully pays more than one scraped through, and
 the same rule that gives a completed level at least one star means a completed
 block always pays something.
 
-**The rate tapers.** Six coins a star in the first block, falling by one every
-two blocks to a floor of two — up to 180 for levels 1-10, up to 60 from block
-nine onward. Two things had to be balanced: the bonus has to be worth noticing
+**The rate tapers.** Four coins a star in the first block, falling by one every
+two blocks to a floor of one — up to 120 for levels 1-10, up to 30 from block
+seven onward. Two things had to be balanced: the bonus has to be worth noticing
 early, when a player has nothing saved and the levels are short, and it has to
 stay a _bonus_ later rather than becoming the main income, or the economy ends
 up paying for elapsed time instead of for playing well. At the floor it is
 worth roughly one extra level on top of the ten levels' own payouts.
+
+**The whole earnings side was halved in Aug 2026, and the ad payouts were
+not** — that asymmetry is the monetisation design, not an oversight. At the
+original rates an engaged week banked ~6,500 coins against ~200 of possible
+spending, which priced both revenue paths out of existence. A rewarded ad
+(still 50) is now worth about two finished levels, so the free path to
+affording help is the ad; the 8,000-coin pack is now about a month of engaged
+play. Every quantity lives in `src/game/economy.ts` and everything — UI copy,
+tests, toasts — derives from it, so a future rebalance is one edit there.
 
 `paidBlocks` on the progress record is what stops a replay claiming a bonus
 twice. It has to be stored: whether a block is _complete_ can be read off
@@ -1029,11 +1038,13 @@ defending there: the brew is never written to `session.v1`, so returning always
 meant a board from move zero anyway, and pinning it would cost a stored field
 and a migration to make a board slightly less current.
 
-It pays **per star** (`bonusPuzzlePerStar`, 40 → 40/80/120), not flat. Flat was
+It pays **per star** (`bonusPuzzlePerStar`, 20 → 20/40/60), not flat. Flat was
 right while the board was always the ceiling; with the shape following the
 player it would hand the same coins to a six-colour brew and a twelve-colour
-one. The Rewards row advertises `up to +120` for the same reason — a row
-promising 120 for any completion is a small lie a player notices exactly once.
+one. The Rewards row advertises the ceiling for the same reason — a row
+promising the maximum for any completion is a small lie a player notices
+exactly once. The row's copy derives from the constant, so it moved with the
+rebalance on its own.
 
 ### The daily reward
 

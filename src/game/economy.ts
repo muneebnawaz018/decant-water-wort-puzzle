@@ -52,11 +52,11 @@ export const PRICES = {
    *
    * Above an undo and below a star, and both edges are the design. A hint does
    * more for the player than an undo — it hands over the next move rather than
-   * taking one back — so it cannot cost less. And a level's first star pays 20,
-   * so at 15 a player who hints their way through a whole board is spending
-   * roughly what the board pays back per move of help: solving with hints is
-   * *allowed* but runs a real deficit, funded by daily rewards and milestones.
-   * That is the intended shape — an escape valve with a meter, not a cheat.
+   * taking one back — so it cannot cost less. And it now costs more than a
+   * level's first star pays (10): a hinted board runs a real deficit, funded
+   * by daily rewards and milestones — or by the rewarded ad beside the button,
+   * which is the answer the economy is steering toward. An escape valve with a
+   * meter, not a cheat.
    *
    * The first each level is free — see `FREE_HINTS`.
    */
@@ -112,18 +112,27 @@ export const FREE_UNDOS = {
  * What the game pays.
  *
  * Together these set the ceiling every price is judged against. An engaged
- * player earns roughly 630 coins a day: a level averages about 49 with its
- * stars, and a block of ten with its milestone bonus comes to 535–632.
+ * player earns roughly 300 coins a day: a level averages about 24 with its
+ * stars, and a block of ten with its milestone bonus comes to 267–340.
+ *
+ * Deliberately about half of what the first tuning paid. At the old rates a
+ * week of engaged play banked ~6,500 coins against ~200 of possible spending,
+ * and a surplus that deep prices both revenue paths out of existence: nobody
+ * watches the rewarded ad beside a 15-coin hint while holding thousands, and
+ * an 8,000-coin pack competes with money the game hands out anyway. The ad
+ * payouts below did NOT halve with the earnings — that is the tilt: a watch is
+ * now worth about two finished levels, so the free path to affording help is
+ * the ad, and the paid path is the pack.
  */
 export const EARNINGS = {
   /**
-   * Coins per star on a finished level, so 20 to 60 a level.
+   * Coins per star on a finished level, so 10 to 30 a level.
    *
    * Per star rather than per completion, because completion is guaranteed —
    * there is no fail state — and paying for it flat would pay for elapsed time
    * rather than for playing well.
    */
-  coinsPerStar: 20,
+  coinsPerStar: 10,
 
   /**
    * The milestone bonus rate, per star, in the first block of ten levels.
@@ -131,7 +140,7 @@ export const EARNINGS = {
    * It has to be worth noticing early, when a player has nothing saved and the
    * levels are short.
    */
-  milestoneTopRate: 6,
+  milestoneTopRate: 4,
 
   /**
    * Where that rate stops falling.
@@ -140,7 +149,7 @@ export const EARNINGS = {
    * or the economy pays for time served. At the floor a block is worth about
    * one extra level on top of the ten levels' own payouts.
    */
-  milestoneFloorRate: 2,
+  milestoneFloorRate: 1,
 
   /** Blocks the rate takes to fall by one coin. */
   milestoneTaper: 2,
@@ -172,14 +181,14 @@ export const EARNINGS = {
    * The seven-day claim track.
    *
    * Front-loaded but not flat, so the streak is worth keeping rather than worth
-   * starting. Day seven is the point of the week: 150 coins, double day six,
-   * fifteen times day one, and 43% of everything the week pays — breaking a
+   * starting. Day seven is the point of the week: 100 coins, double day six,
+   * twenty times day one, and 43% of everything the week pays — breaking a
    * streak on day six has to cost something real or the streak is decoration.
    *
    * The values land on fives and tens because prices do. Anything finer reads
    * as a number that fell out of a formula rather than one somebody chose.
    */
-  daily: [10, 15, 20, 30, 50, 75, 150],
+  daily: [5, 10, 15, 20, 30, 50, 100],
 
   /**
    * What watching a rewarded ad pays — doc §8's highest-value slot.
@@ -214,7 +223,7 @@ export const EARNINGS = {
   adMultiplier: 2,
 
   /**
-   * The daily bonus puzzle, **per star** — so 40, 80 or 120.
+   * The daily bonus puzzle, **per star** — so 20, 40 or 60.
    *
    * It used to be a flat 120 on completion, on the reasoning that the board was
    * always the hardest shape the generator makes and a star rating there would
@@ -229,11 +238,11 @@ export const EARNINGS = {
    * payout was. Twice the rate a level pays per star, because it is once a day
    * and cannot be farmed.
    *
-   * Three stars still sits between a good level (60) and a milestone block (up
-   * to 180): above a level because it is harder than the player's own ladder,
+   * Three stars still sits between a good level (30) and a milestone block (up
+   * to 120): above a level because it is harder than the player's own ladder,
    * below a block because a block is ten levels of work.
    */
-  bonusPuzzlePerStar: 40,
+  bonusPuzzlePerStar: 20,
 } as const;
 
 /**
@@ -256,8 +265,8 @@ export const BREW_LEAD = 30;
  * Real-money products, and what they hand over.
  *
  * Here for the same reason everything else is: the coin pack's size is a payout
- * and has to be judged against the earnings above — 8,000 is about thirteen
- * days of play, which is what makes it worth $1.99 rather than an insult or a
+ * and has to be judged against the earnings above — 8,000 is about a month of
+ * engaged play, which is what makes it worth $1.99 rather than an insult or a
  * shortcut past the whole economy.
  *
  * **The prices are display strings, and only display strings.** A store SDK

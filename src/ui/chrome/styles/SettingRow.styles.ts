@@ -39,6 +39,15 @@ export const styles = StyleSheet.create({
    */
   spent: { opacity: 0.45 },
   /**
+   * A switch that cannot be reached because the one above it is off.
+   *
+   * The same 0.45 as `spent`, and for the same reason: unavailable has to read
+   * at a glance. Applied to the switch alone rather than the whole row, so the
+   * label and icon stay legible — the player still needs to know what it is
+   * they would be turning on.
+   */
+  switchOff: { opacity: 0.45 },
+  /**
    * A row whose control sits under its label rather than beside it.
    *
    * `paddingBottom` only — the label line above brings its own vertical

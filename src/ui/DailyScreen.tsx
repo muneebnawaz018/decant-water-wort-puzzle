@@ -317,8 +317,9 @@ export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScree
         which is exactly where the claim control belongs: it is what the seventh
         row is *for*, and it costs the page a block rather than adding one.
 
-        The grand reward still reads as grand — the tile names 150 against
-        neighbours paying 10 to 75, and the number is the part that says so.
+        The grand reward still reads as grand — day seven's tile names double
+        its nearest neighbour, and the number is the part that says so. The
+        amounts come from the constants, so a rebalance never stales this copy.
       */}
       <View style={styles.track}>
         {DAILY_REWARDS.map((amount, index) => (

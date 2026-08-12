@@ -150,15 +150,25 @@ export const SettingRow = memo(function SettingRow({
  * The switch from spec §3: a track that goes green, and a knob that slides.
  * The knob animates on the UI thread so a toggle never costs a React render
  * per frame.
+ *
+ * `disabled` is for a switch that depends on another one — "Taps & buttons"
+ * under "All sounds". Naming alone could not carry that: two switches side by
+ * side read as independent however they are labelled, so a player turned the
+ * master off, saw the dependent one still standing green, and reasonably
+ * concluded it was broken. Dimmed and unpressable, the dependency is visible
+ * instead of explained. The value underneath is untouched, so it comes back
+ * exactly as they left it.
  */
 export const Switch = memo(function Switch({
   value,
   onChange,
   label,
+  disabled = false,
 }: {
   value: boolean;
   onChange: () => void;
   label: string;
+  disabled?: boolean;
 }) {
   const position = useSharedValue(value ? 1 : 0);
 
@@ -175,9 +185,11 @@ export const Switch = memo(function Switch({
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       accessibilityRole="switch"
       accessibilityLabel={label}
-      accessibilityState={{ checked: value }}
+      accessibilityState={{ checked: value, disabled }}
+      style={disabled && styles.switchOff}
     >
       <View style={[styles.track, value && styles.trackOn]}>
         <Animated.View style={[styles.knob, knob]} />
