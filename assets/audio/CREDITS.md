@@ -4,6 +4,52 @@ Every shipped sound and where it came from. **A file with no entry here does not
 ship** — a licence nobody can produce is a licence the app does not have, and an
 audio asset is the one thing in this repo that is not ours by default.
 
+## Can this ship commercially? Yes
+
+The short answer, because it is the question that gets asked again every time
+someone new looks at the audio: **every sound in the game is CC0 1.0, and the
+app can be sold, monetised with ads, and shipped to both stores with no
+payment, no attribution and no permission owed to anyone.**
+
+CC0 is not a permissive licence with conditions attached — it is the creator
+formally waiving copyright and dedicating the work to the public domain.
+Kenney's own `License.txt` states it in words: "free to use in personal,
+educational and commercial projects." Nothing here is borrowed under terms
+that could be withdrawn.
+
+**Nobody on this project recorded audio, and that is worth being precise
+about.** Three cues are somebody else's recording, cut and levelled — `tap`,
+`click`, `pour`. The other three are _our own musical writing performed on
+somebody else's instrument recording_: the rising fifth, the arpeggio to a
+chord and the damped falling fifth were composed here, note by note, from CC0
+marimba samples. A derivative of a public-domain work belongs to whoever made
+the derivative.
+
+What would **not** be acceptable, and has not happened: pulling audio out of
+another app, ripping from video, or using anything whose licence cannot be
+produced on demand. That is what the rule at the top of this file is for.
+
+Two residual risks, stated rather than hidden, neither unusual:
+
+- **CC0 depends on the uploader having owned what they uploaded.** This is the
+  basis every game using free assets stands on. These sources are as low-risk
+  as the category gets: Kenney and Versilian Studios are long-established
+  asset houses whose work ships in thousands of commercial titles, and the
+  pour is a self-recorded domestic sound.
+- **The pour was taken from Freesound's public preview stream** of that CC0
+  recording rather than the original upload. The dedication attaches to the
+  recording, not to a file format, so nothing changes legally — it is a
+  quality footnote, not a licence one.
+
+No AI-generated audio is used anywhere. A generated set was considered and
+never obtained; an earlier **synthesised** set — genuinely 100% ours, sine
+waves and filtered noise — was built and deleted for sounding wrong, which is
+what set the recorded-sources-only rule the rest of this file follows.
+
+If fully original audio is ever wanted for its own sake, the honest route is
+commissioned foley or a sound designer, not synthesis, and
+`script/prepare-sounds.py` would take those files unchanged.
+
 The `.wav` and `.m4a` files beside this one are generated, not edited: drop a
 source recording in `source/` and run `python3 script/prepare-sounds.py`, which
 cuts the `.wav` master and encodes the `.m4a` the app ships in one step.

@@ -1229,6 +1229,13 @@ waves and filtered noise do not sound like liquid or wood. Every file's origin
 and licence is in `assets/audio/CREDITS.md`, and a file with no entry there
 does not ship.
 
+**Every cue is CC0 1.0 and clears commercial release** — sold, ad-funded, on
+both stores, with nothing owed to anyone. `CREDITS.md` opens with the full
+answer, including what is somebody else's recording (`tap`, `click`, `pour`)
+versus what is our own composition on a public-domain instrument (the three
+marimba cues), and the two residual risks worth naming. Send anyone asking the
+licensing question there rather than re-deriving it.
+
 - `tap` — Kenney glass, CC0. The board's own tick, because vials are glass.
 - `click` — Kenney `click_002`, CC0. **A separate cue for chrome buttons**,
   12ms and quieter than everything else since it fires more than anything
