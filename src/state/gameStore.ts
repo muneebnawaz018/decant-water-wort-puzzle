@@ -1,41 +1,30 @@
 import { create } from 'zustand';
 
+import { track } from '@/analytics';
 import type { Colour, PourMove, WaterState } from '@/core/types';
-import { optimalLine } from '@/core/solver';
 import { applyPour, canPour, isSolved, isTubeComplete } from '@/core/waterCore';
 import type { Difficulty } from '@/game/difficulty';
 import { dayIndex, generateBonus } from '@/game/dailyPuzzle';
-import { EARNINGS, FREE_HINTS, PRICES } from '@/game/economy';
-import { lineMap, positionKey, suggestPour, type HintSearch } from '@/game/hint';
-import { coinsForImprovement, milestoneBonus, starsFor } from '@/game/stars';
+import { FREE_HINTS, PRICES } from '@/game/economy';
+import { positionKey, suggestPour, type HintSearch } from '@/game/hint';
+import { starsFor } from '@/game/stars';
 import { forgetFrom, freeUndosFor, undoCharge, withUndoPaid } from '@/game/undoCost';
 import { generateLevel } from '@/game/waterGenerator';
 import { useBonusStore } from './bonusStore';
+import { settleCompletion } from './completion';
+import { schedulePar, type PlannedHint } from './parRefinement';
 import { useEconomyStore } from './economyStore';
-import { overlay } from './overlayStore';
 import {
   firstUnsolved,
   furthestAcrossModes,
   loadProgress,
   progressFor,
-  markBlockPaid,
-  progressFor as _progressFor,
-  recordCompletion,
   saveProgress,
   setCurrentLevel,
-  starsInBlock,
-  unpaidBlockFor,
   type Progress,
   type ProgressByDifficulty,
 } from './progress';
-import { skinsUnlockedBetween } from '@/theme/skins';
-import {
-  clearSession,
-  loadSession,
-  packMoves,
-  restoreSession,
-  saveSession,
-} from './session';
+import { clearSession, loadSession, restoreSession, saveSessionFrom } from './session';
 import { useSettingsStore } from './settingsStore';
 
 /**
@@ -247,13 +236,6 @@ export interface GameState {
   progress: () => Progress;
 }
 
-/** One entry of the plan the hints follow — see `hintLine` on the state. */
-interface PlannedHint {
-  move: PourMove;
-  /** Whether the line this came from is the provably shortest. Decides billing. */
-  optimal: boolean;
-}
-
 /**
  * What pressing Hint did, so the screen can answer each case differently.
  *
@@ -361,187 +343,19 @@ export const useGameStore = create<GameState>((set, get) => {
    * par has to mean the same thing whether or not one was taken.
    */
   const refinePar = (level: number, mode: Difficulty, board: WaterState): void => {
-    setTimeout(() => {
-      // The player may have moved on while this was queued.
-      if (get().level !== level || get().difficulty !== mode) return;
-
-      const exact = optimalLine(board);
-      // Null means the node cap was hit. Keep the bound: a level nobody can
-      // three-star is better than one where everybody does.
-      if (exact.moves === null) return;
-      if (get().level !== level || get().difficulty !== mode) return;
-
-      // One search, two answers: the line's length is par, and the line itself
-      // seeds the hint plan, so the first press on an untouched board costs no
-      // search at all. Existing entries win the merge — a hint bought in the
-      // tick before this landed answered from a plan of its own, and the
-      // answer delivered must stay the answer.
-      const plan: Record<string, PlannedHint> = {};
-      for (const [key, move] of Object.entries(lineMap(board, exact.moves))) {
-        plan[key] = { move, optimal: true };
+    schedulePar(
+      board,
+      () => get().level === level && get().difficulty === mode,
+      ({ par, plan }) => {
+        // Existing entries win the merge — a hint bought in the tick before
+        // this landed answered from a plan of its own, and the answer
+        // delivered must stay the answer.
+        set({ par, hintLine: { ...plan, ...get().hintLine } });
       }
-      set({ par: exact.moves.length, hintLine: { ...plan, ...get().hintLine } });
-    }, 0);
-  };
-
-  /**
-   * What the last settled completion handed over, for the state update that
-   * follows it.
-   */
-  let lastPayout = 0;
-
-  /**
-   * Everything a finished level pays — the level's own coins and the block of
-   * ten it may have completed — computed against the record. **No coins move
-   * here.** The caller persists the returned record and then calls `settleUp`,
-   * in that order, and the order is the point: the paid mark and the level's
-   * own result land on disk in one write *before* the wallet is touched. A
-   * crash in the gap forfeits a payout; the other way round, the mark is lost
-   * after the coins moved, and replaying the level mints the bonus again —
-   * and that gap a player can aim for by killing the app on the win frame.
-   * `payBonus` makes the same trade for the same reason.
-   *
-   * Both halves still pay once. The milestone has `paidBlocks`; the level
-   * itself is guarded by its own previous star count, since a replay that does
-   * no better has earned nothing new. `previousStars` has to be read *before*
-   * the completion is recorded, which is why it is passed in rather than
-   * looked up here — by the time this runs, `record` already holds the run
-   * that just finished.
-   */
-  const payFor = (
-    record: ProgressByDifficulty,
-    mode: Difficulty,
-    level: number,
-    stars: number,
-    previousStars: number
-  ): {
-    record: ProgressByDifficulty;
-    earned: number;
-    bonus: number;
-    block: number | null;
-  } => {
-    const earned = coinsForImprovement(stars, previousStars);
-
-    const progress = _progressFor(record, mode);
-    const block = unpaidBlockFor(progress, level);
-    const bonus = block === null ? 0 : milestoneBonus(block, starsInBlock(progress, block));
-
-    return {
-      record: block !== null && bonus > 0 ? markBlockPaid(record, mode, block) : record,
-      earned,
-      bonus,
-      block,
-    };
-  };
-
-  /**
-   * The coins `payFor` computed, paid once the marked record is on disk.
-   *
-   * Landing them the moment the board is solved rather than on the Complete
-   * screen, so a player who backs out during the win animation keeps them.
-   */
-  const settleUp = (paid: {
-    earned: number;
-    bonus: number;
-    block: number | null;
-  }): void => {
-    lastPayout = paid.earned;
-    if (paid.earned > 0) useEconomyStore.getState().add(paid.earned);
-    if (paid.block !== null && paid.bonus > 0) {
-      useEconomyStore.getState().add(paid.bonus);
-      overlay.toast(`Block ${paid.block} complete · +${paid.bonus} coins`);
-    }
-  };
-
-  /**
-   * Toast any skin this completion just unlocked.
-   *
-   * The frontier only ever advances, so the crossing itself is the once-only
-   * event and nothing needs storing. Delayed past the win animation and the
-   * milestone toast — level 50 completes block 5, so both messages fire on
-   * exactly the levels a skin unlocks on, and the later toast replaces the
-   * earlier; a reward nobody sees is not a reward.
-   */
-  const announceUnlocks = (
-    before: ProgressByDifficulty,
-    after: ProgressByDifficulty
-  ): void => {
-    const unlocked = skinsUnlockedBetween(
-      furthestAcrossModes(before),
-      furthestAcrossModes(after)
     );
-    unlocked.forEach((skin, index) => {
-      const timer = setTimeout(
-        () => overlay.toast(`${skin.name} unlocked · equip it in the Shop`),
-        3200 + index * 2600
-      );
-      // On a device `setTimeout` returns a number and this is a no-op. Under
-      // Node (Jest) it returns a Timeout, and a pending one holds the worker
-      // open — the hint-sweep test solves a million-level board, crosses every
-      // threshold, and leaked three of these.
-      (timer as unknown as { unref?: () => void }).unref?.();
-    });
   };
 
-  /**
-   * What finishing the daily bonus puzzle pays.
-   *
-   * **On stars, at `bonusPuzzlePerStar` each**, so 40, 80 or 120. It used to be
-   * a flat 120 on the reasoning that the brew was always the hardest board the
-   * generator makes, where a rating would mostly measure patience. The brew
-   * follows the player now, so a flat payout would hand the same coins to a
-   * six-colour board and a twelve-colour one.
-   *
-   * Stars are already how this game says how well a board was played, and they
-   * need no separate difficulty dial bolted on: there is no fail state, so a
-   * finished brew always pays at least one star's worth.
-   *
-   * Nothing is written to `progress` — the board is not a level, so it unlocks
-   * nothing and belongs in no star total. `bonusStore` holds the only record of
-   * it, which is also the cooldown.
-   *
-   * Ordered so the mark lands first: `complete` is idempotent within a day, so
-   * a second call cannot pay twice however the win path is re-entered — and a
-   * redo of the winning pour does re-enter it.
-   */
-  const payBonus = (stars: number): number => {
-    const store = useBonusStore.getState();
-    const now = Date.now();
-    if (!store.available(now) && store.solvedDay === dayIndex(now)) return 0;
-
-    const paid = Math.max(1, Math.floor(stars)) * EARNINGS.bonusPuzzlePerStar;
-    store.complete(now);
-    useEconomyStore.getState().add(paid);
-    return paid;
-  };
-
-  const persistSession = (): void => {
-    // The bonus board is never saved. `session.v1` is keyed by difficulty and
-    // level, and a bonus board has neither — restoring one would replay its
-    // moves onto that level's board. See `loadBonus`.
-    if (get().bonus) return;
-
-    const {
-      difficulty: mode,
-      level,
-      history,
-      extraTaken,
-      hintsUsed,
-      paidHints,
-      paidUndos,
-      freeUndosUsed,
-    } = get();
-    saveSession({
-      difficulty: mode,
-      level,
-      moves: packMoves(history),
-      extraTaken,
-      hintsUsed,
-      paidHints,
-      paidUndos,
-      freeUndosUsed,
-    });
-  };
+  const persistSession = (): void => saveSessionFrom(get());
 
   // The level restored at launch gets the same treatment as one loaded by hand.
   // Safe to schedule before the store exists: everything inside reads through
@@ -609,6 +423,7 @@ export const useGameStore = create<GameState>((set, get) => {
         hintLine: {},
         record: next,
       });
+      track('level_start', { level, difficulty: mode, bonus: false });
       refinePar(level, mode, generated.state);
     },
 
@@ -698,41 +513,12 @@ export const useGameStore = create<GameState>((set, get) => {
       const stars = nowSolved ? starsFor(moves, get().par) : 0;
 
       set((current) => {
-        // Read before the completion is recorded — afterwards this level's
-        // entry is the run that just finished, and the comparison is lost.
-        const before = _progressFor(current.record, current.difficulty).stars[
-          current.level
-        ];
-        let next =
-          nowSolved && !current.bonus
-            ? recordCompletion(
-                current.record,
-                current.difficulty,
-                current.level,
-                moves,
-                stars
-              )
-            : current.record;
-        if (nowSolved) {
-          // The bonus board pays flat and writes nothing to progress. `payFor`
-          // would file it as a completion of whatever `level` happens to hold,
-          // which on a bonus board is the day index.
-          if (current.bonus) lastPayout = payBonus(stars);
-          else {
-            const paid = payFor(
-              next,
-              current.difficulty,
-              current.level,
-              stars,
-              before ?? 0
-            );
-            next = paid.record;
-            // Mark first, coins second — see `payFor` for why this order.
-            saveProgress(next);
-            settleUp(paid);
-            announceUnlocks(current.record, next);
-          }
-        }
+        // Recording, paying, marking the block and toasting any unlocked skin
+        // all happen in `settleCompletion` — including the order they have to
+        // happen in. A redone final move wins a level exactly as a tapped one
+        // does, so both call sites want the same thing and used to say it
+        // twice.
+        const settled = nowSolved ? settleCompletion(current, moves, stars) : null;
 
         return {
           board: applied.state,
@@ -749,8 +535,8 @@ export const useGameStore = create<GameState>((set, get) => {
           heldHint: null,
           solved: nowSolved,
           earned: stars,
-          earnedCoins: nowSolved ? lastPayout : 0,
-          record: next,
+          earnedCoins: settled?.payout ?? 0,
+          record: settled?.record ?? current.record,
         };
       });
 
@@ -849,6 +635,7 @@ export const useGameStore = create<GameState>((set, get) => {
       // The mark is saved; now the wallet. Cannot refuse — the balance was
       // checked above and nothing here runs concurrently.
       if (cost > 0) useEconomyStore.getState().spend(cost);
+      track('undo', { charged: cost, free: charge.usesAllowance });
       return {
         kind: 'undone',
         charged: cost,
@@ -882,41 +669,12 @@ export const useGameStore = create<GameState>((set, get) => {
       const stars = nowSolved ? starsFor(moves, get().par) : 0;
 
       set((current) => {
-        // Read before the completion is recorded — afterwards this level's
-        // entry is the run that just finished, and the comparison is lost.
-        const before = _progressFor(current.record, current.difficulty).stars[
-          current.level
-        ];
-        let next =
-          nowSolved && !current.bonus
-            ? recordCompletion(
-                current.record,
-                current.difficulty,
-                current.level,
-                moves,
-                stars
-              )
-            : current.record;
-        if (nowSolved) {
-          // The bonus board pays flat and writes nothing to progress. `payFor`
-          // would file it as a completion of whatever `level` happens to hold,
-          // which on a bonus board is the day index.
-          if (current.bonus) lastPayout = payBonus(stars);
-          else {
-            const paid = payFor(
-              next,
-              current.difficulty,
-              current.level,
-              stars,
-              before ?? 0
-            );
-            next = paid.record;
-            // Mark first, coins second — see `payFor` for why this order.
-            saveProgress(next);
-            settleUp(paid);
-            announceUnlocks(current.record, next);
-          }
-        }
+        // Recording, paying, marking the block and toasting any unlocked skin
+        // all happen in `settleCompletion` — including the order they have to
+        // happen in. A redone final move wins a level exactly as a tapped one
+        // does, so both call sites want the same thing and used to say it
+        // twice.
+        const settled = nowSolved ? settleCompletion(current, moves, stars) : null;
 
         return {
           board: applied.state,
@@ -927,8 +685,8 @@ export const useGameStore = create<GameState>((set, get) => {
           heldHint: null,
           solved: nowSolved,
           earned: stars,
-          earnedCoins: nowSolved ? lastPayout : 0,
-          record: next,
+          earnedCoins: settled?.payout ?? 0,
+          record: settled?.record ?? current.record,
         };
       });
 
@@ -1093,6 +851,7 @@ export const useGameStore = create<GameState>((set, get) => {
       });
       persistSession();
       if (price > 0) useEconomyStore.getState().spend(price);
+      track('hint_shown', { charged: price, optimal: search.optimal });
       return { kind: 'shown', move: search.move, charged: price };
     },
 
@@ -1115,6 +874,7 @@ export const useGameStore = create<GameState>((set, get) => {
         heldHint: null,
       });
       persistSession();
+      track('spare_vial', { level: get().level });
       return true;
     },
 
@@ -1185,6 +945,7 @@ export const useGameStore = create<GameState>((set, get) => {
       });
       // Par matters here more than anywhere: the board is the hardest shape the
       // generator makes, so the bound it starts with is furthest from the truth.
+      track('level_start', { level: day, difficulty: get().difficulty, bonus: true });
       refinePar(day, get().difficulty, generated.state);
       return true;
     },
@@ -1232,7 +993,7 @@ export const useGameStore = create<GameState>((set, get) => {
       // from here would hand back a board the card never named.
       if (!bonus && history.length > 0 && !solved) return;
 
-      const target = firstUnsolved(_progressFor(record, difficulty));
+      const target = firstUnsolved(progressFor(record, difficulty));
       // `bonus` forces the load even when the numbers agree. A bonus level is
       // seed-derived and can land on the target by coincidence, and skipping
       // the load would leave that board on screen under the right title.

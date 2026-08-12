@@ -37,7 +37,7 @@ import {
   NOTCH_RADIUS,
   NOTICE_HALO_START,
   styles,
-} from './styles/NavBar.styles';
+} from './NavBar.styles';
 
 /**
  * Two tabs, the Home bump, two tabs.

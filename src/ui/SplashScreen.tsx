@@ -20,7 +20,7 @@ import { colours } from '@/theme/colors';
 import { VIAL_RISE } from '@/theme/splash';
 import { s } from '@/theme/scale';
 import { Wordmark } from './chrome/Wordmark';
-import { styles } from './styles/SplashScreen.styles';
+import { styles } from './SplashScreen.styles';
 
 interface SplashScreenProps {
   onDone: () => void;

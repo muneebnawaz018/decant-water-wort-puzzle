@@ -87,6 +87,20 @@ export function writeJson(key: string, value: unknown): void {
  * "ignored rather than migrated" when their keys moved, and ignored meant
  * still on disk. The keys a store *does* migrate from are not listed here;
  * each store deletes its own legacy key the moment the carry-over is written.
+ *
+ * **A key drops off the end of a migration chain silently, so this list has to
+ * be extended in the same commit that shortens one.** `economy.v2` and `v3`
+ * were on a chain once and are on none now — v5 reads v4 and stops — so they
+ * were left behind on every device that had them, unread and undeleted. Nothing
+ * resurrects them today, which is exactly why nothing complained; the next
+ * `economy` bump that walks further back is where it would have mattered.
  */
-const DEAD_KEYS = ['progress.v1', 'settings.v1', 'settings.v2', 'economy.v1'] as const;
+const DEAD_KEYS = [
+  'progress.v1',
+  'settings.v1',
+  'settings.v2',
+  'economy.v1',
+  'economy.v2',
+  'economy.v3',
+] as const;
 for (const key of DEAD_KEYS) storage.remove(key);

@@ -17,6 +17,21 @@ export interface SolveResult {
 /**
  * Canonical key for a board. Tube order carries no meaning, so equivalent
  * boards that differ only by tube position collapse to the same key.
+ *
+ * **`join` stays, and that is a measured decision rather than an untouched
+ * line.** This is the hottest allocation in the search — IDA* builds one key
+ * per node — so the obvious saving is one character per segment instead of a
+ * comma-joined number, halving the string. It was tried and it is **2.4x
+ * slower**: 60 boards from levels 501-560 went from 18ms to 44ms, and level
+ * generation with them from 377ms to 788ms.
+ *
+ * The reason is that `join` is a single engine-level operation returning a flat
+ * string, where building one with `+=` in a loop leaves a tree of cons-strings
+ * that has to be flattened again the moment the key is hashed or compared —
+ * which is the only thing ever done with it. A shorter string built the slow
+ * way loses to a longer string built the fast way.
+ *
+ * Do not re-optimise this without running the numbers again.
  */
 function stateKey(state: WaterState): string {
   return state.tubes

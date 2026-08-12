@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import Animated, { FadeIn, FadeOut, SlideInRight } from 'react-native-reanimated';
-import { styles } from './styles/ScreenTransition.styles';
+import { styles } from './ScreenTransition.styles';
 
 interface ScreenTransitionProps {
   /** Changing this key replays the transition — one per screen. */

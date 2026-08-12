@@ -2,8 +2,8 @@ import { useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { s } from '@/theme/scale';
-import { BUMP_RISE, NAV_BAR_HEIGHT, NAV_OFFSET } from '../chrome/styles/NavBar.styles';
-import { NAV_FADE } from '../styles/Root.styles';
+import { BUMP_RISE, NAV_BAR_HEIGHT, NAV_OFFSET } from '../chrome/NavBar.styles';
+import { NAV_FADE } from '../Root.styles';
 
 /**
  * Breathing room under the last card so it clears the home indicator.

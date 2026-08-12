@@ -5,7 +5,7 @@ import { overlay } from '@/state/overlayStore';
 import { useScreenPadding } from '../hooks/useScreenPadding';
 import { CoinPill } from './CoinPill';
 import { ChromeIconButton, ScreenHeader } from './ScreenHeader';
-import { styles } from './styles/ScrollPage.styles';
+import { styles } from './ScrollPage.styles';
 
 interface ScrollPageProps {
   title: string;

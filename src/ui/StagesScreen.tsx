@@ -22,7 +22,7 @@ import { confirmDifficultyChange } from './confirmDifficulty';
 import { useScreenPadding } from './hooks/useScreenPadding';
 import { useTapHandler } from './hooks/useTapHandler';
 import { Icon, Stars } from './Icon';
-import { COLUMNS, styles } from './styles/StagesScreen.styles';
+import { COLUMNS, styles } from './StagesScreen.styles';
 
 interface StagesScreenProps {
   onPick: () => void;

@@ -4,7 +4,7 @@ import { apothecary, SPACE } from '@/theme/apothecary';
 import { alpha, ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
 import { s, v } from '@/theme/scale';
-import { BUMP_RISE, NAV_BAR_HEIGHT, NAV_OFFSET } from '../chrome/styles/NavBar.styles';
+import { BUMP_RISE, NAV_BAR_HEIGHT, NAV_OFFSET } from './chrome/NavBar.styles';
 
 /**
  * Air between the Play button and the raised Home disc.

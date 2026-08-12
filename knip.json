@@ -6,7 +6,8 @@
   "ignoreDependencies": [
     "babel-preset-expo",
     "babel-plugin-module-resolver",
-    "expo-updates"
+    "expo-updates",
+    "expo-tracking-transparency"
   ],
   "includeEntryExports": true,
   "include": [

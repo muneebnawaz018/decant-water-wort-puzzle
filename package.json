@@ -1,6 +1,6 @@
 {
   "name": "decant-water-wort-puzzle",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "index.ts",
   "dependencies": {
     "@expo-google-fonts/poppins": "^0.4.1",
@@ -17,6 +17,7 @@
     "expo-splash-screen": "~57.0.5",
     "expo-status-bar": "~57.0.1",
     "expo-system-ui": "~57.0.2",
+    "expo-tracking-transparency": "~57.0.1",
     "lottie-react-native": "~7.3.8",
     "react": "19.2.3",
     "react-native": "0.86.2",
@@ -53,6 +54,7 @@
     "wifi": "script/android-wireless.sh",
     "android:wifi": "script/android-wireless.sh run",
     "start:wifi": "script/android-wireless.sh start",
+    "release:version": "node script/release-version.mjs",
     "build:apk": "script/build-apk.sh",
     "build:aab": "script/build-apk.sh --aab",
     "publish:apk": "script/build-apk.sh --publish",

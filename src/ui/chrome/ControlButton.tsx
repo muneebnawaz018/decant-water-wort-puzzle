@@ -11,7 +11,7 @@ import { useTapBurst } from '../hooks/useTapBurst';
 import { useTapHandler } from '../hooks/useTapHandler';
 import { useTapScale } from '../hooks/useTapScale';
 import { Icon, type IconName } from '../Icon';
-import { styles } from './styles/ControlButton.styles';
+import { styles } from './ControlButton.styles';
 
 /**
  * A round board control with a caption underneath (spec §4.4): Undo, Redo,

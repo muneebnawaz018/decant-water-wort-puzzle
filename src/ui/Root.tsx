@@ -5,6 +5,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { gradients } from '@/theme/colors';
 
+import { showLevelInterstitial } from '@/ads/interstitial';
+import { track } from '@/analytics';
 import { primeSounds } from '@/audio/sounds';
 import { useGameStore } from '@/state/gameStore';
 import { useNavStore, type NavDestination } from '@/state/navStore';
@@ -12,7 +14,7 @@ import { useOverlayStore } from '@/state/overlayStore';
 import { useAndroidBack } from './hooks/useAndroidBack';
 import { Backdrop } from './chrome/Backdrop';
 import { NavBar } from './chrome/NavBar';
-import { NAV_OFFSET } from './chrome/styles/NavBar.styles';
+import { NAV_OFFSET } from './chrome/NavBar.styles';
 import { Overlays } from './chrome/Overlays';
 import { CompleteScreen } from './CompleteScreen';
 import { confirmExitLevel } from './confirmExitLevel';
@@ -30,7 +32,7 @@ import { ShopScreen } from './ShopScreen';
 import { SplashScreen } from './SplashScreen';
 import { StagesScreen } from './StagesScreen';
 import { StatsScreen } from './StatsScreen';
-import { styles } from './styles/Root.styles';
+import { styles } from './Root.styles';
 
 type Screen = 'splash' | 'home' | 'game' | 'complete' | NavDestination;
 
@@ -157,7 +159,12 @@ export function Root() {
 
   /** Both ways off the board confirm first once it has been played on. */
   const exitGame = useCallback(
-    () => confirmExitLevel(() => setScreen(gameOrigin.current)),
+    () =>
+      confirmExitLevel(() => {
+        const { level, history, solved, bonus } = useGameStore.getState();
+        if (!solved) track('level_abandon', { level, moves: history.length, bonus });
+        setScreen(gameOrigin.current);
+      }),
     []
   );
   const showComplete = useCallback(() => setScreen('complete'), []);
@@ -248,6 +255,36 @@ export function Root() {
 
   useAndroidBack(handleBack);
 
+  /**
+   * Leaving the win screen — the one moment doc §8 allows an unrequested ad.
+   *
+   * **The interstitial is placed here rather than in `CompleteScreen` because
+   * of what is on screen at the time.** §9's rule is that no advert may appear
+   * over a board, and this is the only point in the app where a level has
+   * finished and the next thing has not started. The board is still mounted
+   * behind the win screen, so firing on the win itself would break it.
+   *
+   * All three exits go through this, which is what makes the count exactly one
+   * per completed level: whichever button is pressed, precisely one of them is.
+   * `showLevelInterstitial` decides whether anything actually shows — most of
+   * the time it returns without doing anything.
+   *
+   * Navigation waits for it, so the next screen is never revealed behind an
+   * advert. Nothing is owed either way, so there is no outcome to branch on.
+   *
+   * **`catch` before `then`, and it is not decoration.** Every exit from the
+   * win screen is behind this promise, so anything that escapes it does not
+   * cost an advert — it costs Home, Replay and Next at once, and the only way
+   * off the screen is killing the app. `showLevelInterstitial` is written not
+   * to reject; this is the guarantee not depending on that staying true, since
+   * the failure is invisible in every build where adverts happen to work.
+   */
+  const leaveComplete = useCallback((go: () => void) => {
+    void showLevelInterstitial()
+      .catch(() => undefined)
+      .then(go);
+  }, []);
+
   const replay = useCallback(() => {
     useGameStore.getState().restart();
     setScreen('game');
@@ -257,6 +294,16 @@ export function Root() {
     useGameStore.getState().nextLevel();
     setScreen('game');
   }, []);
+
+  const completeHome = useCallback(
+    () => leaveComplete(showHome),
+    [leaveComplete, showHome]
+  );
+  const completeReplay = useCallback(() => leaveComplete(replay), [leaveComplete, replay]);
+  const completeNext = useCallback(
+    () => leaveComplete(nextLevel),
+    [leaveComplete, nextLevel]
+  );
 
   // Poppins carries the whole visual identity; rendering a frame in the system
   // font would flash and then reflow every screen once the real face landed.
@@ -300,7 +347,11 @@ export function Root() {
           ) : null}
 
           {screen === 'complete' ? (
-            <CompleteScreen onHome={showHome} onReplay={replay} onNext={nextLevel} />
+            <CompleteScreen
+              onHome={completeHome}
+              onReplay={completeReplay}
+              onNext={completeNext}
+            />
           ) : null}
         </ScreenTransition>
       )}

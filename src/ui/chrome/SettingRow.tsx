@@ -12,8 +12,8 @@ import { Panel } from './Panel';
 import { useTapHandler } from '../hooks/useTapHandler';
 import { useTapScale } from '../hooks/useTapScale';
 import { s } from '@/theme/scale';
-import { section } from './styles/section.styles';
-import { KNOB_TRAVEL, styles } from './styles/SettingRow.styles';
+import { section } from './section.styles';
+import { KNOB_TRAVEL, styles } from './SettingRow.styles';
 
 /** A titled group of rows, as used by Settings, Shop and Daily (spec §4.9). */
 export const SettingGroup = memo(function SettingGroup({

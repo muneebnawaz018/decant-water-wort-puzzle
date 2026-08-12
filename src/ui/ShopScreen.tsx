@@ -12,8 +12,8 @@ import { Panel } from './chrome/Panel';
 import { ScrollPage } from './chrome/ScrollPage';
 import { SoonBadge } from './chrome/SoonBadge';
 import { SettingGroup } from './chrome/SettingRow';
-import { section } from './chrome/styles/section.styles';
-import { PREVIEW_HEIGHT, styles } from './styles/ShopScreen.styles';
+import { section } from './chrome/section.styles';
+import { PREVIEW_HEIGHT, styles } from './ShopScreen.styles';
 import { PRODUCTS, SKIN_PRICES } from '@/game/economy';
 
 /**

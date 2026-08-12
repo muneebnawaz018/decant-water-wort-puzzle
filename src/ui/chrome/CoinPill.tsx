@@ -21,7 +21,7 @@ import { useTapHandler } from '../hooks/useTapHandler';
 import { useTapScale } from '../hooks/useTapScale';
 import { Icon } from '../Icon';
 import { Coin } from './Coin';
-import { COIN_SIZE, styles } from './styles/CoinPill.styles';
+import { COIN_SIZE, styles } from './CoinPill.styles';
 
 /**
  * The sheen crossing the plus — `script/make-shine.py`.

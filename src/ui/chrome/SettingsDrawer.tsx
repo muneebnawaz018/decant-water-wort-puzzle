@@ -37,7 +37,7 @@ import { useTapHandler } from '../hooks/useTapHandler';
 import { SettingGroup, SettingRow, Switch } from './SettingRow';
 import { SettingSelect } from './SettingSelect';
 import { SoonBadge } from './SoonBadge';
-import { drawerWidth, styles } from './styles/SettingsDrawer.styles';
+import { drawerWidth, styles } from './SettingsDrawer.styles';
 
 /**
  * Read from the manifest, not typed out here.

@@ -15,7 +15,7 @@ import Animated, {
 import { EARNINGS } from '@/game/economy';
 import { useEconomyStore } from '@/state/economyStore';
 import { useGameStore } from '@/state/gameStore';
-import { overlay } from '@/state/overlayStore';
+import { overlay, useOverlayStore } from '@/state/overlayStore';
 import { apothecary } from '@/theme/apothecary';
 import { colours, ui } from '@/theme/colors';
 import { s } from '@/theme/scale';
@@ -30,7 +30,7 @@ import { useTapHandler } from './hooks/useTapHandler';
 import { Icon } from './Icon';
 import { claimToast } from './rewardTrack';
 import { showRewarded } from '@/ads/rewarded';
-import { REWARD_COIN, styles } from './styles/CompleteScreen.styles';
+import { REWARD_COIN, styles } from './CompleteScreen.styles';
 
 interface CompleteScreenProps {
   onHome: () => void;
@@ -82,6 +82,15 @@ const SHOWER_MS = (COIN_SHOWER.op / COIN_SHOWER.fr) * 1000;
 /** Spec §6: stars pop in ~230ms apart, reward after them. */
 const STAR_DELAY = 230;
 const STAR_START = 300;
+
+/**
+ * How long the queued completion toasts wait for this screen to settle.
+ *
+ * Derived from the star sequence rather than picked: the last star lands at
+ * `STAR_START + 2 * STAR_DELAY`, and a toast arriving during that competes
+ * with the thing the player is actually looking at. This puts it just after.
+ */
+const TOAST_DELAY_MS = STAR_START + 3 * STAR_DELAY;
 
 /** Spec §6: ~28 particles radiate outward on a win. */
 const CONFETTI_COUNT = 28;
@@ -214,6 +223,25 @@ export const CompleteScreen = memo(function CompleteScreen({
       pay();
     });
   }, [doubled, reward, pay]);
+
+  /**
+   * Anything the completion had to say, said here.
+   *
+   * The level was settled — recorded, marked, paid — the instant the board
+   * solved, which is a `POUR_MS` before this screen exists. A milestone bonus
+   * toasted at that moment appeared over the board mid-pour and had faded
+   * before the player got here, so `settleCompletion` queues its messages and
+   * this is where they are let out.
+   *
+   * Delayed by the card's own entrance, so the first toast arrives to a screen
+   * that has finished appearing rather than sliding in underneath one.
+   */
+  const flushToasts = useOverlayStore((state) => state.flushToasts);
+
+  useEffect(() => {
+    const timer = setTimeout(flushToasts, TOAST_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [flushToasts]);
 
   /**
    * The timer is owned by an effect, not by the handler that started it.

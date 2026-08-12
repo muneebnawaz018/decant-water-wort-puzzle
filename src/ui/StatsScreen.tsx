@@ -9,8 +9,8 @@ import type { Progress, ProgressByDifficulty } from '@/state/progress';
 import { percentWidth } from '@/utils';
 import { Panel } from './chrome/Panel';
 import { ScrollPage } from './chrome/ScrollPage';
-import { section } from './chrome/styles/section.styles';
-import { styles } from './styles/StatsScreen.styles';
+import { section } from './chrome/section.styles';
+import { styles } from './StatsScreen.styles';
 
 /** What one mode's record adds up to. */
 interface ModeTotals {

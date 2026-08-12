@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import type { IconName } from '@/ui/Icon';
+import type { IconName } from '@/theme/icons';
 
 export interface ModalSpec {
   title: string;
@@ -141,9 +141,36 @@ export interface OverlayState {
   endCelebration: () => void;
   showToast: (message: string) => void;
   clearToast: () => void;
+  /**
+   * Hold a message until the screen that should carry it is on.
+   *
+   * A level's rewards are settled the moment the board solves — coins land
+   * there on purpose, so backing out of the win animation cannot cost them —
+   * but that is the *start* of the winning pour, a whole `POUR_MS` before the
+   * Complete screen exists. Toasted then, "Block 1 complete · +120 coins"
+   * appeared over the board mid-pour and was gone before the player arrived
+   * anywhere it made sense.
+   *
+   * Queued rather than delayed by a timer. The old skin-unlock toast did use a
+   * timer, tuned to sit past the win animation, and it was a number that had to
+   * be re-guessed every time the animation moved — plus a leaked Jest handle it
+   * needed `unref` to work around. "When the Complete screen mounts" is the
+   * actual requirement, so it is what the code now says.
+   */
+  queueToast: (message: string) => void;
+  /** Shows queued messages in order, spaced so each is readable. */
+  flushToasts: () => void;
   openDrawer: () => void;
   closeDrawer: () => void;
 }
+
+/**
+ * Gap between queued toasts.
+ *
+ * `TOAST_MS` in `Overlays.tsx` is 1800, so this leaves a beat of clear screen
+ * between two messages rather than swapping the text under the player's eyes.
+ */
+const TOAST_GAP_MS = 2600;
 
 /**
  * Modal and toast live in their own store so any screen can raise one without
@@ -171,14 +198,44 @@ export const useOverlayStore = create<OverlayState>((set, get) => ({
   },
   showToast: (message) => set({ toast: message, toastId: get().toastId + 1 }),
   clearToast: () => set({ toast: null }),
+
+  queueToast: (message) => {
+    queued.push(message);
+  },
+
+  flushToasts: () => {
+    if (queued.length === 0) return;
+    // Drained before anything is shown, so a flush that arrives twice — a
+    // remount, a Fast Refresh — cannot replay the same messages.
+    const messages = queued.splice(0, queued.length);
+    messages.forEach((message, index) => {
+      if (index === 0) {
+        get().showToast(message);
+        return;
+      }
+      setTimeout(() => get().showToast(message), index * TOAST_GAP_MS);
+    });
+  },
+
   openDrawer: () => set({ drawer: true }),
   closeDrawer: () => set({ drawer: false }),
 }));
+
+/**
+ * The waiting messages.
+ *
+ * Outside the store deliberately: nothing renders from it, and putting it in
+ * state would re-render every subscriber each time a message is added or
+ * drained — for a list nobody displays.
+ */
+const queued: string[] = [];
 
 /** Raise a modal or toast from a handler without subscribing to the store. */
 export const overlay = {
   modal: (spec: ModalSpec) => useOverlayStore.getState().showModal(spec),
   toast: (message: string) => useOverlayStore.getState().showToast(message),
+  /** Hold a message for the Complete screen. See `queueToast`. */
+  queueToast: (message: string) => useOverlayStore.getState().queueToast(message),
   drawer: () => useOverlayStore.getState().openDrawer(),
   celebrate: (onDone?: () => void) =>
     useOverlayStore.getState().celebrate('confetti', onDone),

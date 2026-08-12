@@ -1,3 +1,4 @@
+import { track } from '@/analytics';
 import { create } from 'zustand';
 
 import { readJson, storage, writeJson } from './storage';
@@ -220,6 +221,7 @@ export const useEconomyStore = create<EconomyState>((set, get) => {
       if (!get().spend(price)) return false;
       set((current) => ({ owned: [...current.owned, item] }));
       persist();
+      track('purchase', { item, price });
       return true;
     },
 
@@ -295,6 +297,7 @@ export const useEconomyStore = create<EconomyState>((set, get) => {
         lastClaimAt: now,
       }));
       persist();
+      track('daily_claim', { reward, day: get().rewardDay });
       return reward;
     },
   };

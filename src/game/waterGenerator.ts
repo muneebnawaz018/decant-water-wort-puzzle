@@ -245,9 +245,17 @@ export function inverseMoves(state: WaterState): InversePour[] {
 }
 
 export function applyInverse(state: WaterState, move: InversePour): WaterState {
-  const tubes = state.tubes.map((tube) => tube.slice());
-  const moved = tubes[move.from]!.splice(tubes[move.from]!.length - move.count, move.count);
-  tubes[move.to]!.push(...moved);
+  // Two tubes change, so two are copied and the rest are shared — the same
+  // trade `applyPour` makes, and it depends on the same invariant: nothing
+  // mutates a tube array it did not create.
+  const source = state.tubes[move.from]!;
+  const destination = state.tubes[move.to]!;
+  const cut = source.length - move.count;
+
+  const tubes = state.tubes.slice();
+  tubes[move.from] = source.slice(0, cut);
+  tubes[move.to] = [...destination, ...source.slice(cut)];
+
   return { ...state, tubes };
 }
 

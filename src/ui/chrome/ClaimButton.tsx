@@ -16,7 +16,7 @@ import { usePressBounce } from '../hooks/usePressBounce';
 import { useTapBurst } from '../hooks/useTapBurst';
 import { useTapHandler } from '../hooks/useTapHandler';
 import { Coin } from './Coin';
-import { CAPTION_COIN, styles } from './styles/ClaimButton.styles';
+import { CAPTION_COIN, styles } from './ClaimButton.styles';
 
 /**
  * The waiting mark: a vial filling a drop at a time.

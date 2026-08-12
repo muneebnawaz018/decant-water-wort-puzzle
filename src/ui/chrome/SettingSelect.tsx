@@ -13,7 +13,7 @@ import {
   MENU_WIDTH,
   TIP_WIDTH,
   styles,
-} from './styles/SettingSelect.styles';
+} from './SettingSelect.styles';
 
 export interface SelectOption {
   id: string;

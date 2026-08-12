@@ -3,8 +3,8 @@ import { memo, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
-import { isAdLoading, subscribeToAdLoading } from '@/ads/rewarded';
-import { styles } from './styles/AdVeil.styles';
+import { isAdLoading, subscribeToAdLoading } from '@/ads/loading';
+import { styles } from './AdVeil.styles';
 
 /**
  * Two gold arcs turning against each other — `script/make-loader.py`.

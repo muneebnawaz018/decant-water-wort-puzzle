@@ -2,7 +2,7 @@ import LottieView from 'lottie-react-native';
 import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { View } from 'react-native';
 
-import { styles } from './styles/useTapBurst.styles';
+import { styles } from './useTapBurst.styles';
 
 /**
  * The burst that plays where a button is pressed, in two tones.

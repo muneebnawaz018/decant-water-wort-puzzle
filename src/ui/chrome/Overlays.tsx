@@ -18,7 +18,7 @@ import { Icon } from '../Icon';
 import { AdVeil } from './AdVeil';
 import { GlossButton } from './GlossButton';
 import { Panel } from './Panel';
-import { styles } from './styles/Overlays.styles';
+import { styles } from './Overlays.styles';
 
 /**
  * The two bursts, keyed by what they mean.

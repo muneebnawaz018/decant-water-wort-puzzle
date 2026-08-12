@@ -59,11 +59,19 @@ src/analytics/ event log                                 (empty)
 src/ads/       stubbed slots, phase 2 (doc §8)           (empty)
 ```
 
-**A component file holds no StyleSheet.** Every `Foo.tsx` has a
-`styles/Foo.styles.ts` beside it exporting `styles`, and any layout constant the
-styles need (`RACK_HEIGHT`, `HUD_HEIGHT`, `GAP`) is exported from there too
-rather than declared in the component — a constant used by both belongs with the
-layout, not with the markup. Components import `{ styles }` and read as markup.
+**A component file holds no StyleSheet.** Every `Foo.tsx` has a `Foo.styles.ts`
+**directly beside it** exporting `styles`, and any layout constant the styles
+need (`RACK_HEIGHT`, `HUD_HEIGHT`, `GAP`) is exported from there too rather than
+declared in the component — a constant used by both belongs with the layout, not
+with the markup. Components import `{ styles }` and read as markup.
+
+They used to live in a `styles/` subfolder, which grew into three mirrored trees
+(`src/ui/styles/`, `src/ui/chrome/styles/`, `src/ui/hooks/styles/`) holding 27
+files between them. Every one was a sibling pretending to be a child: opening
+`HomeScreen.tsx` and its stylesheet meant two directories, and the folder gave
+nothing back — no shared code, no separate import path, nothing that treats the
+stylesheets as a group. `Foo.tsx` and `Foo.styles.ts` sort next to each other,
+which is the whole benefit the subfolder was costing.
 
 Repeated type is a preset in `src/theme/typography.ts`, not a hand-written
 `fontFamily`/`fontSize`/`color` triple. The presets exist because the same
@@ -78,6 +86,23 @@ pre-shaped and memoised so the style objects keep their identity.
 
 `@/*` maps to `src/*` — configured in both `tsconfig.json` and
 `babel.config.js` (module-resolver), and mirrored in `jest.config.js`.
+
+**Imports run downhill — `core` → `game` → `state` → `ui`, with `theme` a leaf
+everything may read.** Two of the three exceptions that used to exist are gone
+or defended, and the distinction is worth keeping because a layer diagram flags
+all three identically:
+
+- `state/overlayStore` → `ui/Icon` was the real one, and it was fixed by moving
+  the glyph data to `theme/icons.ts`. A `ModalSpec` names an icon, and a store
+  should not reach into the view layer for a string — especially one raised
+  from handlers that live outside React. `ui/Icon.tsx` re-exports `IconName`
+  for the components that draw one; the stores import it from the theme.
+- `game/difficulty` → `theme/colors` **stays.** A mode has a colour on screen.
+  That is a fact about the mode, not a leak.
+- `audio/sounds` → `render/pour` **stays, and breaking it would reintroduce a
+  bug.** The pour cue is scheduled against `POUR_MS` and `PHASE`; hand-tuned
+  delays drifted out of step with the animation twice, and importing the
+  animation's own numbers is what stopped it. See the Sound section.
 
 ## Commands
 
@@ -179,10 +204,17 @@ nothing outside their own file used, plus a dead `ts-jest`; `jest-expo` handles
 the transform. Nothing else in the gate notices dead code: tsc, eslint and the
 tests are all perfectly happy with an export whose last caller was deleted.
 
-The four `ignoreDependencies` entries are native or config-only packages knip
-cannot see through — `babel-preset-expo` and `babel-plugin-module-resolver` are
-named as strings inside `babel.config.js`, and `expo-updates` arrives as a
-native transitive of `expo-dev-client`.
+The `ignoreDependencies` entries are native or config-only packages knip cannot
+see through — `babel-preset-expo` and `babel-plugin-module-resolver` are named
+as strings inside `babel.config.js`, and `expo-updates` arrives as a native
+transitive of `expo-dev-client`.
+
+`expo-tracking-transparency` is there for a different reason and the reason is
+the interesting one: **its JS is deliberately not imported.** See the ATT
+section below — the package is installed for the native module autolinking
+compiles into the binary, and `src/ads/setup.ts` reaches that module by name.
+Nothing imports the package, so knip is right that no JS references it and
+wrong that it can be removed.
 
 `plugins/*.js` is in `ignore` for the same blind spot, one level up: a config
 plugin is named as a **path string** in `app.config.ts`'s `plugins` array and is
@@ -233,6 +265,17 @@ phase 2), `expo-updates` (ship level-gen fixes without a store review).
 
 - Core logic in `src/core` stays pure and React-free so it can be unit-tested
   and run in a level-preview tool.
+- **Do not micro-optimise the solver without a benchmark, and keep the result
+  when you do.** Two allocation savings in the IDA\* hot path were tried and
+  measured over 60 boards from levels 501-560. Shortening `stateKey` to one
+  character per segment instead of `tube.join(',')` — obviously less garbage,
+  obviously shorter strings — is **2.4x slower** (18ms → 44ms of par search,
+  377ms → 788ms of generation), because `join` returns a flat string in one
+  engine-level call while `+=` in a loop leaves cons-strings to flatten again
+  at the first hash. Sharing untouched tubes in `applyPour` instead of
+  deep-copying the board is inside the noise. The first is reverted with the
+  numbers written at the source; the second stayed only because it lets one
+  helper say the pour once for `applyPour`, `undoPour` and `applyInverse`.
 - A pour moves the **whole** top run of matching segments, capped by free space.
   One-at-a-time feels broken.
 - Level generation is reverse-generation from a solved board, with an acceptance
@@ -458,9 +501,10 @@ the full pour animation rather than snapping the board.
 
 ### Storage keys and migrations
 
-Six live keys, one MMKV instance (`decant`), all through `src/state/storage.ts`:
-`progress.v4`, `settings.v3`, `economy.v3`, `session.v1`, `bonus.v1`,
-`played.v1`, and whatever legacy key a store is still migrating from. An app
+Seven live keys, one MMKV instance (`decant`), all through
+`src/state/storage.ts`: `progress.v4`, `settings.v3`, `economy.v5`,
+`session.v1`, `bonus.v1`, `played.v1`, `analytics.v1`, and whatever legacy key a
+store is still migrating from. An app
 update never loses data on its own — MMKV's file sits in app-private storage,
 which both platforms keep across store updates. What loses data is key bumps
 and generator changes, so both are governed:
@@ -477,8 +521,11 @@ and generator changes, so both are governed:
   fallback, so a legacy key left on disk is what a corrupt current record
   silently resurrects — a build-old wallet, or a `paidBlocks` list empty
   enough to pay every milestone again. Keys nothing migrates from any more
-  (`progress.v1`, `settings.v1`/`v2`, `economy.v1`) are removed on sight at
-  `storage.ts` import.
+  (`progress.v1`, `settings.v1`/`v2`, `economy.v1`/`v2`/`v3`) are removed on
+  sight at `storage.ts` import. **Shortening a chain has to extend that list in
+  the same commit**, because a key falling off the end of one is silent:
+  `economy.v5` reads `v4` and stops, so `v2` and `v3` sat unread and undeleted
+  on every device that had them until someone went looking.
 - **The generator is versioned: `GENERATOR_VERSION` in
   `src/game/generatorVersion.ts`.** No board is stored anywhere, so the curve,
   the salts, the generator and the RNG are the save format. `saveProgress` and
@@ -552,6 +599,41 @@ Perf rules being followed in the UI, worth keeping:
   own canvas underneath and rasterise once.
 
   So: if it cannot move, it goes in a `Picture` or on a separate canvas.
+
+- **One `<Canvas>` per glyph is the accepted cost, and the alternative was
+  measured rather than assumed.** Every `Icon` is its own Skia surface, so Home
+  carries about a dozen and a stage page carries fifty — one per tile, a lock
+  or a star row. Collapsing a cluster into a single canvas is the `Stars`
+  pattern, and `Stars` is where it pays: three glyphs, one fixed layout the
+  component owns, no per-glyph animation, and it took a stage page from 150
+  surfaces to 50.
+
+  Everywhere else the pattern does not fit. The nav bar's icons sit inside
+  `Animated.View`s carrying a tap scale and an arrival pop; the stage tiles each
+  have their own `entering` pop-in. Consolidating those means moving per-item
+  animation off RN transforms and into Skia props — the `useUiValue` trap two
+  sections down — and hand-computing every glyph's position, since flexbox no
+  longer places them.
+
+  **The stage grid was taken as far as opening the code, and the blocker is
+  worth writing down rather than rediscovering.** A tile's face is a centred
+  column of `[lock?, number, stars?]` with a 6dp gap, so the glyph's y depends
+  on the rendered height of a Poppins `Text` at `s(22)` or `s(15)`. That is a
+  font metric, not a number this repo owns: it cannot be computed, only
+  measured at runtime, which means an `onLayout` pass per tile feeding
+  positions back as state, re-measured whenever scale or type changes. Roughly
+  150 lines of machinery, positions that can drift silently, and a hand-rolled
+  replacement for a stagger `entering` gives for free — to remove about twenty
+  native views from one screen, with no profile saying they cost anything.
+
+  A hand-drawn padlock built from two `View`s was the cheap way out and is also
+  refused: `theme/icons.ts` is one author's set on purpose, and a bespoke glyph
+  beside it is the drift that rule exists to stop.
+
+  The rule: consolidate where **one component already owns the layout and
+  nothing inside it animates independently**. Otherwise leave it alone — and if
+  a device profile ever says the surfaces do cost something, start by measuring
+  a stage page on a low-end Android, not by rewriting the nav bar.
 
 - **Never select a store method to derive rendered state.** The selector
   returns a stable function identity, so the component never re-renders when
@@ -1001,6 +1083,54 @@ needs no `Info.plist` entry — local notification permission is runtime only.
 foreground services, because most apps using it record or play behind a lock
 screen. This one does neither. A puzzle game shipping a microphone permission
 is a store-review question with no good answer.
+
+### ATT, and why its package is never imported
+
+The App Tracking Transparency prompt is asked for in `src/ads/setup.ts`, after
+UMP and before `mobileAds().initialize()` — the order matters twice over and is
+documented at the source.
+
+**Whether a consent form is needed is Google's decision, not this app's.**
+`gatherConsent` asks their servers, which judge by the request's IP; nothing
+here knows or asks where a player is, and no location permission is involved.
+The consequence is that the European path — form, then Apple's prompt, then the
+SDK — cannot be reached from a development machine outside the EEA, so
+`EXPO_PUBLIC_ADS_DEBUG_EEA=1` fakes the geography for one run. It is gated on
+`__DEV__` as well, because `EXPO_PUBLIC_` values are inlined at build time and a
+variable left set in a shell would otherwise ship a store build showing every
+player on earth a GDPR form.
+
+**What is worth knowing here is that `expo-tracking-transparency` is installed
+but never imported.** Its entry point is
+`requireNativeModule('ExpoTrackingTransparency')` at module scope, and
+`requireNativeModule` **throws** when the module is absent. A throw at module
+scope happens during bundle evaluation, so the app dies at
+`[runtime not ready]` with no screen up and nothing able to catch it. The
+package's own `isAvailable()` is `Boolean(ExpoTrackingTransparency)`, which can
+never return false for a missing module — by then the import has already taken
+the app down. The guard reads like it covers this case and cannot.
+
+That state is ordinary rather than exotic: every machine sits in it between
+`npm install` adding a native dependency and the next `npm run ios`, because
+Metro reloads JS and the dev build's binary does not change. A stale dev build
+should cost a missing prompt, not a dead launch.
+
+So `setup.ts` calls `requireOptionalNativeModule('ExpoTrackingTransparency')`
+from `expo` — the same primitive `modules/system-sound`, `system-haptics` and
+`system-battery` use, returning `null` instead of throwing. Autolinking still
+compiles the package into the binary; only the JS route changed. Two
+consequences to keep:
+
+- **The platform check is ours.** The package short-circuits non-iOS and
+  answers "granted"; calling the native module directly, `setup.ts` checks
+  `Platform.OS` itself rather than relying on the module being null on Android.
+- **It is in knip's `ignoreDependencies`** and has to stay there, because no JS
+  imports it. Removing the package would silently drop the prompt from the iOS
+  build.
+
+The general rule: **a hard top-level import of an optional native module is a
+launch crash waiting for the one build that lacks it.** Reach for
+`requireOptionalNativeModule` and treat `null` as the feature being absent.
 
 ### The daily brew
 
@@ -1463,11 +1593,18 @@ been run.
 Colourblind marks are done end to end: `src/render/ColourMark.tsx` draws them,
 `Board` takes a `marks` prop, and `GameScreen` feeds it the `colourblind`
 setting. The toggle is purely additive — it overlays glyphs and never touches a
-fill, so a player who leaves it off sees exactly the board they see today. It
-still defaults to off, which is worth revisiting: the palette collapses for a
-deuteranope from four colours on, so roughly one man in twelve meets an
-ambiguous board around level 6, well before anyone goes looking through
-Settings.
+fill, so a player who leaves it off sees exactly the board they see today.
+
+**It defaults to off, and that is the decision.** An earlier note here argued
+for switching it on, on the grounds that the palette "collapses from four
+colours on, around level 6" — which is simply wrong, and the wrong number is
+the part worth not repeating: `colors.test.ts` measures four colours at dE 30
+for the worst deficiency, the same floor normal vision is held to. The opening
+levels are fine.
+
+The separation across the rest of the curve is measured and pinned in
+`colour vision` in that test, which is where those numbers belong. Read it
+before proposing a change to the default or to the `pieces` order.
 
 The app icons are original vector art, not Expo defaults. `assets/icons/*.svg`
 are the masters and `script/make-icons.sh` renders them into the PNGs the icon

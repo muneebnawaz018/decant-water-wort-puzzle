@@ -13,13 +13,14 @@ Nothing in the UI knows AdMob exists. Three screens call one function:
 const outcome = await showRewarded('spare_vial'); // 'earned' | 'dismissed' | 'unavailable'
 ```
 
-| File                     | Job                                                          |
-| ------------------------ | ------------------------------------------------------------ |
-| `src/ads/rewarded.ts`    | The boundary. Policy above, SDK below.                       |
-| `src/ads/units.ts`       | Which ad unit each slot asks for, test or live.              |
-| `src/ads/setup.ts`       | Consent, then SDK initialisation. Called once from `Root`.   |
-| `src/ui/hooks/useAds.ts` | Fires `initialiseAds()` on launch, unawaited.                |
-| `app.config.ts`          | The App IDs, written into the native manifest by the plugin. |
+| File                      | Job                                                          |
+| ------------------------- | ------------------------------------------------------------ |
+| `src/ads/rewarded.ts`     | The boundary. Policy above, SDK below.                       |
+| `src/ads/interstitial.ts` | `interstitial_level_complete`: every 4th win, 90s floor.     |
+| `src/ads/units.ts`        | Which ad unit each slot asks for, test or live.              |
+| `src/ads/setup.ts`        | Consent, then SDK initialisation. Called once from `Root`.   |
+| `src/ui/hooks/useAds.ts`  | Fires `initialiseAds()` on launch, unawaited.                |
+| `app.config.ts`           | The App IDs, written into the native manifest by the plugin. |
 
 Three slots exist: `spare_vial`, `double_level_reward`, `double_daily_reward`.
 

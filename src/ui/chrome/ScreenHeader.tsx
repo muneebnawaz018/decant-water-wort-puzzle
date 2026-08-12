@@ -11,7 +11,7 @@ import { useTapBurst } from '../hooks/useTapBurst';
 import { useTapHandler } from '../hooks/useTapHandler';
 import { useTapScale } from '../hooks/useTapScale';
 import { Icon, type IconName } from '../Icon';
-import { styles } from './styles/ScreenHeader.styles';
+import { styles } from './ScreenHeader.styles';
 
 interface ScreenHeaderProps {
   title: string;

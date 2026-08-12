@@ -21,6 +21,9 @@ import {
   RewardedAdEventType,
 } from 'react-native-google-mobile-ads';
 
+import { track } from '@/analytics';
+import { noteAdShown } from './adPacing';
+import { setAdLoading } from './loading';
 import { rewardedUnitId } from './units';
 
 /**
@@ -143,10 +146,17 @@ let offerInFlight = false;
 export async function showRewarded(slot: AdSlot): Promise<AdOutcome> {
   if (offerInFlight) return 'dismissed';
   offerInFlight = true;
-  setLoading(true);
+  setAdLoading(true);
 
   try {
-    const shown = await present(slot, () => setLoading(false));
+    const shown = await present(slot, () => {
+      setAdLoading(false);
+      // The advert is on screen. Recorded against every format's shared clock,
+      // so the interstitial cannot land on top of one the player just watched
+      // — see `adPacing.ts` for the sequence that motivated it.
+      noteAdShown();
+    });
+    track('ad_outcome', { slot, outcome: shown });
     if (shown !== 'unavailable') return shown;
     return paysWithoutAd(slot) ? 'earned' : 'unavailable';
   } finally {
@@ -155,48 +165,8 @@ export async function showRewarded(slot: AdSlot): Promise<AdOutcome> {
     // rewarded slot for the rest of the session. Same for the veil: a stuck
     // spinner over a live screen is worse than no spinner at all.
     offerInFlight = false;
-    setLoading(false);
+    setAdLoading(false);
   }
-}
-
-/**
- * Whether an ad is being fetched right now, and a way to be told when that
- * changes.
- *
- * **The load is the only part worth a spinner.** It is the one stretch where the
- * player has pressed something and the screen has nothing to show for it, and on
- * a slow connection it is seconds long — which without a spinner reads as a dead
- * button, and a dead button gets pressed again. Once the ad is up it covers the
- * screen and speaks for itself, so this goes false the moment `show` is called
- * rather than when the offer settles.
- *
- * A subscription rather than a store field, because `src/ads` is the boundary
- * the UI sits above: this module knowing about zustand would put the dependency
- * the wrong way round, and every screen would import an ad concept to render a
- * spinner. `AdVeil` is the only reader.
- */
-type LoadingListener = (loading: boolean) => void;
-
-let adLoading = false;
-const loadingListeners = new Set<LoadingListener>();
-
-function setLoading(value: boolean): void {
-  if (adLoading === value) return;
-  adLoading = value;
-  for (const listener of loadingListeners) listener(value);
-}
-
-/** Whether an ad is being fetched. The snapshot half of the subscription. */
-export function isAdLoading(): boolean {
-  return adLoading;
-}
-
-/** Listen for the fetch starting and ending. Returns its own unsubscribe. */
-export function subscribeToAdLoading(listener: LoadingListener): () => void {
-  loadingListeners.add(listener);
-  return () => {
-    loadingListeners.delete(listener);
-  };
 }
 
 /**
@@ -217,67 +187,82 @@ export function subscribeToAdLoading(listener: LoadingListener): () => void {
  *
  * `onShown` fires when the ad reaches the screen, which is where the spinner
  * ends. See `LOAD_TIMEOUT_MS` for the other half of the same clock.
+ *
+ * **It resolves, never rejects.** `createForAdRequest` raises synchronously
+ * when the native module is missing or the SDK never initialised, and a throw
+ * inside a promise executor is a rejection — one that would travel out through
+ * `showRewarded` to a caller written to expect an outcome, leaving the dialog
+ * that offered the ad sitting there with nothing having happened. An SDK that
+ * cannot be asked is `unavailable`, the same as one that answered empty, so
+ * `paysWithoutAd` still grants the spare vial.
  */
 function present(slot: AdSlot, onShown: () => void): Promise<AdOutcome> {
   return new Promise((resolve) => {
-    const ad = RewardedAd.createForAdRequest(rewardedUnitId(), {
-      // Which ad, from the app's own vocabulary. AdMob reports on it, so the
-      // spare vial's fill rate can be read separately from the doubling offers
-      // — they are asked for at very different moments.
-      keywords: [slot],
-    });
-
     let earned = false;
     let done = false;
+    let unsubscribe: (() => void) | undefined;
+    let deadline: ReturnType<typeof setTimeout> | undefined;
+
     const settle = (outcome: AdOutcome) => {
       if (done) return;
       done = true;
-      clearTimeout(deadline);
-      unsubscribe();
+      if (deadline) clearTimeout(deadline);
+      unsubscribe?.();
       resolve(outcome);
     };
 
-    /**
-     * Giving up on a load that is taking too long.
-     *
-     * Note what `settle` does with it: the listeners come off, so an ad that
-     * finally loads a minute later has nothing left to show it. That matters
-     * more than the timeout itself — without the unsubscribe, a slow request
-     * would eventually present a full-screen advert over whatever the player
-     * had moved on to, which is the one placement this project rules out.
-     */
-    const deadline = setTimeout(() => settle('unavailable'), LOAD_TIMEOUT_MS);
+    try {
+      const ad = RewardedAd.createForAdRequest(rewardedUnitId(), {
+        // Which ad, from the app's own vocabulary. AdMob reports on it, so the
+        // spare vial's fill rate can be read separately from the doubling
+        // offers — they are asked for at very different moments.
+        keywords: [slot],
+      });
 
-    const unsubscribe = ad.addAdEventsListener(({ type }) => {
-      if (type === RewardedAdEventType.LOADED) {
-        // The wait is over on both counts: the spinner comes down and the
-        // deadline stops running, because from here the time being spent is
-        // the player's own.
-        clearTimeout(deadline);
-        onShown();
-        ad.show();
-        return;
-      }
-      if (type === RewardedAdEventType.EARNED_REWARD) {
-        // Not settled here. The reward is earned but the ad is still on screen,
-        // and paying out underneath it means the toast and the coin shower play
-        // behind a full-screen advert. `CLOSED` follows, and that is the moment
-        // the player is looking at the game again.
-        earned = true;
-        return;
-      }
-      if (type === AdEventType.CLOSED) {
-        settle(earned ? 'earned' : 'dismissed');
-        return;
-      }
-      if (type === AdEventType.ERROR) {
-        // Covers both halves of the failure: nothing filled, or the SDK could
-        // not present what it had. Neither is the player's doing, so both are
-        // `unavailable` and `paysWithoutAd` decides what that costs them.
-        settle('unavailable');
-      }
-    });
+      /**
+       * Giving up on a load that is taking too long.
+       *
+       * Note what `settle` does with it: the listeners come off, so an ad that
+       * finally loads a minute later has nothing left to show it. That matters
+       * more than the timeout itself — without the unsubscribe, a slow request
+       * would eventually present a full-screen advert over whatever the player
+       * had moved on to, which is the one placement this project rules out.
+       */
+      deadline = setTimeout(() => settle('unavailable'), LOAD_TIMEOUT_MS);
 
-    ad.load();
+      unsubscribe = ad.addAdEventsListener(({ type }) => {
+        if (type === RewardedAdEventType.LOADED) {
+          // The wait is over on both counts: the spinner comes down and the
+          // deadline stops running, because from here the time being spent is
+          // the player's own.
+          if (deadline) clearTimeout(deadline);
+          onShown();
+          ad.show();
+          return;
+        }
+        if (type === RewardedAdEventType.EARNED_REWARD) {
+          // Not settled here. The reward is earned but the ad is still on
+          // screen, and paying out underneath it means the toast and the coin
+          // shower play behind a full-screen advert. `CLOSED` follows, and that
+          // is the moment the player is looking at the game again.
+          earned = true;
+          return;
+        }
+        if (type === AdEventType.CLOSED) {
+          settle(earned ? 'earned' : 'dismissed');
+          return;
+        }
+        if (type === AdEventType.ERROR) {
+          // Covers both halves of the failure: nothing filled, or the SDK could
+          // not present what it had. Neither is the player's doing, so both are
+          // `unavailable` and `paysWithoutAd` decides what that costs them.
+          settle('unavailable');
+        }
+      });
+
+      ad.load();
+    } catch {
+      settle('unavailable');
+    }
   });
 }

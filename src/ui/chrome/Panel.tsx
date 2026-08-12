@@ -3,7 +3,7 @@ import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { apothecary, HAIRLINE, SPACE } from '@/theme/apothecary';
-import { styles } from './styles/Panel.styles';
+import { styles } from './Panel.styles';
 
 interface PanelProps {
   children?: ReactNode;

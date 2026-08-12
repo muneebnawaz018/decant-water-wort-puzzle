@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Easing, runOnJS, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -19,12 +19,7 @@ import { ChromeIconButton } from './chrome/ScreenHeader';
 import { useScreenPadding } from './hooks/useScreenPadding';
 import { feedbackFor, feedbackWarn } from './feedback';
 import { ControlButton } from './chrome/ControlButton';
-import {
-  CONTROLS_HEIGHT,
-  HUD_HEIGHT,
-  SIDE_PADDING,
-  styles,
-} from './styles/GameScreen.styles';
+import { CONTROLS_HEIGHT, HUD_HEIGHT, SIDE_PADDING, styles } from './GameScreen.styles';
 
 /**
  * What each hint refusal says, and why they are three messages and not one.
@@ -51,6 +46,16 @@ const HINT_REFUSAL = {
  * means the second wipes the first before it can be read.
  */
 type RunResult = { ok: true } | { ok: false; reason: string };
+
+/**
+ * How long the solved board stays on screen before the win screen replaces it.
+ *
+ * The last pour is the one the player worked for, and without this beat they
+ * never see it land: clearing the animation and handing off happen in one React
+ * commit, so the settled board is skipped straight past. Long enough to read as
+ * "that worked", short enough that nobody waits for it.
+ */
+const SETTLE_MS = 420;
 
 interface GameScreenProps {
   width: number;
@@ -132,12 +137,38 @@ export const GameScreen = memo(function GameScreen({
   const [pour, setPour] = useState<PourAnimation | null>(null);
   const progress = useSharedValue(0);
 
+  /**
+   * The hand-off to the win screen, held so unmount can cancel it.
+   *
+   * Leaving the board during the settle beat — the back button is live again by
+   * then, since input unlocks with the pour — would otherwise navigate to
+   * Complete from wherever the player had just gone.
+   */
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+    },
+    []
+  );
+
   const endPour = useCallback(() => {
     setPour(null);
     useGameStore.getState().setLocked(false);
-    // Handing off only now means the winning pour is watched to the end
-    // rather than cut off by the Complete screen appearing over it.
-    if (useGameStore.getState().solved) onSolved();
+    if (!useGameStore.getState().solved) return;
+
+    // **The finished board needs a frame of its own before the hand-off.**
+    // Clearing the pour and navigating in the same callback batches into one
+    // React commit, so the board never renders in its settled state — the last
+    // segment the player poured is drawn by the animation, then the animation
+    // is gone and the Complete screen is already on top. The winning move
+    // appeared not to land at all.
+    //
+    // `SETTLE_MS` rather than a single frame: seeing it is the point, and one
+    // frame at 120Hz is 8ms. This is the beat where the board says "done".
+    const settle = setTimeout(onSolved, SETTLE_MS);
+    settleTimer.current = settle;
   }, [onSolved]);
 
   /** Runs the pour animation for an outcome, whether it came from a tap or

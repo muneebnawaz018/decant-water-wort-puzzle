@@ -20,7 +20,7 @@ import { gradients, ui } from '@/theme/colors';
 import { usePressBounce } from '../hooks/usePressBounce';
 import { useTapBurst } from '../hooks/useTapBurst';
 import { useTapHandler } from '../hooks/useTapHandler';
-import { styles } from './styles/GlossButton.styles';
+import { styles } from './GlossButton.styles';
 
 type Variant = 'primary' | 'neutral' | 'ghost';
 

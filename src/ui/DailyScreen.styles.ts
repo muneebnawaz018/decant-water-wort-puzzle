@@ -5,7 +5,7 @@ import { alpha, ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
 import { s, WINDOW_WIDTH } from '@/theme/scale';
 import { text } from '@/theme/typography';
-import { section } from '@/ui/chrome/styles/section.styles';
+import { section } from '@/ui/chrome/section.styles';
 
 /**
  * Days across the reward track.

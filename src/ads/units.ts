@@ -60,3 +60,25 @@ export function rewardedUnitId(): string {
 
   return live ?? TestIds.REWARDED;
 }
+
+/**
+ * The interstitial unit for this platform — doc §8's
+ * `interstitial_level_complete`.
+ *
+ * A **separate unit from the rewarded one**, for the same reason the two
+ * platforms are separate: an AdMob unit has a format, and asking for an
+ * interstitial against a rewarded unit is answered with no-fill rather than
+ * with an error. The two also want reading apart in the console — the rewarded
+ * slots are opened by the player and this one is not, so their rates say
+ * different things.
+ */
+export function interstitialUnitId(): string {
+  if (!liveAllowed) return TestIds.INTERSTITIAL;
+
+  const live = Platform.select({
+    android: process.env.EXPO_PUBLIC_ADMOB_INTERSTITIAL_ANDROID,
+    ios: process.env.EXPO_PUBLIC_ADMOB_INTERSTITIAL_IOS,
+  });
+
+  return live ?? TestIds.INTERSTITIAL;
+}

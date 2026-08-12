@@ -1,7 +1,7 @@
 import { useOverlayStore } from '@/state/overlayStore';
 import { s } from '@/theme/scale';
-import { NAV_BAR_HEIGHT, navBarWidth } from '../chrome/styles/NavBar.styles';
-import { drawerWidth } from '../chrome/styles/SettingsDrawer.styles';
+import { NAV_BAR_HEIGHT, navBarWidth } from '../chrome/NavBar.styles';
+import { drawerWidth } from '../chrome/SettingsDrawer.styles';
 import { dayState } from '../rewardTrack';
 
 /**

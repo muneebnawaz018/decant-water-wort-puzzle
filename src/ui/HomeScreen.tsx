@@ -27,7 +27,7 @@ import { useTapBurst } from './hooks/useTapBurst';
 import { useTapHandler } from './hooks/useTapHandler';
 import { claimToast } from './rewardTrack';
 import { PAGE_SIZE } from './StagesScreen';
-import { styles } from './styles/HomeScreen.styles';
+import { styles } from './HomeScreen.styles';
 import { EARNINGS } from '@/game/economy';
 
 interface HomeScreenProps {

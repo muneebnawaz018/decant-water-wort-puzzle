@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Text, View } from 'react-native';
 
-import { styles } from './styles/SoonBadge.styles';
+import { styles } from './SoonBadge.styles';
 
 /**
  * "Soon" — a small pill on anything the UI shows but cannot yet deliver.

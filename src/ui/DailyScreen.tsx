@@ -31,7 +31,7 @@ import { useTapHandler } from './hooks/useTapHandler';
 import { useTapScale } from './hooks/useTapScale';
 import { Icon } from './Icon';
 import { claimToast, dayState, nextRewardIndex, offerMessage } from './rewardTrack';
-import { COIN_SIZE, FLAME_SIZE, styles, TODAY_TINT } from './styles/DailyScreen.styles';
+import { COIN_SIZE, FLAME_SIZE, styles, TODAY_TINT } from './DailyScreen.styles';
 import { EARNINGS } from '@/game/economy';
 
 /**

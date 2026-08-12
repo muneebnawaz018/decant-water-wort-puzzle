@@ -1,6 +1,11 @@
-import { AdEventType, RewardedAdEventType } from 'react-native-google-mobile-ads';
+import {
+  AdEventType,
+  RewardedAd,
+  RewardedAdEventType,
+} from 'react-native-google-mobile-ads';
 
-import { isAdLoading, showRewarded, subscribeToAdLoading } from '../rewarded';
+import { isAdLoading, subscribeToAdLoading } from '../loading';
+import { showRewarded } from '../rewarded';
 
 /**
  * The SDK, replaced by a fake that replays event sequences.
@@ -247,5 +252,39 @@ describe('two taps on one button', () => {
     await expect(showRewarded('spare_vial')).resolves.toBe('earned');
     await expect(showRewarded('spare_vial')).resolves.toBe('earned');
     expect(mockShowCalls).toBe(2);
+  });
+
+  /**
+   * An SDK that cannot even be asked.
+   *
+   * `createForAdRequest` throws synchronously when the native module is missing
+   * or the SDK never initialised, and a throw inside a promise executor is a
+   * rejection — one that would travel out to a caller written to expect an
+   * outcome, leaving the dialog that offered the ad sitting there having done
+   * nothing. It is the same failure as an empty auction, so it reads the same
+   * way: `unavailable`, and the spare vial is still granted.
+   */
+  describe('when the SDK cannot be asked at all', () => {
+    beforeEach(() => {
+      jest.spyOn(RewardedAd, 'createForAdRequest').mockImplementation(() => {
+        throw new Error('SDK not initialised');
+      });
+    });
+
+    afterEach(() => jest.restoreAllMocks());
+
+    it('still grants the spare vial rather than rejecting', async () => {
+      await expect(showRewarded('spare_vial')).resolves.toBe('earned');
+    });
+
+    it('reports the doubling offers unavailable rather than rejecting', async () => {
+      await expect(showRewarded('double_level_reward')).resolves.toBe('unavailable');
+    });
+
+    it('leaves no spinner behind and stays open to the next offer', async () => {
+      await showRewarded('free_coins');
+      expect(isAdLoading()).toBe(false);
+      await expect(showRewarded('free_coins')).resolves.toBe('unavailable');
+    });
   });
 });

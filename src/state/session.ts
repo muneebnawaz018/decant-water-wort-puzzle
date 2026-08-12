@@ -169,6 +169,49 @@ export function packMoves(history: readonly PourMove[]): number[] {
   return packed;
 }
 
+/** The part of the game state a saved session is built from. */
+export interface Resumable {
+  difficulty: Difficulty;
+  level: number;
+  bonus: boolean;
+  history: readonly PourMove[];
+  extraTaken: boolean;
+  hintsUsed: number;
+  paidHints: readonly string[];
+  paidUndos: readonly number[];
+  freeUndosUsed: number;
+}
+
+/**
+ * Writes the level in progress, straight from the game state.
+ *
+ * Here rather than in `gameStore` so the record's shape is described in one
+ * file: `Session` above, `loadSession` reading it, `restoreSession` replaying
+ * it, and this building it. The store used to name all eight fields a second
+ * time on the way out, which is a list that has to be kept in step with the
+ * one up there and gives no warning when it is not — an added field silently
+ * stops being saved.
+ *
+ * **The bonus board is never saved.** `session.v1` is keyed by difficulty and
+ * level, and a bonus board has neither: `level` holds the day index while it is
+ * set, so restoring one would replay bonus moves onto that level's board. The
+ * check lives here rather than at each of the six call sites that persist.
+ */
+export function saveSessionFrom(state: Resumable): void {
+  if (state.bonus) return;
+
+  saveSession({
+    difficulty: state.difficulty,
+    level: state.level,
+    moves: packMoves(state.history),
+    extraTaken: state.extraTaken,
+    hintsUsed: state.hintsUsed,
+    paidHints: [...state.paidHints],
+    paidUndos: [...state.paidUndos],
+    freeUndosUsed: state.freeUndosUsed,
+  });
+}
+
 /**
  * Replays saved moves onto a generated board.
  *

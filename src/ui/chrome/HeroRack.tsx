@@ -6,7 +6,7 @@ import { AmbientVials } from '@/render/AmbientVials';
 import { apothecary } from '@/theme/apothecary';
 import { s } from '@/theme/scale';
 import { Wordmark } from './Wordmark';
-import { RACK_HEIGHT, SHELF_HEIGHT, styles, VIAL_WIDTH } from './styles/HeroRack.styles';
+import { RACK_HEIGHT, SHELF_HEIGHT, styles, VIAL_WIDTH } from './HeroRack.styles';
 
 /**
  * The home lockup (spec §4.2): glowing vials standing on a gold shelf, the
