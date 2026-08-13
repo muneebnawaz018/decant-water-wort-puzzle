@@ -1072,6 +1072,31 @@ silently not:
   which covers the case of a reminder that has already fired leaving the queue
   empty.
 
+**Android draws two icons on a notification, and only one of them can be the
+app icon.** Worth knowing before anyone tries again to "just use the app icon":
+
+- The **small icon** — status bar and notification header — is alpha-only.
+  Since API 21 the system throws away every colour and refills the shape with
+  one tint, so a colour icon there becomes the famous white square. It is
+  `assets/android-icon-monochrome.png`, and it has to say everything through
+  shape. The first version traced the colour icon's outline; flattened, the
+  glass, the liquid and the four bands all carried the same alpha and merged
+  into a pill on a stick, which at 24dp reads as a bell. It is now an outlined
+  vial with two liquid blocks and a deliberately wide gap — a narrow gap closes
+  under antialiasing at that size and the bands become one again. **Judge any
+  change to it at 24, 32 and 48dp, tinted flat white on dark.** At 1024 the
+  broken one looked fine too, which is how it shipped.
+- The **large icon** — the square beside the text — is an ordinary bitmap, full
+  colour, untinted, and it is the one place a notification shows what the
+  launcher shows. expo-notifications reads it from a manifest key its own config
+  plugin does not expose, so `plugins/withNotificationLargeIcon.js` sets
+  `expo.modules.notifications.large_notification_icon` and copies
+  `assets/notification-large-icon.png` into `res/drawable-nodpi`. One 256px
+  bitmap covers every density: the slot is ~64dp and xxxhdpi is 4x. `nodpi`
+  matters — plain `drawable/` would be read as mdpi and upscaled four times.
+
+iOS needs none of this; a notification there shows the app icon on its own.
+
 `POST_NOTIFICATIONS` and `RECEIVE_BOOT_COMPLETED` arrive from
 expo-notifications' own manifest at merge time, so they are not in
 `android/app/src/main/AndroidManifest.xml` and should not be added there.

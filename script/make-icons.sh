@@ -45,7 +45,19 @@ render decant-icon.svg icon.png 1024
 render decant-android-foreground.svg android-icon-foreground.png 1024
 render decant-android-background.svg android-icon-background.png 1024
 
-# Android 13+ themed icon: white silhouette, transparent everywhere else.
+# Android 13+ themed icon, and the notification small icon. White silhouette,
+# transparent everywhere else — Android keeps only the alpha and refills it with
+# a tint, so this file must say everything through shape. See the comment at the
+# top of `decant-icon-mono.svg`; judge it at 24dp, never at 1024.
 render decant-icon-mono.svg android-icon-monochrome.png 1024
+
+# The notification LARGE icon — the square on the right of a notification, and
+# the one place Android draws the app icon in full colour. `plugins/
+# withNotificationLargeIcon.js` puts it in the manifest.
+#
+# 256px because the slot is 64dp: xxxhdpi is 4x, so 256 is exactly enough and
+# anything larger is bytes in the APK that no screen resolves. The 1024 master
+# would be eight times the size for the same pixels.
+render decant-icon.svg notification-large-icon.png 256
 
 echo "Done. Run 'npm run prebuild:clean' to push these into android/ and ios/."

@@ -214,6 +214,11 @@ const config: ExpoConfig = {
     // gradle time, so no keystore password is written into any file — see the
     // plugin for the variables and for how a missing one behaves.
     './plugins/withReleaseSigning.js',
+
+    // Puts the app icon, in colour, on the right of every Android notification.
+    // The small icon in the status bar is alpha-only and can never be it — see
+    // the plugin, which explains which slot is which.
+    './plugins/withNotificationLargeIcon.js',
     [
       // Hides the status bar from the launch window onward, on both platforms.
       //

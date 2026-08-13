@@ -138,6 +138,59 @@ fi
 # `android/.gradle` and `~/.gradle` state pointing at the old tree, and this is
 # what forces the dex and the resource table to be rebuilt rather than reused.
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# 2b. The signing environment.
+#
+# Two failures cost a build each, both of them invisible in the error Gradle
+# prints, so the script checks rather than hoping:
+#
+#   - A stale `DECANT_UPLOAD_STORE_FILE`. An exported variable outlives the
+#     shell config that set it, so a terminal or an editor opened before the key
+#     was renamed still carries the old path. `withReleaseSigning.js` ignores an
+#     override whose file is missing; this drops it one step earlier so the
+#     build log says the key was found rather than that an override was refused.
+#
+#   - A Gradle daemon holding an older environment. A daemon inherits the
+#     environment of the shell that started it and keeps it for its whole life,
+#     so a daemon born before the passwords were exported keeps signing with
+#     what it had — and reports `keystore password was incorrect`, which sends
+#     you to look at the keystore, which is fine. `--stop` costs one daemon
+#     startup (~10s) against a three-minute build that fails at the last task.
+#
+# The password itself is never printed or written, only tested.
+# ---------------------------------------------------------------------------
+step 'Checking the signing environment'
+if [ -n "${DECANT_UPLOAD_STORE_FILE:-}" ] && [ ! -f "$DECANT_UPLOAD_STORE_FILE" ]; then
+  printf '  dropping stale DECANT_UPLOAD_STORE_FILE=%s (no such file)\n' "$DECANT_UPLOAD_STORE_FILE"
+  unset DECANT_UPLOAD_STORE_FILE
+fi
+
+KEYSTORE="${DECANT_UPLOAD_STORE_FILE:-$PWD/decant-playstore.keystore}"
+if [ -f "$KEYSTORE" ]; then
+  if [ -z "${DECANT_UPLOAD_STORE_PASSWORD:-}" ] || [ -z "${DECANT_UPLOAD_KEY_PASSWORD:-}" ]; then
+    echo "  $KEYSTORE is here but DECANT_UPLOAD_STORE_PASSWORD or DECANT_UPLOAD_KEY_PASSWORD is unset." >&2
+    echo '  They live in ~/.zshrc; a non-interactive shell does not read it.' >&2
+    exit 2
+  fi
+  # Fail here, in a second, rather than at `packageRelease` three minutes in.
+  if ! keytool -list -keystore "$KEYSTORE" \
+       -storepass "$DECANT_UPLOAD_STORE_PASSWORD" >/dev/null 2>&1; then
+    echo "  DECANT_UPLOAD_STORE_PASSWORD does not open $KEYSTORE." >&2
+    exit 2
+  fi
+  printf '  upload key ok: %s\n' "$KEYSTORE"
+else
+  printf '\n\033[33m⚠ No upload keystore. This build will be signed with the DEBUG key.\033[0m\n'
+  printf '  Play rejects that. Put decant-playstore.keystore in the project root.\n'
+fi
+
+# A daemon carries the environment it was born with, including an older set of
+# signing variables. Not needed with --fast, which is for a quick loop rather
+# than for anything that leaves this machine.
+if [ "$FAST" -eq 0 ]; then
+  (cd android && ./gradlew --stop >/dev/null 2>&1) || true
+fi
+
 TASK=assembleRelease
 KIND=APK
 if [ "$BUNDLE" -eq 1 ]; then
@@ -175,6 +228,22 @@ fi
 
 printf '  R8 is on in release. Play through a level before sharing.\n'
 
+# Which key actually signed it, read off the artefact rather than inferred from
+# the environment that built it. Gradle's own log says which config it chose;
+# this says what came out, which is the thing an upload form checks.
+#
+# `keytool -printcert -jarfile` is the command everyone reaches for and it
+# prints nothing here — these builds carry a v2 signature block, not a v1 JAR
+# signature. apksigner reads both.
+APKSIGNER=$(ls "${ANDROID_HOME:-$HOME/Library/Android/sdk}"/build-tools/*/apksigner 2>/dev/null | sort | tail -1 || true)
+ARTEFACT=$([ "$BUNDLE" -eq 1 ] && echo '' || find android/app/build/outputs/apk/release -name '*.apk' | head -1)
+if [ -n "$APKSIGNER" ] && [ -n "$ARTEFACT" ]; then
+  printf '\n  Signed by:\n'
+  "$APKSIGNER" verify --print-certs -v "$ARTEFACT" 2>/dev/null |
+    grep -E 'certificate DN:|certificate SHA-1' |
+    sed 's/^/    /'
+fi
+
 # ---------------------------------------------------------------------------
 # 5. Publishing, if asked.
 #
@@ -192,9 +261,9 @@ printf '  R8 is on in release. Play through a level before sharing.\n'
 # the page and the download shortcut under it are missing.
 #
 # Dropping `--prerelease` below would make the direct link work. It is kept
-# because the badge is honest — this is an unsigned test build, not a release —
-# and one extra tap on the releases page is a smaller cost than a download URL
-# that implies otherwise.
+# because the badge is honest — this is a build for testers, not a store
+# release — and one extra tap on the releases page is a smaller cost than a
+# download URL that implies otherwise.
 #
 # `--clobber` is what makes the upload an overwrite rather than an error, and the
 # release is created on first run if it is not there yet. Nothing here tags a
