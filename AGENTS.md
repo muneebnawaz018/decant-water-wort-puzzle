@@ -1532,12 +1532,29 @@ exists — you cannot check the tablet layout by resizing a phone simulator.
 
 Three things are deliberately outside it:
 
-- **The board.** `src/render/layout.ts` already derives tube width, gap and
-  radius from the box it is handed, so it scales on its own and a second
+- **The board's _geometry_.** `src/render/layout.ts` already derives tube width,
+  gap and radius from the box it is handed, so it scales on its own and a second
   multiplier would double-count. It also stays pure and React-free, which is why
   `GameScreen` passes it a scaled `hitTest` slop rather than the module reading
   one — a fixed 12dp halo around a tube twice the size is a tighter target than
   phone players get.
+
+  **Its _line weights_ are not exempt, and that distinction cost a bug.** The
+  outline, seam, meniscus and cap stroke were plain dp, so they did not grow
+  with the glass they draw: a 13-tube board renders a 30dp tube on a phone and
+  a 40dp one on an iPad, taking a `3.5` outline from 11.7% of the tube's width
+  down to 8.7% — a quarter thinner, exactly where the look calls for a bold
+  drawn outline rather than a chart hairline. It showed once the highlight was
+  rebuilt to derive its width from the tube, because the two then visibly
+  disagreed. They live in `GLASS` in `Board.tsx` now, all through `s()`.
+
+  **`s()`, not a fraction of `tube.width`** — the obvious choice is the wrong
+  one. Tube width tracks the _board_ as well as the device, so a 4-tube level
+  draws much wider glass than a 13-tube one on the same phone; deriving from it
+  would repaint every phone board already shipped. `s()` is exactly `1` on a
+  phone, so it cannot, and on a tablet it grows 1.45x against the tube's 1.35x
+  — close enough to hold the proportion.
+
 - **The splash vial.** `assets/splash-icon.png` is drawn by the OS at a fixed dp
   size on every device, so scaling the React vial would break the handoff the
   two splashes were built around — on tablets only, which is exactly where

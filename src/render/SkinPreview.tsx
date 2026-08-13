@@ -2,6 +2,7 @@ import { Canvas, Group, Path, Rect } from '@shopify/react-native-skia';
 import { memo, useMemo } from 'react';
 
 import { colours, ui } from '@/theme/colors';
+import { s } from '@/theme/scale';
 import type { Vessel } from '@/theme/skins';
 import { FILL_HEADROOM } from './layout';
 import {
@@ -32,6 +33,14 @@ const SEGMENT_ASPECT = 1.05;
 
 /** Three of the palette's most separated hues, named rather than indexed. */
 const TINTS = [colours.aqua, colours.rose, colours.mango] as const;
+
+/**
+ * Line weights, scaled like the board's. The card grows on a tablet
+ * (`PREVIEW_HEIGHT` is an `s()` value), so fixed strokes would leave the
+ * preview's glass drawn thinner than the glass it is previewing.
+ */
+const GLASS_STROKE = s(2);
+const CAP_STROKE = s(1.5);
 
 /**
  * A shop card's picture of a skin: three of the vessel, part-filled.
@@ -139,7 +148,7 @@ export const SkinPreview = memo(function SkinPreview({
             <Path
               path={outline}
               style="stroke"
-              strokeWidth={2}
+              strokeWidth={GLASS_STROKE}
               strokeJoin="round"
               strokeCap="round"
               color={ui.glassEdge}
@@ -152,7 +161,7 @@ export const SkinPreview = memo(function SkinPreview({
                 <Path
                   path={cap}
                   style="stroke"
-                  strokeWidth={1.5}
+                  strokeWidth={CAP_STROKE}
                   strokeJoin="round"
                   color={ui.shadow}
                   opacity={0.55}

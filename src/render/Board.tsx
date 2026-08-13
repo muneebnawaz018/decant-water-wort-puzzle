@@ -17,6 +17,7 @@ import { type SharedValue } from 'react-native-reanimated';
 import type { Colour, WaterState } from '@/core/types';
 import { apothecary, type Theme } from '@/theme/apothecary';
 import { colours, ui } from '@/theme/colors';
+import { s } from '@/theme/scale';
 import { ColourMark } from './ColourMark';
 import type { BoardLayout, TubeRect } from './layout';
 import {
@@ -45,7 +46,33 @@ import {
 import { DEFAULT_SKIN, skinFor } from '@/theme/skins';
 
 /** How far a selected tube lifts, doc §7. */
-const SELECTION_LIFT = 8;
+const SELECTION_LIFT = s(8);
+
+/**
+ * The board's own line weights, in phone dp, put through `s()`.
+ *
+ * These were plain numbers, and on a tablet that read as a different drawing.
+ * A 13-tube board renders a 30dp tube on a phone and a 40dp one on an iPad, so
+ * a fixed `3.5` outline falls from 11.7% of the tube's width to 8.7% — a
+ * quarter thinner exactly where the art direction asks for a bold, drawn
+ * outline rather than a chart hairline. The highlight next to it *is* derived
+ * from tube width, so the two visibly drifted apart.
+ *
+ * **`s()` rather than a fraction of `tube.width`, deliberately.** Tube width
+ * varies with the board, not just the device — a 4-tube level draws much wider
+ * glass than a 13-tube one on the same phone — so deriving from it would
+ * repaint every phone board the project has already shipped. `s()` is exactly
+ * `1` on phones, so this cannot change them, and on a tablet it grows 1.45x
+ * against the tube's 1.35x, which tracks closely enough to hold the look.
+ */
+const GLASS = {
+  seam: s(1),
+  meniscus: s(3),
+  outline: s(3.5),
+  /** A selected or hinted tube, which has to read across a busy rack. */
+  outlineActive: s(5),
+  cap: s(2.5),
+} as const;
 
 export interface PourAnimation {
   from: number;
@@ -202,7 +229,7 @@ export const Board = memo(function Board({
                         x={tube.x}
                         y={y}
                         width={tube.width}
-                        height={1}
+                        height={GLASS.seam}
                         color={ui.shadow}
                         opacity={0.16}
                       />
@@ -215,9 +242,9 @@ export const Board = memo(function Board({
                     {isTop ? (
                       <Rect
                         x={tube.x + tube.width * 0.06}
-                        y={y - 1}
+                        y={y - GLASS.seam}
                         width={tube.width * 0.88}
-                        height={3}
+                        height={GLASS.meniscus}
                         color={colours.white}
                         opacity={0.42}
                       />
@@ -286,7 +313,7 @@ export const Board = memo(function Board({
             <Path
               path={outlines[tubeIndex]!}
               style="stroke"
-              strokeWidth={isSelected || isHintTarget ? 5 : 3.5}
+              strokeWidth={isSelected || isHintTarget ? GLASS.outlineActive : GLASS.outline}
               strokeJoin="round"
               strokeCap="round"
               color={isSelected ? theme.accent : isHintTarget ? theme.gold : colours.white}
@@ -308,7 +335,7 @@ export const Board = memo(function Board({
                 <Path
                   path={caps[tubeIndex]!}
                   style="stroke"
-                  strokeWidth={2.5}
+                  strokeWidth={GLASS.cap}
                   strokeJoin="round"
                   color={ui.shadow}
                   opacity={0.55}
