@@ -13,6 +13,18 @@ expo-env.d.ts
 .kotlin/
 *.orig.*
 *.jks
+# The upload key, which `withReleaseSigning.js` picks up from the project root.
+#
+# **This line is load-bearing, not hygiene.** The key lives in the repo folder
+# for convenience, so the only thing standing between it and a public commit is
+# this rule. Publishing it lets anyone ship an update to every installed copy of
+# the app, and it cannot be revoked — a signing key is not a password you rotate.
+#
+# The password is deliberately *not* kept beside it (it comes from the
+# environment), so a leak of this file alone is recoverable. A leak of both is
+# not.
+/decant-playstore.keystore
+/*.keystore.bak
 *.p8
 *.p12
 *.key

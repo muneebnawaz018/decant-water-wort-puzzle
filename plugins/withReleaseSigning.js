@@ -27,21 +27,52 @@ const { withAppBuildGradle } = require('expo/config-plugins');
  * build artefact someone might attach to a bug report. It also means changing
  * the key needs no prebuild.
  *
- * Four variables, all required together:
+ * ## Where the keystore is found
+ *
+ * `decant-playstore.keystore` in the **project root** is picked up
+ * automatically, so a normal build needs no path configured at all. The name
+ * says which app and which store it belongs to: a folder of `upload.keystore`
+ * files from four projects is a mistake waiting to be made, and picking the
+ * wrong one is only discovered at an upload form.
+ *
+ * `DECANT_UPLOAD_STORE_FILE` overrides the lookup when the key lives elsewhere
+ * — a CI runner, or a machine that keeps it outside the checkout.
  *
  * ```sh
- * DECANT_UPLOAD_STORE_FILE=/absolute/path/to/upload.keystore
- * DECANT_UPLOAD_STORE_PASSWORD=…
- * DECANT_UPLOAD_KEY_ALIAS=upload
- * DECANT_UPLOAD_KEY_PASSWORD=…
+ * DECANT_UPLOAD_STORE_PASSWORD=…      # required
+ * DECANT_UPLOAD_KEY_PASSWORD=…        # required
+ * DECANT_UPLOAD_KEY_ALIAS=upload      # optional, defaults to `upload`
+ * DECANT_UPLOAD_STORE_FILE=/path/…    # optional, overrides the root lookup
  * ```
  *
- * **The keystore itself lives outside the repo and is never committed.** It is
- * generated once and cannot be regenerated: lose it and, without Play App
- * Signing enrolled, the listing can never be updated again.
+ * **A stale `DECANT_UPLOAD_STORE_FILE` is ignored rather than obeyed**, and
+ * that rule was written after one broke a build. An exported variable outlives
+ * the shell config that set it — a long-lived process keeps the environment it
+ * started with, so an editor or a terminal opened last week can still be
+ * carrying a path that has since been renamed. Gradle's own error for it names
+ * a file nothing on disk mentions any more:
+ *
+ * ```text
+ * Keystore file '/Users/…/upload.keystore' not found for signing config 'upload'.
+ * ```
+ *
+ * A variable pointing at a file that is not there is not an instruction, it is
+ * a leftover. The override therefore only wins when the path exists; otherwise
+ * the build says so and uses the key in the project root, which is the one the
+ * developer is looking at.
+ *
+ * **The passwords stay in the environment even when the keystore does not.**
+ * A key file sitting in an ignored path is one mistake from being committed;
+ * a key file *and* its password would be one mistake from being usable. Keeping
+ * them apart means a leaked repo still cannot sign anything.
+ *
+ * **`/decant-playstore.keystore` must stay gitignored.** It is generated once
+ * and cannot be regenerated: lose it and, without Play App Signing enrolled,
+ * the listing can never be updated again — and publish it and anyone can ship
+ * an update to your users.
  *
  * ```sh
- * keytool -genkeypair -v -keystore upload.keystore \
+ * keytool -genkeypair -v -keystore decant-playstore.keystore \
  *   -alias upload -keyalg RSA -keysize 2048 -validity 10000
  * ```
  *
@@ -59,11 +90,26 @@ const { withAppBuildGradle } = require('expo/config-plugins');
  */
 const SIGNING_CONFIG = `
         upload {
-            def uploadStoreFile = System.getenv("DECANT_UPLOAD_STORE_FILE")
-            if (uploadStoreFile) {
-                storeFile file(uploadStoreFile)
+            // \`rootProject\` is \`android/\`, so this is the repo root — the same
+            // \`upload.keystore\` the README and \`docs/06-launch.md\` name. The
+            // environment variable wins when set, for a runner that keeps the
+            // key elsewhere.
+            def envStore = System.getenv("DECANT_UPLOAD_STORE_FILE")
+            def envFile = envStore ? file(envStore) : null
+            def rootStore = rootProject.file("../decant-playstore.keystore")
+            // The override only wins if it points at a file that is actually
+            // there. A variable naming a path that no longer exists is a stale
+            // export, not an instruction — failing the build on it would mean a
+            // terminal opened last week can break a key sitting right here.
+            if (envFile != null && !envFile.exists()) {
+                println("Decant: ignoring DECANT_UPLOAD_STORE_FILE=" + envStore + " - no such file. Using the project root instead.")
+                envFile = null
+            }
+            def resolved = envFile ?: (rootStore.exists() ? rootStore : null)
+            if (resolved != null) {
+                storeFile resolved
                 storePassword System.getenv("DECANT_UPLOAD_STORE_PASSWORD")
-                keyAlias System.getenv("DECANT_UPLOAD_KEY_ALIAS")
+                keyAlias System.getenv("DECANT_UPLOAD_KEY_ALIAS") ?: "upload"
                 keyPassword System.getenv("DECANT_UPLOAD_KEY_PASSWORD")
             }
         }`;
@@ -76,14 +122,14 @@ const SIGNING_CONFIG = `
  * is a typo or a half-finished CI secret, and quietly signing with the debug
  * key would hide exactly the mistake worth surfacing.
  */
-const RELEASE_SIGNING = `signingConfig System.getenv("DECANT_UPLOAD_STORE_FILE") ? signingConfigs.upload : signingConfigs.debug
-            if (System.getenv("DECANT_UPLOAD_STORE_FILE")) {
-                if (!System.getenv("DECANT_UPLOAD_STORE_PASSWORD") || !System.getenv("DECANT_UPLOAD_KEY_ALIAS") || !System.getenv("DECANT_UPLOAD_KEY_PASSWORD")) {
-                    throw new GradleException("DECANT_UPLOAD_STORE_FILE is set but the password or alias variables are not. Set all four, or none.")
+const RELEASE_SIGNING = `signingConfig signingConfigs.upload.storeFile != null ? signingConfigs.upload : signingConfigs.debug
+            if (signingConfigs.upload.storeFile != null) {
+                if (!System.getenv("DECANT_UPLOAD_STORE_PASSWORD") || !System.getenv("DECANT_UPLOAD_KEY_PASSWORD")) {
+                    throw new GradleException("Found " + signingConfigs.upload.storeFile + " but DECANT_UPLOAD_STORE_PASSWORD or DECANT_UPLOAD_KEY_PASSWORD is unset. The keystore and its password are kept apart on purpose - set both.")
                 }
-                println("Decant: release builds signed with the upload key.")
+                println("Decant: release builds signed with the upload key (" + signingConfigs.upload.storeFile + ").")
             } else {
-                println("Decant: WARNING - release builds signed with the DEBUG key. Play will reject this upload. Set DECANT_UPLOAD_* to sign for release.")
+                println("Decant: WARNING - release builds signed with the DEBUG key. Play will reject this upload. Put decant-playstore.keystore in the project root, or set DECANT_UPLOAD_STORE_FILE.")
             }`;
 
 module.exports = function withReleaseSigning(config) {

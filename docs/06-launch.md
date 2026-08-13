@@ -39,22 +39,47 @@ assuming a date.
 
 These are in this repo and nobody outside it is waiting on them.
 
-### 2.1 There is no upload keystore yet
+### 2.1 The upload keystore — done, and the one file to never lose
 
-The wiring is done (see §3) but the key itself is not, and it cannot be: it is
-yours, it is permanent, and it must never enter this repo.
+Generated 2026-08-13. It lives at **`decant-playstore.keystore` in the project
+root**, where `plugins/withReleaseSigning.js` finds it with no path configured,
+and it is gitignored by an explicit rule.
 
-```sh
-keytool -genkeypair -v -keystore upload.keystore \
-  -alias upload -keyalg RSA -keysize 2048 -validity 10000
+Named for the app and the store rather than `upload.keystore`, because a folder
+holding four projects' `upload.keystore` files is a mistake waiting to happen
+and choosing the wrong one is only discovered at an upload form.
+
+```text
+Alias   upload
+Owner   CN=Muneeb, OU=Mobile Development, O=Walqalum, L=Lahore, ST=Punjab, C=PK
+Valid   13 Aug 2026 → 29 Dec 2053
+SHA-1   10:92:6C:5C:64:77:A9:B1:9D:58:52:C4:0B:E5:DC:EE:58:A2:3B:45
 ```
 
-Keep it somewhere backed up and outside the project, then set the four
-`DECANT_UPLOAD_*` variables described in `plugins/withReleaseSigning.js`.
+**The passwords are not beside it.** `DECANT_UPLOAD_STORE_PASSWORD` and
+`DECANT_UPLOAD_KEY_PASSWORD` come from the environment — `~/.zshrc` on this
+machine — and the build fails with a named error if the keystore is found and
+they are not. Keeping the two apart is what makes a leaked checkout
+recoverable: the file alone signs nothing.
 
-**Enroll in Play App Signing.** Without it, a lost upload key means the listing
-can never be updated again — the only remedy is a new listing under a new
-package name, which forfeits every install and review.
+`DECANT_UPLOAD_KEY_ALIAS` is optional and defaults to `upload`.
+`DECANT_UPLOAD_STORE_FILE` is optional too, and overrides the root lookup for a
+CI runner or a machine that keeps the key elsewhere — but **only when the path
+it names exists**. One pointing at a file that has since moved is a leftover
+export rather than an instruction, so the build says so and uses the root key.
+That rule was written after a stale variable from an earlier terminal session
+failed a build with `Keystore file '…/upload.keystore' not found`, naming a path
+nothing on disk mentioned any more.
+
+**Back up the file and the password separately, in two places.** This is the
+only artefact in the project that cannot be rebuilt. A signing key is not a
+password that can be rotated after the fact: whoever holds it can ship an update
+to every installed copy of the app, and whoever loses it can ship none.
+
+**Enrol in Play App Signing** when creating the listing. Google then holds the
+real signing key and this one is demoted to an _upload_ key, which support can
+reset. Without it, losing this file means a new listing under a new package
+name — every install and review forfeited.
 
 ---
 
