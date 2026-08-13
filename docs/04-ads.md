@@ -19,7 +19,7 @@ const outcome = await showRewarded('spare_vial'); // 'earned' | 'dismissed' | 'u
 | `src/ads/interstitial.ts` | `interstitial_level_complete`: every 4th win, 90s floor.     |
 | `src/ads/units.ts`        | Which ad unit each slot asks for, test or live.              |
 | `src/ads/setup.ts`        | Consent, then SDK initialisation. Called once from `Root`.   |
-| `src/ui/hooks/useAds.ts`  | Fires `initialiseAds()` on launch, unawaited.                |
+| `src/ui/hooks/useAds.ts`  | Launch: `initialiseAds()`, then primes the interstitial.     |
 | `app.config.ts`           | The App IDs, written into the native manifest by the plugin. |
 
 Three slots exist: `spare_vial`, `double_level_reward`, `double_daily_reward`.
@@ -248,6 +248,33 @@ ad", mounted once in `Overlays` because the three slots are raised from three
 different places and the daily one closes its own dialog on the way out. It
 waits 400ms before appearing, so a fast fill and a flight-mode failure are both
 invisible rather than a spinner flashing for two frames.
+
+**None of the above applies to the interstitial, and the difference is the
+point.** A rewarded ad is asked for, so a wait is the lesser evil and the veil
+is honest about it. The interstitial is not asked for, so there is no wait worth
+making anyone sit through — it is fetched ahead of time and shows only what is
+already in hand.
+
+That was learned the hard way. The first version loaded on demand, and the two
+symptoms arrived together from real play:
+
+- _"The loading spinner shows after every level."_ The count only reset on an ad
+  that reached the screen — so that a no-fill would not cost the player the four
+  levels they had played — but nothing capped it. After the first miss
+  `sinceLastAd` sat at four and then climbed, every later completion passed the
+  every-fourth gate, and each one opened a fresh request under a full-screen
+  veil. §8's every-fourth rule silently became every level.
+- _"Sometimes it loads and sometimes it does not."_ A cold request has to cross
+  the network and run an auction, and that was being attempted inside a
+  five-second budget with the player waiting on a pressed button. Fine on wifi,
+  frequently not on mobile data — which fed straight back into the first
+  symptom.
+
+`primeInterstitial` fetches one at launch and another the moment one closes, so
+by the fourth completion it has been in hand for minutes. A completion with
+nothing ready shows nothing and says nothing, leaving the count standing so the
+next ready ad is spent at once. A failed request backs off from thirty seconds
+to a five-minute ceiling, and every completion is a free retry on top of that.
 
 ---
 

@@ -13,10 +13,17 @@
  * the wrong way round, and every screen would import an ad concept to render a
  * spinner. `AdVeil` is the only reader.
  *
- * **Shared by every format**, which is why it lives here rather than inside
- * `rewarded.ts` where it started. The interstitial was written without it and
- * inherited the exact bug the veil exists to prevent: pressing Next with an ad
- * due left the button dead for up to five seconds with nothing on screen.
+ * **Only the rewarded slots raise it, and the interstitial deliberately does
+ * not.** It did once, and the veil was the visible half of the wrong fix: the
+ * interstitial was loading on demand, so pressing Next opened a network request
+ * with the player waiting on it. It now loads ahead of time and shows only what
+ * is already in hand — no wait, so nothing to spin over. A rewarded advert is
+ * the opposite case and keeps the veil: the player pressed a button asking for
+ * one and is owed it, so waiting is the lesser evil.
+ *
+ * It stays here rather than in `rewarded.ts` because it is about what is on
+ * screen rather than about one format, and a second format needing it would
+ * otherwise import the first.
  */
 type LoadingListener = (loading: boolean) => void;
 
