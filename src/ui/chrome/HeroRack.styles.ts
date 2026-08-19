@@ -22,7 +22,7 @@ export const VIAL_WIDTH = s(176);
  * Not flexed. Given `flex: 1` it swallowed every spare pixel on the screen,
  * which pushed the wordmark and the cards down and left a dead band above the
  * vials. The prototype gives the rack its natural height and lets the *column*
- * centre in whatever is left, so the space above and below the lockup matches.
+ * center in whatever is left, so the space above and below the lockup matches.
  * `AmbientVials` also takes its height as a number, since Skia draws to a sized
  * surface — there is no flexed height to hand it.
  *

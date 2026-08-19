@@ -18,15 +18,15 @@ export const styles = StyleSheet.create({
     phoneWidth: '48%',
   }),
   /**
-   * Centred, like every other tile in the app.
+   * Centered, like every other tile in the app.
    *
    * These were the one grid reading left-aligned — a figure hard against the
    * left inset with its caption under it, beside a Daily track and a stage grid
-   * that both centre. Two tiles of one size in one row, aligned differently,
+   * that both center. Two tiles of one size in one row, aligned differently,
    * read as two components.
    *
    * `textAlign` as well as `alignItems`, because a label that wraps — "Three-
-   * star levels" already does at the smallest phone width — centres its box but
+   * star levels" already does at the smallest phone width — centers its box but
    * not its second line.
    */
   tile: { padding: SPACE.tile, alignItems: 'center' },
@@ -87,7 +87,7 @@ export const styles = StyleSheet.create({
    * The three sit against the card's edges, not in equal columns.
    *
    * Equal columns were the first attempt and they look uneven: each stat is a
-   * different width, so centring them inside their thirds leaves the outer two
+   * different width, so centering them inside their thirds leaves the outer two
    * floating short of the card's edges while the middle one drifts. Pinning the
    * outer two to the edges and letting `space-between` place the middle is what
    * makes the row read as evenly spread — and it lines the first stat up with

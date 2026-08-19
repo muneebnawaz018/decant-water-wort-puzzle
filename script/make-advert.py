@@ -34,7 +34,7 @@ and on a device it read as a still image. **Subtlety is the wrong instinct at
 36dp.** A mark this size gets a fraction of a second of peripheral attention, and
 anything under about ten percent of its own width simply is not seen.
 
-Run it after changing any colour it reads. The JSON is written minified and the
+Run it after changing any color it reads. The JSON is written minified and the
 commit gate checks formatting, so `npm run format` is the second half of the
 command, not an optional tidy-up:
 
@@ -77,7 +77,7 @@ DURATION = 120
 STEP = 2
 
 SIZE = 100
-CENTRE = SIZE / 2
+CENTER = SIZE / 2
 
 # --- The beat, as fractions of the loop --------------------------------------
 
@@ -202,7 +202,7 @@ def screen() -> dict:
     def bob(t: float):
         # Barely there, and doing real work: without it the mark pivots on a
         # fixed point and looks pinned to the tile.
-        return [CENTRE, round(CENTRE - 2.2 * hit_curve(t), 2), 0]
+        return [CENTER, round(CENTER - 2.2 * hit_curve(t), 2), 0]
 
     return shape_layer(
         6,
@@ -229,7 +229,7 @@ def head() -> dict:
     as a play head at 36dp; the rounding would not survive the size anyway.
 
     The right-hand vertex sits left of the true centroid, so the triangle looks
-    centred in the screen. A play head balanced on its bounding box always looks
+    centered in the screen. A play head balanced on its bounding box always looks
     pushed left, which is why every icon set nudges it.
     """
     points = [
@@ -250,8 +250,8 @@ def head() -> dict:
         # screen's bob. A play head that grows in place is a badge; one that
         # moves is a button.
         return [
-            round(CENTRE + 1 + 3.2 * max(0.0, hit_curve(t)), 2),
-            round(CENTRE - 2.2 * hit_curve(t), 2),
+            round(CENTER + 1 + 3.2 * max(0.0, hit_curve(t)), 2),
+            round(CENTER - 2.2 * hit_curve(t), 2),
             0,
         ]
 
@@ -279,7 +279,7 @@ def ring(index: int) -> dict:
     """One of two rings leaving on the hit, staggered.
 
     They start inside the screen and end outside it, which is deliberate: the
-    mark sits on a coloured tile with room around it, and a ring confined to the
+    mark sits on a colored tile with room around it, and a ring confined to the
     screen would read as something happening *in* the advert rather than as the
     chip reaching out.
 
@@ -309,7 +309,7 @@ def ring(index: int) -> dict:
         1 + index,
         f"ring{index}",
         [group([ellipse(windowed(size, start, length)), band])],
-        transform([CENTRE, CENTRE, 0], opacity=windowed(alpha, start, length)),
+        transform([CENTER, CENTER, 0], opacity=windowed(alpha, start, length)),
         DURATION,
     )
 
@@ -328,8 +328,8 @@ def spark(index: int) -> dict:
         k = since(t, start, length)
         reach = SPARK_REACH * overshoot(k)
         return [
-            round(CENTRE + math.cos(angle) * reach, 2),
-            round(CENTRE + math.sin(angle) * reach, 2),
+            round(CENTER + math.cos(angle) * reach, 2),
+            round(CENTER + math.sin(angle) * reach, 2),
             0,
         ]
 
@@ -372,7 +372,7 @@ def glint() -> dict:
 
     def across(t: float):
         k = since(t, SWEEP_START, length)
-        return [round(CENTRE - travel + travel * 2 * smoothstep(k), 2), CENTRE, 0]
+        return [round(CENTER - travel + travel * 2 * smoothstep(k), 2), CENTER, 0]
 
     def alpha(t: float):
         k = since(t, SWEEP_START, length)

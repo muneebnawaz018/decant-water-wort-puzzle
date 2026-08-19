@@ -127,7 +127,7 @@ export const StagesScreen = memo(function StagesScreen({ onPick }: StagesScreenP
    *
    * It used to allow one page past it, on the theory that seeing the next block
    * gives the player something to aim at. What it actually shows is fifty
-   * padlocks — no colour, no level names, nothing to want — and the page label
+   * padlocks — no color, no level names, nothing to want — and the page label
    * reads "51–100" as though that block were open. A shelf you can walk to and
    * not touch is worse than one that is not there.
    */
@@ -310,7 +310,7 @@ const StageTile = memo(function StageTile({
  * The pulsing ring on the level the player is up to (spec §4.3).
  *
  * Only one tile ever has it, so this is a single looping animation on screen,
- * and it is cancelled the moment the tile unmounts — which the virtualised
+ * and it is canceled the moment the tile unmounts — which the virtualised
  * list does as soon as it scrolls away.
  */
 const CurrentRing = memo(function CurrentRing({ accent }: { accent: string }) {

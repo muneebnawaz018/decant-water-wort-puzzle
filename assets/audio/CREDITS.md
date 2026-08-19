@@ -1,7 +1,7 @@
-# Audio credits and licences
+# Audio credits and licenses
 
 Every shipped sound and where it came from. **A file with no entry here does not
-ship** — a licence nobody can produce is a licence the app does not have, and an
+ship** — a license nobody can produce is a license the app does not have, and an
 audio asset is the one thing in this repo that is not ours by default.
 
 ## Can this ship commercially? Yes
@@ -11,7 +11,7 @@ someone new looks at the audio: **every sound in the game is CC0 1.0, and the
 app can be sold, monetised with ads, and shipped to both stores with no
 payment, no attribution and no permission owed to anyone.**
 
-CC0 is not a permissive licence with conditions attached — it is the creator
+CC0 is not a permissive license with conditions attached — it is the creator
 formally waiving copyright and dedicating the work to the public domain.
 Kenney's own `License.txt` states it in words: "free to use in personal,
 educational and commercial projects." Nothing here is borrowed under terms
@@ -26,7 +26,7 @@ marimba samples. A derivative of a public-domain work belongs to whoever made
 the derivative.
 
 What would **not** be acceptable, and has not happened: pulling audio out of
-another app, ripping from video, or using anything whose licence cannot be
+another app, ripping from video, or using anything whose license cannot be
 produced on demand. That is what the rule at the top of this file is for.
 
 Two residual risks, stated rather than hidden, neither unusual:
@@ -39,7 +39,7 @@ Two residual risks, stated rather than hidden, neither unusual:
 - **The pour was taken from Freesound's public preview stream** of that CC0
   recording rather than the original upload. The dedication attaches to the
   recording, not to a file format, so nothing changes legally — it is a
-  quality footnote, not a licence one.
+  quality footnote, not a license one.
 
 No AI-generated audio is used anywhere. A generated set was considered and
 never obtained; an earlier **synthesised** set — genuinely 100% ours, sine
@@ -73,7 +73,7 @@ verified against a production export — six `.m4a`, no `.wav`.
 
 ## Shipped one-shots
 
-| File           | Source                                            | Licence | Attribution  |
+| File           | Source                                            | License | Attribution  |
 | -------------- | ------------------------------------------------- | ------- | ------------ |
 | `tap.wav`      | Kenney — Interface Sounds (`glass_002`)           | CC0 1.0 | not required |
 | `click.wav`    | Kenney — Interface Sounds (`click_002`)           | CC0 1.0 | not required |
@@ -164,7 +164,7 @@ The set is deliberately unequal in both level and brightness, because a player
 should be able to tell from sound alone whether what just happened mattered.
 Measured on the shipped files:
 
-| Cue        | Length | Centre pitch | Brightness | What it is               |
+| Cue        | Length | Center pitch | Brightness | What it is               |
 | ---------- | ------ | ------------ | ---------- | ------------------------ |
 | `illegal`  | 0.60s  | 197Hz        | 644Hz      | refusal, damped, dark    |
 | `click`    | 0.01s  | 1120Hz       | 1494Hz     | any button in the chrome |

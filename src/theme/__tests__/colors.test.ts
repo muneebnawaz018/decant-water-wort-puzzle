@@ -1,8 +1,8 @@
 import { apothecary } from '../apothecary';
-import { alpha, colours, fade, glyphOn, gradients, tint, ui } from '../colors';
+import { alpha, colors, fade, glyphOn, gradients, tint, ui } from '../colors';
 
 describe('alpha', () => {
-  it('expands a palette colour to rgba', () => {
+  it('expands a palette color to rgba', () => {
     expect(alpha('white', 0.5)).toBe('rgba(255,255,255,0.5)');
     expect(alpha('black', 1)).toBe('rgba(0,0,0,1)');
   });
@@ -23,7 +23,7 @@ describe('alpha', () => {
 });
 
 describe('tint', () => {
-  it('leaves a colour alone at zero', () => {
+  it('leaves a color alone at zero', () => {
     expect(tint('mango', 0)).toBe('rgb(255,138,30)');
   });
 
@@ -51,10 +51,10 @@ describe('tint', () => {
 
 describe('palette', () => {
   it('holds no duplicate values', () => {
-    // Two names for one colour is how a design drifts: someone tweaks one and
+    // Two names for one color is how a design drifts: someone tweaks one and
     // not the other, and the difference is invisible until it ships.
     const seen = new Map<string, string>();
-    for (const [name, value] of Object.entries(colours)) {
+    for (const [name, value] of Object.entries(colors)) {
       const key = value.toLowerCase();
       expect(seen.has(key)).toBe(false);
       seen.set(key, name);
@@ -62,14 +62,14 @@ describe('palette', () => {
   });
 
   it('is all six-digit hex, so `alpha` can parse every entry', () => {
-    for (const value of Object.values(colours)) {
+    for (const value of Object.values(colors)) {
       expect(value).toMatch(/^#[0-9A-Fa-f]{6}$/);
     }
   });
 });
 
 describe('semantic tokens', () => {
-  it('resolves every entry to a colour string or a tuple of them', () => {
+  it('resolves every entry to a color string or a tuple of them', () => {
     for (const value of Object.values(ui)) {
       const parts = Array.isArray(value) ? value : [value];
       for (const part of parts) {
@@ -84,7 +84,7 @@ describe('semantic tokens', () => {
     }
   });
 
-  it('derives translucency from the base colour it belongs to', () => {
+  it('derives translucency from the base color it belongs to', () => {
     // If the accent moves, its wash has to move with it.
     expect(ui.accentWash).toBe(alpha('accent', 0.2));
     expect(ui.goldEdge).toBe(alpha('gold', 0.55));
@@ -96,30 +96,30 @@ describe('glyphOn', () => {
   it('goes dark on the light liquids', () => {
     // lime and tangerine are both above L* 84. A white mark on them is the
     // accessibility feature failing silently.
-    expect(glyphOn(colours.lime)).toContain('42,23,88');
-    expect(glyphOn(colours.tangerine)).toContain('42,23,88');
+    expect(glyphOn(colors.lime)).toContain('42,23,88');
+    expect(glyphOn(colors.tangerine)).toContain('42,23,88');
   });
 
   it('stays white on the dark liquids', () => {
-    expect(glyphOn(colours.grape)).toContain('255,255,255');
-    expect(glyphOn(colours.blueberry)).toContain('255,255,255');
-    expect(glyphOn(colours.coral)).toContain('255,255,255');
+    expect(glyphOn(colors.grape)).toContain('255,255,255');
+    expect(glyphOn(colors.blueberry)).toContain('255,255,255');
+    expect(glyphOn(colors.coral)).toContain('255,255,255');
   });
 
   it('picks a legible mark for every liquid in the palette', () => {
     const liquids = [
-      colours.coral,
-      colours.grape,
-      colours.teal,
-      colours.tangerine,
-      colours.olive,
-      colours.rose,
-      colours.lime,
-      colours.blueberry,
-      colours.mango,
-      colours.fern,
-      colours.aqua,
-      colours.plum,
+      colors.coral,
+      colors.grape,
+      colors.teal,
+      colors.tangerine,
+      colors.olive,
+      colors.rose,
+      colors.lime,
+      colors.blueberry,
+      colors.mango,
+      colors.fern,
+      colors.aqua,
+      colors.plum,
     ];
     for (const fill of liquids) {
       expect(glyphOn(fill)).toMatch(/^rgba\(/);
@@ -128,7 +128,7 @@ describe('glyphOn', () => {
 });
 
 describe('liquid separation', () => {
-  /** CIE76 ΔE. Rough, but enough to catch two colours nobody can tell apart. */
+  /** CIE76 ΔE. Rough, but enough to catch two colors nobody can tell apart. */
   const distance = (a: string, b: string) => {
     const lab = (hex: string) => {
       const v = parseInt(hex.slice(1), 16);
@@ -152,7 +152,7 @@ describe('liquid separation', () => {
 
   const pieces = apothecary.pieces;
 
-  it('keeps every colour a board can use well apart', () => {
+  it('keeps every color a board can use well apart', () => {
     // The curve tops out at 12, but 11 covers everything below level 501.
     for (let count = 3; count <= 11; count++) {
       const used = pieces.slice(0, count);
@@ -166,7 +166,7 @@ describe('liquid separation', () => {
 
   it('never lets a liquid vanish into the background', () => {
     for (const piece of pieces) {
-      expect(distance(piece, colours.night)).toBeGreaterThan(40);
+      expect(distance(piece, colors.night)).toBeGreaterThan(40);
     }
   });
 
@@ -176,14 +176,14 @@ describe('liquid separation', () => {
   });
 });
 
-describe('colour vision', () => {
+describe('color vision', () => {
   /**
    * Viénot–Brettel–Mollon dichromacy simulation.
    *
    * Converts to LMS, collapses the missing cone onto the plane the other two
    * span, and converts back. The inverse matrix is derived from the forward
    * one rather than pasted: a mismatched pair pushes results far outside
-   * gamut, and the clamp then reports colours as identical when they are not.
+   * gamut, and the clamp then reports colors as identical when they are not.
    */
   const M = [
     [0.31399022, 0.63951294, 0.04649755],
@@ -289,14 +289,14 @@ describe('colour vision', () => {
     expect(floorAt(8)).toBeGreaterThan(7); // level 201+
   });
 
-  it('cannot separate a full board by colour alone, which is why marks exist', () => {
+  it('cannot separate a full board by color alone, which is why marks exist', () => {
     // Twelve categories do not survive two working cone types. At the top of
     // the curve the closest pair is under dE 1 — the same pixel, in effect.
     //
     // This is asserted rather than lamented so the failure mode is loud: if
     // someone finds a palette that beats it, this test fails and the marks
     // become a choice instead of a requirement. Until then they are neither
-    // decoration nor an accessibility checkbox; they are how a colourblind
+    // decoration nor an accessibility checkbox; they are how a colorblind
     // player tells two segments apart at all past level 501.
     expect(floorAt(12)).toBeLessThan(2);
   });
@@ -304,7 +304,7 @@ describe('colour vision', () => {
   it('keeps the look-alike glyphs off the board until late', () => {
     // The pairs a player could confuse at a glance: filled against outlined,
     // one against two, and rotations of each other. One of each in the first
-    // six, so a partner never lands before seven colours.
+    // six, so a partner never lands before seven colors.
     const lookAlikes = [
       ['dot', 'ring'],
       ['wave', 'waves'],

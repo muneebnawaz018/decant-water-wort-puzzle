@@ -86,7 +86,7 @@ describe('optimalMoves', () => {
   it('costs nothing on a board that is already solved', () => {
     const solved: WaterState = {
       capacity: 2,
-      colourCount: 2,
+      colorCount: 2,
       extraTubes: 1,
       tubes: [[0, 0], [1, 1], []],
     };
@@ -123,7 +123,7 @@ describe('optimalMoves', () => {
     it('answers a solved board with an empty line, not a null', () => {
       const solved: WaterState = {
         capacity: 2,
-        colourCount: 2,
+        colorCount: 2,
         extraTubes: 1,
         tubes: [[0, 0], [1, 1], []],
       };
@@ -137,11 +137,11 @@ describe('optimalMoves', () => {
         exhaustedBudget: true,
       });
 
-      // Two colours interleaved with no working space: no pour is legal, so
+      // Two colors interleaved with no working space: no pour is legal, so
       // the search proves the position dead without spending its budget.
       const dead: WaterState = {
         capacity: 2,
-        colourCount: 2,
+        colorCount: 2,
         extraTubes: 0,
         tubes: [
           [0, 1],
@@ -153,7 +153,7 @@ describe('optimalMoves', () => {
   });
 
   it('prunes hard on the worst boards the game generates', () => {
-    // Twelve colours, capacity 5, one spare. If a change to the heuristic or
+    // Twelve colors, capacity 5, one spare. If a change to the heuristic or
     // to move ordering ever weakens the pruning, this is where it shows.
     //
     // Counted in nodes, not milliseconds. This began as a wall-clock assertion

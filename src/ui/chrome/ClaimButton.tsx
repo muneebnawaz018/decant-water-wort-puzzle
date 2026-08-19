@@ -36,8 +36,8 @@ const BREW = require('../../../assets/lottie/brew.json');
  * Written as its own component rather than as another `GlossButton` variant,
  * because the two states are not "enabled" and "disabled". Waiting is a *live*
  * state: it counts down, it is the thing the screen is about, and treating it
- * as an inert button is what produced three rounds of the wrong colour. A
- * greyed-out control says "you cannot do this". This one has to say "not yet",
+ * as an inert button is what produced three rounds of the wrong color. A
+ * grayed-out control says "you cannot do this". This one has to say "not yet",
  * which is a different sentence.
  *
  * So the surfaces differ by intent, not by dimming:
@@ -110,7 +110,7 @@ export const ClaimButton = memo(function ClaimButton({
    *
    * `withRepeat(..., true)` reverses rather than restarting, so it never
    * snaps back to the start of the cycle. Runs on the UI thread and is
-   * cancelled on unmount, per this project's rule that nothing loops
+   * canceled on unmount, per this project's rule that nothing loops
    * unattended.
    */
   const breath = useSharedValue(0);

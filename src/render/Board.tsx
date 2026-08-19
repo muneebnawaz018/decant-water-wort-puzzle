@@ -14,11 +14,11 @@ import {
 import { memo, useCallback, useMemo } from 'react';
 import { type SharedValue } from 'react-native-reanimated';
 
-import type { Colour, WaterState } from '@/core/types';
+import type { Color, WaterState } from '@/core/types';
 import { apothecary, type Theme } from '@/theme/apothecary';
-import { colours, ui } from '@/theme/colors';
+import { colors, ui } from '@/theme/colors';
 import { s } from '@/theme/scale';
-import { ColourMark } from './ColourMark';
+import { ColorMark } from './ColorMark';
 import type { BoardLayout, TubeRect } from './layout';
 import {
   extension,
@@ -78,7 +78,7 @@ export interface PourAnimation {
   from: number;
   to: number;
   count: number;
-  colour: Colour;
+  color: Color;
   /** Segments in the destination before this pour landed. */
   destFilled: number;
 }
@@ -110,7 +110,7 @@ interface BoardProps {
    *
    * Defaulted rather than required so every other caller of `Board` (and the
    * tests) keeps the glass the game shipped with. Purely a silhouette: capacity,
-   * colours, generation and par are all untouched by it, which is what lets it
+   * colors, generation and par are all untouched by it, which is what lets it
    * be sold at all under spec §4.7.
    */
   skin?: string;
@@ -188,7 +188,7 @@ export const Board = memo(function Board({
         // the cap lands the moment the liquid does, not while it is arriving.
         const sealed =
           full.length === state.capacity &&
-          full.every((colour) => colour === full[0]) &&
+          full.every((color) => color === full[0]) &&
           !(live && tubeIndex === live.animation.to);
 
         // The air gap above a full tube lives in `layout.segmentHeight` (see
@@ -200,14 +200,14 @@ export const Board = memo(function Board({
         const body = (
           <>
             {/* Empty glass. Liquid is clipped to this same shape. */}
-            <Path path={path} color={colours.white} opacity={0.08} />
+            <Path path={path} color={colors.white} opacity={0.08} />
 
             <Group clip={path}>
-              {segments.map((colour, segmentIndex) => {
-                const fill = theme.pieces[colour % theme.pieces.length]!;
+              {segments.map((color, segmentIndex) => {
+                const fill = theme.pieces[color % theme.pieces.length]!;
                 const y = tube.y + tube.height - (segmentIndex + 1) * segmentHeight;
 
-                // Flat fill, no gradient: a gradient makes one colour read as
+                // Flat fill, no gradient: a gradient makes one color read as
                 // several shades, which is exactly what breaks a cartoon look
                 // and makes matching segments hard to compare at a glance.
                 const isTop = segmentIndex === segments.length - 1;
@@ -222,7 +222,7 @@ export const Board = memo(function Board({
                       color={fill}
                     />
 
-                    {/* Seam between stacked segments, so a run of one colour
+                    {/* Seam between stacked segments, so a run of one color
                         still reads as N units rather than one tall block. */}
                     {segmentIndex < segments.length - 1 ? (
                       <Rect
@@ -237,7 +237,7 @@ export const Board = memo(function Board({
 
                     {/* Meniscus: liquid climbs the glass, so the top segment
                         gets a bright lip. Only the top one — a highlight on
-                        every segment is the banding that made one colour read
+                        every segment is the banding that made one color read
                         as three. */}
                     {isTop ? (
                       <Rect
@@ -245,14 +245,14 @@ export const Board = memo(function Board({
                         y={y - GLASS.seam}
                         width={tube.width * 0.88}
                         height={GLASS.meniscus}
-                        color={colours.white}
+                        color={colors.white}
                         opacity={0.42}
                       />
                     ) : null}
 
                     {marks ? (
-                      <ColourMark
-                        symbol={theme.symbols[colour % theme.symbols.length]!}
+                      <ColorMark
+                        symbol={theme.symbols[color % theme.symbols.length]!}
                         fill={fill}
                         cx={tube.x + tube.width / 2}
                         cy={y + segmentHeight / 2}
@@ -285,7 +285,7 @@ export const Board = memo(function Board({
               ) : null}
             </Group>
 
-            {/* Specular highlight down the left edge — a centreline stroked
+            {/* Specular highlight down the left edge — a centerline stroked
                 to width, so it follows the wall on a curved vessel. */}
             <Path
               path={highlights[tubeIndex]!}
@@ -293,20 +293,20 @@ export const Board = memo(function Board({
               strokeWidth={tube.width * HIGHLIGHT_WIDTH}
               strokeCap="round"
               strokeJoin="round"
-              color={colours.white}
+              color={colors.white}
               opacity={0.5}
             />
 
             {/*
               A bold, dark outline is what reads as drawn rather than
-              rendered. Thin grey hairlines look like a chart.
+              rendered. Thin gray hairlines look like a chart.
 
               Three states, and the hint's is gold rather than a second accent.
               A selection and a hint destination can be on screen together — a
               hint arms the source and marks the target — so they have to be
-              told apart at a glance, and reusing the selection colour for both
+              told apart at a glance, and reusing the selection color for both
               would say "these two tubes are the same kind of thing" when one is
-              held and the other is a suggestion. Gold is the chrome colour
+              held and the other is a suggestion. Gold is the chrome color
               everywhere else in the app, which is the right register for a
               prompt.
             */}
@@ -316,7 +316,7 @@ export const Board = memo(function Board({
               strokeWidth={isSelected || isHintTarget ? GLASS.outlineActive : GLASS.outline}
               strokeJoin="round"
               strokeCap="round"
-              color={isSelected ? theme.accent : isHintTarget ? theme.gold : colours.white}
+              color={isSelected ? theme.accent : isHintTarget ? theme.gold : colors.white}
               opacity={isSelected || isHintTarget ? 1 : 0.32}
             />
 
@@ -324,10 +324,10 @@ export const Board = memo(function Board({
                 reward — and drawn after the stroke so it sits on the rim. */}
             {sealed ? (
               <>
-                {/* Painted in the liquid it seals, so the finished colour
+                {/* Painted in the liquid it seals, so the finished color
                     stays readable with the meniscus hidden under it. The dark
                     stroke is what separates cap from liquid where the two
-                    meet at the rim in the same colour. */}
+                    meet at the rim in the same color. */}
                 <Path
                   path={caps[tubeIndex]!}
                   color={theme.pieces[full[0]! % theme.pieces.length]!}
@@ -381,7 +381,7 @@ export const Board = memo(function Board({
           they are above its mouth, and a clip would swallow them. */}
       {marks && live
         ? Array.from({ length: live.animation.count }, (_, arrival) => (
-            <TravellingMark
+            <TravelingMark
               key={`mark-${arrival}`}
               tube={layout.tubes[live.animation.to]!}
               layout={layout}
@@ -452,7 +452,7 @@ const Reservoir = memo(function Reservoir({
   remaining: number;
   theme: Theme;
 }) {
-  const fill = theme.pieces[animation.colour % theme.pieces.length]!;
+  const fill = theme.pieces[animation.color % theme.pieces.length]!;
   const total = animation.count * layout.segmentHeight;
   const base = tube.y + tube.height - remaining * layout.segmentHeight;
 
@@ -498,7 +498,7 @@ const RisingLevel = memo(function RisingLevel({
   progress: SharedValue<number>;
   theme: Theme;
 }) {
-  const fill = theme.pieces[animation.colour % theme.pieces.length]!;
+  const fill = theme.pieces[animation.color % theme.pieces.length]!;
   const target = animation.count * layout.segmentHeight;
   const surface = tube.y + tube.height - animation.destFilled * layout.segmentHeight;
 
@@ -508,7 +508,7 @@ const RisingLevel = memo(function RisingLevel({
   const regionY = surface - target - headroom;
   const regionHeight = target + headroom;
 
-  const colour = useMemo(() => rgba(fill), [fill]);
+  const color = useMemo(() => rgba(fill), [fill]);
 
   const uniforms = useUiValue(
     progress,
@@ -528,10 +528,10 @@ const RisingLevel = memo(function RisingLevel({
           surface: surface - target * t,
           amp: layout.segmentHeight * 0.22 * decay,
           phase: input * 26,
-          fill: colour,
+          fill: color,
         };
       },
-      [tube, layout, surface, target, regionY, regionHeight, colour]
+      [tube, layout, surface, target, regionY, regionHeight, color]
     ),
     {
       origin: [tube.x, regionY],
@@ -539,7 +539,7 @@ const RisingLevel = memo(function RisingLevel({
       surface,
       amp: 0,
       phase: 0,
-      fill: colour,
+      fill: color,
     }
   );
 
@@ -564,7 +564,7 @@ const RisingLevel = memo(function RisingLevel({
 const MARK_FLIGHT = 0.3;
 
 /**
- * One colourblind glyph carried from the pouring tube into the receiving one.
+ * One colorblind glyph carried from the pouring tube into the receiving one.
  *
  * It leaves the source's lip with the stream, rides down beside it and sinks
  * into its slot as that segment fills. Two earlier versions were wrong in the
@@ -580,7 +580,7 @@ const MARK_FLIGHT = 0.3;
  * marks, alive only for the pour — the same transient budget the splash
  * droplets already spend three per particle on.
  */
-const TravellingMark = memo(function TravellingMark({
+const TravelingMark = memo(function TravelingMark({
   tube,
   layout,
   animation,
@@ -651,9 +651,9 @@ const TravellingMark = memo(function TravellingMark({
 
   return (
     <Group transform={transform} opacity={opacity}>
-      <ColourMark
-        symbol={theme.symbols[animation.colour % theme.symbols.length]!}
-        fill={theme.pieces[animation.colour % theme.pieces.length]!}
+      <ColorMark
+        symbol={theme.symbols[animation.color % theme.symbols.length]!}
+        fill={theme.pieces[animation.color % theme.pieces.length]!}
         cx={finalCx}
         cy={finalCy}
         size={Math.min(width, seg) * 0.42}
@@ -683,7 +683,7 @@ const PourFx = memo(function PourFx({
   destPath: SkPath;
   theme: Theme;
 }) {
-  const fill = theme.pieces[animation.colour % theme.pieces.length]!;
+  const fill = theme.pieces[animation.color % theme.pieces.length]!;
   const particles = useMemo(() => splashParticles(), []);
   const drips = useMemo(() => lipDrips(), []);
   const reach = layout.segmentHeight * 1.4;
@@ -780,7 +780,7 @@ const PourFx = memo(function PourFx({
             impactY={impactY}
             segmentHeight={layout.segmentHeight}
             reach={reach}
-            colour={fill}
+            color={fill}
             progress={progress}
           />
         ))}
@@ -793,7 +793,7 @@ const PourFx = memo(function PourFx({
           geometry={geometry}
           impactY={impactY}
           segmentHeight={layout.segmentHeight}
-          colour={fill}
+          color={fill}
           progress={progress}
         />
       ))}
@@ -812,7 +812,7 @@ const SplashDrop = memo(function SplashDrop({
   impactY,
   segmentHeight,
   reach,
-  colour,
+  color,
   progress,
 }: {
   particle: Particle;
@@ -820,7 +820,7 @@ const SplashDrop = memo(function SplashDrop({
   impactY: (input: number) => number;
   segmentHeight: number;
   reach: number;
-  colour: string;
+  color: string;
   progress: SharedValue<number>;
 }) {
   const local = useCallback(
@@ -873,7 +873,7 @@ const SplashDrop = memo(function SplashDrop({
     0
   );
 
-  return <Circle cx={cx} cy={cy} r={r} color={colour} />;
+  return <Circle cx={cx} cy={cy} r={r} color={color} />;
 });
 
 /**
@@ -886,14 +886,14 @@ const LipDrip = memo(function LipDrip({
   geometry,
   impactY,
   segmentHeight,
-  colour,
+  color,
   progress,
 }: {
   drip: Drip;
   geometry: PourGeometry;
   impactY: (input: number) => number;
   segmentHeight: number;
-  colour: string;
+  color: string;
   progress: SharedValue<number>;
 }) {
   const local = useCallback(
@@ -949,5 +949,5 @@ const LipDrip = memo(function LipDrip({
     0
   );
 
-  return <Circle cx={cx} cy={cy} r={r} color={colour} />;
+  return <Circle cx={cx} cy={cy} r={r} color={color} />;
 });

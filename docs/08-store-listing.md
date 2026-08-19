@@ -57,7 +57,7 @@ does more work than anything else here.
 and closes on the differentiator — the genre sells relaxation, so "no timers,
 no fails" is the promise rather than a caveat.
 
-An earlier version read "Sort coloured liquid into matching vials. No timers, no
+An earlier version read "Sort colored liquid into matching vials. No timers, no
 fails. Just calm." It was better prose and worse ASO: it never said "water sort
 puzzle" at all, in the highest-weighted field after the title.
 
@@ -126,23 +126,35 @@ for a spare vial when you are stuck, or skip it and keep playing.
 Download Decant and start sorting.
 ```
 
-### It is written in American English, deliberately
+### American English, everywhere, and it started here
 
-`color`, not `colour`. `colorblind`, not `colourblind`. This is the one
-editorial decision in the listing that is made against house style rather than
-with it, and it is worth the note so nobody "fixes" it back.
+The listing is written in American English, and the decision spread from it to
+the app, the marketing site and these docs. `color`, never the British form;
+`colorblind`, likewise.
 
-Play does stemming, not cross-spelling normalization: `color` and `colour` are
-separate index terms. The US spelling carries several times the search volume,
-and `color sort puzzle` is one of the highest-volume queries in this genre. The
-original draft spelled it the British way three times and the American way
-never, so it competed for neither term well and for that query not at all.
+**It is an ASO decision, not a style one.** Play does stemming, not
+cross-spelling normalization, so the two spellings are separate index terms.
+The US form carries several times the search volume, and `color sort puzzle` is
+one of the highest-volume queries in this genre. The original draft used the
+British spelling three times and the American never — competing for neither
+term well, and for that query not at all.
 
-**The app's own UI still says "Colourblind marks",** which is a visible
-inconsistency between listing and product. Changing the label is a one-line
-edit in `src/ui/chrome/SettingsDrawer.tsx`; the `colourblind` settings **key**
-must not be renamed with it, since it is persisted in `settings.v3` and a
-rename would silently reset the toggle for anyone who had it on.
+Once the listing said one thing and the app said another, the split was worth
+closing rather than living with: the settings drawer read "Colourblind marks"
+while the store page promised colorblind support. So the rename went through
+everything — `src/`, `script/`, `modules/`, the config, the marketing site, and
+this documentation. `ColourMark.tsx` became `ColorMark.tsx`; the local eslint
+rule `local/no-raw-colour` became `local/no-raw-color`.
+
+**One spelling survived on purpose, and it is load-bearing.** The settings
+field was `colourblind`, and a field name _is_ the serialised key. Renaming it
+alone would read as a missing field on every existing install and silently
+switch the marks off for anyone who had them on — an accessibility feature
+disappearing on update, with nothing erroring and only the affected player
+noticing. So `load()` in `src/state/settingsStore.ts` reads
+`stored.colorblind ?? stored.colourblind`, additive against the same
+`settings.v3` key. It can be dropped once no device still holds a record
+written by a pre-rename build.
 
 ### Two things this copy is careful about
 
@@ -178,7 +190,7 @@ three:
   so `water`, `sort` and `puzzle` are covered by `Decant: Water Sort Puzzle`
   and `color` by the subtitle. Repeating them is dead weight — the old set
   spent 15 characters on `water,sort` alone.
-- **One spelling.** `colour` was in the old set beside `color`; its US volume
+- **One spelling.** `color` was in the old set beside `color`; its US volume
   is negligible and the field is too small to hedge.
 - **Single words only.** Apple permutes keywords into phrases itself, so a
   hand-concatenated `sortpuzzle` — also in the old set — buys nothing that
@@ -247,7 +259,7 @@ Suggested order — the first two are what most people see:
 | 4   | Complete screen, three stars | The reward loop                         |
 | 5   | Daily brew                   | A reason to come back                   |
 | 6   | Shop / skins                 | Progression worth playing toward        |
-| 7   | Board with colourblind marks | The accessibility story, shown          |
+| 7   | Board with colorblind marks  | The accessibility story, shown          |
 
 Captions should say what the screen does, not name it. "No timer. No way to
 lose." beats "Game Screen".
@@ -325,12 +337,12 @@ which were converted in the same piece of work — the app's toggle now reads
 `Colorblind marks` and its how-to-play text says `color`. Two rules came out of
 that and both matter:
 
-- **The `colourblind` settings key was not renamed.** It is persisted in
+- **The `colorblind` settings key was not renamed.** It is persisted in
   `settings.v3`; renaming it reads as a missing field on every existing install
   and silently switches the accessibility feature off for anyone who had it on.
   Labels are user-visible, keys are save format.
-- **Code, tests and comments stay British.** `colours.ts`, `ColourMark.tsx`,
-  the `colour vision` test. None of it ships to a player. The split is: **what
+- **Code, tests and comments stay British.** `colors.ts`, `ColorMark.tsx`,
+  the `color vision` test. None of it ships to a player. The split is: **what
   a player reads is American, what a developer reads is British.**
 
 ### What text cannot do

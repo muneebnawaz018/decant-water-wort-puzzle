@@ -6,9 +6,9 @@ exists, what is built, and what is left. Deeper detail lives in
 
 ## What it is
 
-Decant is a water sort puzzle game for iOS and Android. Coloured liquid sits in
+Decant is a water sort puzzle game for iOS and Android. Colored liquid sits in
 glass vials; you tap a source vial, tap a destination, and the liquid pours. A
-level is done when every vial holds one colour or is empty.
+level is done when every vial holds one color or is empty.
 
 Theme is an apothecary bench: aged parchment, a brass rack, glass vials, warm
 lamplight from the upper left. Everything on screen is drawn with Skia — there
@@ -106,14 +106,14 @@ moves; a level takes about 3.4ms to generate.
 Two deviations from the spec, both commented at the source:
 
 1. The spec's "reachable in under 60% of the scramble steps" needs an optimal
-   solution length, which is unaffordable on a 12-colour board. Replaced with a
+   solution length, which is unaffordable on a 12-color board. Replaced with a
    scale-free fragmentation ratio carrying the same intent.
 2. That floor is unreachable at capacity 5 (measured 0.50–0.68), so it drops to
    0.50 there. Solvability and the already-solved-vial check carry the gate on
    those levels.
 
 The spec's `inverseMoves` pseudocode (§5) has a bug: it allows lifting a vial's
-whole top run while other colours sit underneath, and that un-pour has no legal
+whole top run while other colors sit underneath, and that un-pour has no legal
 forward inverse, so the scramble can reach a board with no path back to solved.
 `src/game/waterGenerator.ts` only permits a whole-run lift when the vial empties.
 A test replays every generated un-pour backwards to hold that line.
@@ -121,7 +121,7 @@ A test replays every generated un-pour backwards to hold that line.
 ## Difficulty
 
 Three modes — gentle, classic, fiendish — in `src/game/difficulty.ts`.
-Difficulty is driven by **spare empty vials**, not colour count. Two spare down
+Difficulty is driven by **spare empty vials**, not color count. Two spare down
 to one spare is the big jump; spend it late. A board never drops below one spare.
 
 Each mode keeps its own unlocks, current level, and best scores under
@@ -180,6 +180,6 @@ navigation, and screen transitions. 54 passing tests. Every screen has been run
 on the iOS simulator.
 
 Not started: `src/audio` (settings persist but no assets exist), `src/analytics`,
-`src/ads`. Colourblind marks have a toggle but the board does not draw the
+`src/ads`. Colorblind marks have a toggle but the board does not draw the
 symbols yet. The app icon and splash are still Expo defaults. Play Store and
 trademark availability are unverified.

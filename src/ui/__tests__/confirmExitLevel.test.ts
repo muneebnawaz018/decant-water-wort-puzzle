@@ -23,7 +23,7 @@ beforeEach(() => {
 
 describe('confirmExitLevel', () => {
   // Back answers the same way every time. A prompt that appears only once the
-  // board has been played on makes the button's behaviour depend on state the
+  // board has been played on makes the button's behavior depend on state the
   // player is not tracking.
   it('asks even on an untouched board, and says nothing was played', () => {
     const leave = jest.fn();

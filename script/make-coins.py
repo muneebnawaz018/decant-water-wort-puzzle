@@ -12,7 +12,7 @@ Why generated, not downloaded
 -----------------------------
 Same reason as `win.json` and `brew.json`, and the argument is in
 `script/make-lottie.py` at length: a committed binary nobody can regenerate
-drifts from the palette the moment a colour moves. The gold here is the gold in
+drifts from the palette the moment a color moves. The gold here is the gold in
 `colors.ts`, and it stays that way for free.
 
 A coin shower is also, like confetti, a shape that survives being generated —
@@ -22,10 +22,10 @@ horizontal axis by |cos| and the circle reads as a disc turning edge-on.
 
 **A licensed download can replace this file.** If you find a coin animation worth
 buying, drop it over `assets/lottie/coins.json` and delete this script — check
-its licence individually first, per the README. What this guarantees is that the
+its license individually first, per the README. What this guarantees is that the
 slot is never empty and never off-palette, not that it beats real artwork.
 
-Run after changing any colour it reads:
+Run after changing any color it reads:
 
     python3 script/make-coins.py
 
@@ -51,14 +51,14 @@ FPS = 60
 # is gated behind it finishing.
 DURATION = 90
 SIZE = 600
-CENTRE = SIZE / 2
+CENTER = SIZE / 2
 
 COINS = 26
 
 # --- The palette ------------------------------------------------------------
 #
 # From `src/theme/colors.ts`. Three golds rather than one: a shower of a single
-# flat colour reads as a pattern, and the face, rim and shadow of a coin are
+# flat color reads as a pattern, and the face, rim and shadow of a coin are
 # never the same value anyway.
 GOLD_FACE = "#FFC94B"  # gold — the bright face inside the rim
 GOLD_BRONZE = "#E7A32E"  # goldBronze — the rim, the ring and the mark
@@ -70,9 +70,9 @@ GOLD_SHINE = "#FFEFB4"  # goldPale — the lit edge
 INK = "#3a2306"  # onGold, for the mark stamped on the face
 
 
-def rgba(hex_colour: str) -> list[float]:
+def rgba(hex_color: str) -> list[float]:
     """Lottie wants normalised floats, not bytes."""
-    h = hex_colour.lstrip("#")
+    h = hex_color.lstrip("#")
     return [int(h[i : i + 2], 16) / 255 for i in (0, 2, 4)] + [1.0]
 
 
@@ -119,7 +119,7 @@ def face_layers(size: float) -> list[dict]:
     def pt(x: float, y: float) -> list[float]:
         return [round(x * k, 2), round(y * k, 2)]
 
-    def stroked(name: str, shapes: list[dict], colour: str, width: float) -> dict:
+    def stroked(name: str, shapes: list[dict], color: str, width: float) -> dict:
         return {
             "ty": "gr",
             "nm": name,
@@ -127,7 +127,7 @@ def face_layers(size: float) -> list[dict]:
             + [
                 {
                     "ty": "st",
-                    "c": value(rgba(colour)),
+                    "c": value(rgba(color)),
                     "o": value(100),
                     "w": value(round(width * k, 2)),
                     "lc": 2,
@@ -144,7 +144,7 @@ def face_layers(size: float) -> list[dict]:
             ],
         }
 
-    def disc(name: str, radius: float, colour: str) -> dict:
+    def disc(name: str, radius: float, color: str) -> dict:
         return {
             "ty": "gr",
             "nm": name,
@@ -155,7 +155,7 @@ def face_layers(size: float) -> list[dict]:
                     "s": value([round(radius * 2 * k, 2), round(radius * 2 * k, 2)]),
                     "p": value([0, 0]),
                 },
-                {"ty": "fl", "c": value(rgba(colour)), "o": value(100), "r": 1},
+                {"ty": "fl", "c": value(rgba(color)), "o": value(100), "r": 1},
                 {
                     "ty": "tr",
                     "p": value([0, 0]),
@@ -274,7 +274,7 @@ def coin(index: int, rng: random.Random) -> dict:
     # is where the eye already is when a payout is announced.
     speed = rng.uniform(10.5, 15.5)
 
-    x0 = CENTRE + rng.uniform(-190, 190)
+    x0 = CENTER + rng.uniform(-190, 190)
     y0 = SIZE + rng.uniform(10, 90)
 
     vx = math.cos(angle) * speed
@@ -376,11 +376,11 @@ def sparkle(index: int, rng: random.Random) -> dict:
 
     Cheap, and it does the work a still frame cannot: gold reads as gold because
     it catches light, and a matte disc reads as plastic however well it is
-    coloured.
+    colored.
     """
     delay = rng.randint(4, 46)
     life = 14
-    x = CENTRE + rng.uniform(-210, 210)
+    x = CENTER + rng.uniform(-210, 210)
     y = rng.uniform(120, 460)
     size = rng.uniform(16, 30)
 

@@ -243,7 +243,7 @@ const ModeStat = memo(function ModeStat({
 }: {
   value: number;
   label: string;
-  /** Edge stats hug the card's sides; the middle one is left to centre. */
+  /** Edge stats hug the card's sides; the middle one is left to center. */
   align?: 'first' | 'last';
 }) {
   return (

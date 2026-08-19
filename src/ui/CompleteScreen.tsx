@@ -17,7 +17,7 @@ import { useEconomyStore } from '@/state/economyStore';
 import { useGameStore } from '@/state/gameStore';
 import { overlay, useOverlayStore } from '@/state/overlayStore';
 import { apothecary } from '@/theme/apothecary';
-import { colours, ui } from '@/theme/colors';
+import { colors, ui } from '@/theme/colors';
 import { s } from '@/theme/scale';
 import { fract, plural } from '@/utils';
 import LottieView from 'lottie-react-native';
@@ -94,15 +94,15 @@ const TOAST_DELAY_MS = STAR_START + 3 * STAR_DELAY;
 
 /** Spec §6: ~28 particles radiate outward on a win. */
 const CONFETTI_COUNT = 28;
-const CONFETTI_COLOURS = [
-  colours.coral,
-  colours.mango,
-  colours.tangerine,
-  colours.lime,
-  colours.aqua,
-  colours.blueberry,
-  colours.plum,
-  colours.rose,
+const CONFETTI_COLORS = [
+  colors.coral,
+  colors.mango,
+  colors.tangerine,
+  colors.lime,
+  colors.aqua,
+  colors.blueberry,
+  colors.plum,
+  colors.rose,
 ];
 
 export const CompleteScreen = memo(function CompleteScreen({
@@ -300,8 +300,8 @@ export const CompleteScreen = memo(function CompleteScreen({
             back button, which is Android only. So on iOS a player who wanted
             neither the next level nor a replay had to take one of them.
 
-            Absolutely positioned rather than in the flow: the card is a centred
-            column and anything in that flow shifts the stars off centre.
+            Absolutely positioned rather than in the flow: the card is a centered
+            column and anything in that flow shifts the stars off center.
           */}
           <Pressable
             style={styles.close}
@@ -311,7 +311,7 @@ export const CompleteScreen = memo(function CompleteScreen({
             accessibilityLabel="Close"
           >
             {/* Drawn rather than a glyph — `script/make-close.py`. A static
-                grey cross in the corner of a card full of gold buttons read as
+                gray cross in the corner of a card full of gold buttons read as
                 part of the frame rather than as a control. The motion is small
                 on purpose: findable, not tempting. */}
             <LottieView
@@ -586,7 +586,7 @@ const Confetti = memo(function Confetti() {
         return {
           angle: a * Math.PI * 2,
           distance: 90 + b * 170,
-          colour: CONFETTI_COLOURS[i % CONFETTI_COLOURS.length]!,
+          color: CONFETTI_COLORS[i % CONFETTI_COLORS.length]!,
           delay: i * 12,
         };
       }),
@@ -605,12 +605,12 @@ const Confetti = memo(function Confetti() {
 const Spark = memo(function Spark({
   angle,
   distance,
-  colour,
+  color,
   delay,
 }: {
   angle: number;
   distance: number;
-  colour: string;
+  color: string;
   delay: number;
 }) {
   const flight = useSharedValue(0);
@@ -632,5 +632,5 @@ const Spark = memo(function Spark({
     ],
   }));
 
-  return <Animated.View style={[styles.spark, { backgroundColor: colour }, style]} />;
+  return <Animated.View style={[styles.spark, { backgroundColor: color }, style]} />;
 });

@@ -41,7 +41,7 @@ function stateKey(state: WaterState): string {
 }
 
 /**
- * Total pours needed at minimum: every run above the first in each colour has
+ * Total pours needed at minimum: every run above the first in each color has
  * to be poured at least once to merge it. Cheap, and a true lower bound.
  */
 export function moveLowerBound(state: WaterState): number {
@@ -54,16 +54,16 @@ export function moveLowerBound(state: WaterState): number {
     }
     runs += count;
   }
-  return Math.max(0, runs - state.colourCount);
+  return Math.max(0, runs - state.colorCount);
 }
 
 /**
  * How broken up the board is, on 0..1. 0 is solved, 1 is every segment sitting
- * on a different colour. Scale-free, so it compares across level sizes.
+ * on a different color. Scale-free, so it compares across level sizes.
  */
 export function fragmentation(state: WaterState): number {
-  const segments = state.colourCount * state.capacity;
-  const ceiling = segments - state.colourCount;
+  const segments = state.colorCount * state.capacity;
+  const ceiling = segments - state.colorCount;
   if (ceiling <= 0) return 0;
   return moveLowerBound(state) / ceiling;
 }
@@ -76,7 +76,7 @@ function orderedMoves(state: WaterState): PourMove[] {
     const src = state.tubes[from]!;
     if (src.length === 0) continue;
     // Pouring a whole uniform tube into an empty one achieves nothing.
-    const wholeTubeIsOneColour = topRun(src) === src.length;
+    const wholeTubeIsOneColor = topRun(src) === src.length;
     let emptyUsed = false;
 
     for (let to = 0; to < state.tubes.length; to++) {
@@ -84,7 +84,7 @@ function orderedMoves(state: WaterState): PourMove[] {
       const dst = state.tubes[to]!;
 
       if (dst.length === 0) {
-        if (wholeTubeIsOneColour) continue;
+        if (wholeTubeIsOneColor) continue;
         // Empty tubes are interchangeable; trying more than one just fans out.
         if (emptyUsed) continue;
         emptyUsed = true;
@@ -150,7 +150,7 @@ export function solve(state: WaterState, options: SolveOptions = {}): SolveResul
  * on budget.
  *
  * IDA* with `moveLowerBound` as the heuristic. That bound never overestimates —
- * every colour run above the first has to be poured at least once — which is
+ * every color run above the first has to be poured at least once — which is
  * what makes the result provably optimal rather than merely good.
  *
  * This exists because star ratings were graded against the bound itself, and a
@@ -160,7 +160,7 @@ export function solve(state: WaterState, options: SolveOptions = {}): SolveResul
  *
  * Affordable despite the state space, which is the surprise: pruning on the
  * heuristic closes most boards in a few dozen nodes. Over all 800 boards in
- * levels 501–900 across classic and fiendish — 12 colours, capacity 5, one
+ * levels 501–900 across classic and fiendish — 12 colors, capacity 5, one
  * spare, the worst the game can produce — the median was 1ms, the 95th
  * percentile 11ms, the worst single board 133ms, and none hit the cap.
  *

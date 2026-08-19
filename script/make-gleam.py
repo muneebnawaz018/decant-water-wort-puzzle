@@ -27,7 +27,7 @@ the ends, which costs a sparkle rather than the whole composition.
 as `make-shine.py` and `make-badge.py`, and the same reason: masks and track
 mattes are where the three Lottie renderers stop agreeing.
 
-Run it after changing any colour it reads. The JSON is written minified and the
+Run it after changing any color it reads. The JSON is written minified and the
 commit gate checks formatting, so `npm run format` is the second half of the
 command, not an optional tidy-up:
 
@@ -90,7 +90,7 @@ END_X = WIDTH + 60
 
 # --- The sparkles ------------------------------------------------------------
 #
-# Spread along the frame and kept off its vertical centre line, which is where
+# Spread along the frame and kept off its vertical center line, which is where
 # the label sits. A sparkle behind a word is a smudge on the word.
 
 SPARK_SPOTS = [(48, 17), (112, 47), (196, 16), (256, 46)]
@@ -100,7 +100,7 @@ SPARK_INNER = 4
 # --- The palette -------------------------------------------------------------
 #
 # From `src/theme/colors.ts`. The face is a gold gradient, so the mark is white:
-# a highlight is the light source's colour, not the surface's, and a gold sheen on
+# a highlight is the light source's color, not the surface's, and a gold sheen on
 # gold goes muddy — the finding `make-shine.py` records for the green disc and
 # `make-badge.py` repeats for the gold tile.
 

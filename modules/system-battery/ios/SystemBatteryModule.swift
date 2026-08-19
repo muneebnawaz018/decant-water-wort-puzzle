@@ -40,7 +40,7 @@ public class SystemBatteryModule: Module {
 
      Both notifications matter and they are separate: the level one for a
      discharge, the state one for a cable going in or out — which changes the
-     mark's colour without changing its height, so it would otherwise not
+     mark's color without changing its height, so it would otherwise not
      appear until the next percent.
      */
     OnStartObserving {

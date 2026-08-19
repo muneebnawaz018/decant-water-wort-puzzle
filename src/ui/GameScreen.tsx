@@ -111,7 +111,7 @@ export const GameScreen = memo(function GameScreen({
   );
   // The destination only; the source arrives through `selected`.
   const hintTo = useGameStore((state) => state.hintMove?.to ?? null);
-  const marks = useSettingsStore((state) => state.colourblind);
+  const marks = useSettingsStore((state) => state.colorblind);
   const skin = useSettingsStore((state) => state.skin);
 
   const boardWidth = width - SIDE_PADDING * 2;
@@ -188,7 +188,7 @@ export const GameScreen = memo(function GameScreen({
         from: outcome.move.from,
         to: outcome.move.to,
         count: outcome.move.count,
-        colour: outcome.colour,
+        color: outcome.color,
         destFilled: outcome.destFilled,
       });
 
@@ -527,7 +527,7 @@ export const GameScreen = memo(function GameScreen({
         <ControlButton icon="redo" label="Redo" onPress={redo} disabled={undone === 0} />
         <ControlButton icon="hint" label="Hint" onPress={hint} price={hintPrice} />
         {/* Spent, not merely unhelpful: one vial per level, so the control has
-            nothing left to give. Genuinely disabled rather than greyed, which
+            nothing left to give. Genuinely disabled rather than grayed, which
             is what keeps a dead press silent — a disabled `Pressable` never
             fires `onPress`, so no tick and no toast. */}
         <ControlButton

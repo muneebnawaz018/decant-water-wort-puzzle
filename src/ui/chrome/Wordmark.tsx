@@ -25,7 +25,7 @@ const TRACKING = 0.14;
  * "DECANT" in metallic gold (spec §3).
  *
  * Drawn in Skia rather than as an RN `Text`: gradient-filled text needs a
- * shader on the glyphs themselves, and RN can only tint text a flat colour.
+ * shader on the glyphs themselves, and RN can only tint text a flat color.
  * The emboss below is a second copy offset by a pixel, which is what
  * `drop-shadow(0 2px 1px)` amounts to.
  */

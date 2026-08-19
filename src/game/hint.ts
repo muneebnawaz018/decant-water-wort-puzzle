@@ -138,7 +138,7 @@ const HINT_OPTIMAL_BUDGET = 400_000;
 /**
  * Ceiling on the fallback search, so a hint can never stall the UI.
  *
- * Measured over those same 1,407 positions — random legal play, 12 colours,
+ * Measured over those same 1,407 positions — random legal play, 12 colors,
  * capacity 5, one spare, which is the hardest the generator goes: median 21
  * nodes, 95th percentile 123, worst 520. Unsolvable positions are *cheaper*
  * than solvable ones rather than more expensive, because the search exhausts

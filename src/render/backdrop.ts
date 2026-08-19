@@ -15,7 +15,7 @@ export interface RadialSpec {
 }
 
 /**
- * Warm lamp, top centre. Spec puts it at 50% / -8% with a 120%×60% spread; a
+ * Warm lamp, top center. Spec puts it at 50% / -8% with a 120%×60% spread; a
  * circle at the mean of those radii is close enough and far cheaper.
  */
 export function lampGlow(width: number, height: number): RadialSpec {

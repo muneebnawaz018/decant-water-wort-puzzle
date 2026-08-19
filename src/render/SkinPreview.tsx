@@ -1,7 +1,7 @@
 import { Canvas, Group, Path, Rect } from '@shopify/react-native-skia';
 import { memo, useMemo } from 'react';
 
-import { colours, ui } from '@/theme/colors';
+import { colors, ui } from '@/theme/colors';
 import { s } from '@/theme/scale';
 import type { Vessel } from '@/theme/skins';
 import { FILL_HEADROOM } from './layout';
@@ -32,7 +32,7 @@ const CAPACITY = 4;
 const SEGMENT_ASPECT = 1.05;
 
 /** Three of the palette's most separated hues, named rather than indexed. */
-const TINTS = [colours.aqua, colours.rose, colours.mango] as const;
+const TINTS = [colors.aqua, colors.rose, colors.mango] as const;
 
 /**
  * Line weights, scaled like the board's. The card grows on a tablet
@@ -70,7 +70,7 @@ export const SkinPreview = memo(function SkinPreview({
      * preview must not do.
      *
      * Deriving width from the height budget keeps the true ratio at any card
-     * size, and the row is centred in whatever width is left over.
+     * size, and the row is centered in whatever width is left over.
      */
     // Bottom-aligned with a sliver of headroom: the completed vial's stopper
     // straddles the rim, and at y = 0 the canvas would slice it off.
@@ -112,7 +112,7 @@ export const SkinPreview = memo(function SkinPreview({
 
         return (
           <Group key={index}>
-            <Path path={path} color={colours.white} opacity={0.08} />
+            <Path path={path} color={colors.white} opacity={0.08} />
 
             <Group clip={path}>
               <Rect
@@ -129,7 +129,7 @@ export const SkinPreview = memo(function SkinPreview({
                 y={tube.y + tube.height - filled * segment}
                 width={tube.width}
                 height={2}
-                color={colours.white}
+                color={colors.white}
                 opacity={0.42}
               />
             </Group>
@@ -140,7 +140,7 @@ export const SkinPreview = memo(function SkinPreview({
               strokeWidth={tube.width * HIGHLIGHT_WIDTH}
               strokeCap="round"
               strokeJoin="round"
-              color={colours.white}
+              color={colors.white}
               opacity={0.45}
             />
             {/* Open at the mouth, like the board: the stroke stops at the rim
@@ -155,7 +155,7 @@ export const SkinPreview = memo(function SkinPreview({
             />
             {cap ? (
               <>
-                {/* The stopper wears its liquid's colour, exactly as it does
+                {/* The stopper wears its liquid's color, exactly as it does
                     on the board. */}
                 <Path path={cap} color={TINTS[index]!} />
                 <Path

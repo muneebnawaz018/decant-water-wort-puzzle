@@ -20,7 +20,7 @@ export const styles = StyleSheet.create({
   /**
    * The `tint` wash, filling the card under its children.
    *
-   * Its own layer rather than a colour on the gradient view, because that view
+   * Its own layer rather than a color on the gradient view, because that view
    * *is* the gradient — a background behind it is never seen. Absolute so it
    * ignores the padding in `contentStyle` and reaches the card's edges.
    */

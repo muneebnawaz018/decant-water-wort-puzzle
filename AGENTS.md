@@ -97,7 +97,7 @@ all three identically:
   should not reach into the view layer for a string — especially one raised
   from handlers that live outside React. `ui/Icon.tsx` re-exports `IconName`
   for the components that draw one; the stores import it from the theme.
-- `game/difficulty` → `theme/colors` **stays.** A mode has a colour on screen.
+- `game/difficulty` → `theme/colors` **stays.** A mode has a color on screen.
   That is a fact about the mode, not a leak.
 - `audio/sounds` → `render/pour` **stays, and breaking it would reintroduce a
   bug.** The pour cue is scheduled against `POUR_MS` and `PHASE`; hand-tuned
@@ -227,8 +227,8 @@ imports them, so they sit in the import graph.
 Two ESLint rules in `script/eslint-rules/` hold this project's own invariants,
 both errors:
 
-- `local/no-raw-colour` — a hex or `rgba()` outside `src/theme/colors.ts`. It
-  found two on its first run: a hard-coded mote colour in `Backdrop` and the
+- `local/no-raw-color` — a hex or `rgba()` outside `src/theme/colors.ts`. It
+  found two on its first run: a hard-coded mote color in `Backdrop` and the
   wordmark's emboss.
 - `local/no-inline-stylesheet` — `StyleSheet.create` in a `.tsx`.
 
@@ -280,7 +280,7 @@ phase 2), `expo-updates` (ship level-gen fixes without a store review).
   One-at-a-time feels broken.
 - Level generation is reverse-generation from a solved board, with an acceptance
   gate (doc §5). Seeded, so level N is reproducible.
-- Difficulty is driven by **extra empty tubes**, not colour count. 2 spare →
+- Difficulty is driven by **extra empty tubes**, not color count. 2 spare →
   1 spare is the big jump; spend it late. Past the shape ceiling the dial is
   selection pressure — see the difficulty section.
 - **The scramble must not clump.** A uniform reverse walk preserves the runs a
@@ -307,7 +307,7 @@ every solution replays to a solved state. Longest solution 51 moves, ~3.4ms to
 generate a level.
 
 **The doc's `inverseMoves` pseudocode (§5) has a bug.** It allows lifting a
-tube's whole top run when other colours sit underneath; that un-pour has no
+tube's whole top run when other colors sit underneath; that un-pour has no
 legal forward inverse, so a scramble can reach a board with no path back to
 solved. `src/game/waterGenerator.ts` only permits a whole-run lift when the tube
 empties. A test replays every generated un-pour backwards to hold the line.
@@ -315,7 +315,7 @@ empties. A test replays every generated un-pour backwards to hold the line.
 Two deliberate deviations from §5, both commented at the source:
 
 1. "reachable in under 60% of the scramble steps" needs an optimal solution
-   length, which is unaffordable to compute on a 12-colour board. Replaced by a
+   length, which is unaffordable to compute on a 12-color board. Replaced by a
    scale-free fragmentation ratio carrying the same 60% intent.
 2. That floor is unreachable at capacity 5 — measured range is 0.50 to 0.68 —
    so the floor drops to 0.50 there. Solvability and the already-solved-tube
@@ -335,21 +335,21 @@ Reanimated already cover vector icons and UI-thread motion.
 
 Three modes in `src/game/difficulty.ts`: gentle, classic, fiendish. **Each mode
 owns a whole curve table in `levelParams.ts`** — not one shared table with
-modifiers. The modifier design ("fiendish = classic + 1 colour − 1 spare") had
+modifiers. The modifier design ("fiendish = classic + 1 color − 1 spare") had
 two structural bugs: the `−1 spare` hit the one-spare floor at level 1, so
 fiendish burned the game's main lever before its first board and the mode gap
-_halved_ at 201 when classic finally jumped; and the `+1 colour` collided with
-the 12-colour clamp in the rotating endgame, making a third of fiendish's
+_halved_ at 201 when classic finally jumped; and the `+1 color` collided with
+the 12-color clamp in the rotating endgame, making a third of fiendish's
 endgame classic's exact shape on a different seed. Own tables: fiendish starts
 at two spares and spends them at 101 (a hundred levels before classic's 201),
-runs a fixed 12-colour endgame, and gentle never drops below two spares, never
+runs a fixed 12-color endgame, and gentle never drops below two spares, never
 leaves capacity 4, and never tightens its gate — the relaxation promise held
 structurally. A board never drops below one spare tube anywhere. Each mode
 keeps its **own** unlocks, current level, and best scores (keyed by mode).
 
 ### The scramble picks the least-clumping un-pour
 
-**This is the fix for "almost all vials have similar colour patterns", and it
+**This is the fix for "almost all vials have similar color patterns", and it
 is one line of the walk.** A uniform reverse walk is biased toward
 half-solved-looking boards structurally, not by luck: an un-pour lifts part of
 a uniform top run, so it _preserves_ whatever sits underneath, and the only
@@ -361,7 +361,7 @@ statistics).
 `scramble` now scores every candidate un-pour with `clumpDelta` and takes the
 best, ties broken randomly. The delta is O(1) — an un-pour touches exactly two
 runs, so no board copy is needed, which is what makes scanning every candidate
-cheaper than sampling a few used to be. Measured at 12 colours, capacity 5, 20
+cheaper than sampling a few used to be. Measured at 12 colors, capacity 5, 20
 boards each:
 
 | 12c / cap 5        | uniform | least-clumping |
@@ -388,7 +388,7 @@ board of eleven 3-run tubes reported **zero** capped tubes and passed.
 
 ### Difficulty past the shape ceiling is selection pressure
 
-Colours cap at 12 (palette), capacity at 5 (par-search cost), spares floor at 1,
+Colors cap at 12 (palette), capacity at 5 (par-search cost), spares floor at 1,
 and the scramble saturates — so past the top of a curve the _shape_ cannot get
 harder. What still can is how hard the generator looks: `generateLevel` keeps
 the **hardest accepted board of the sample** (by `moveLowerBound`, not by
@@ -428,9 +428,9 @@ than a defect, and the stars already say what a run was worth. Measured with no
 floor at all: 0 rejections across every mode from level 1 to 5030, and the
 smallest board the generator opens on still needs 6 pours.
 
-Gentle tops out at **10 colours**, and the reason is par cost rather than
+Gentle tops out at **10 colors**, and the reason is par cost rather than
 difficulty: capacity 4 with two spares is the most expensive shape to search
-(all that empty space branches), measuring 138ms worst at ten colours, 209ms at
+(all that empty space branches), measuring 138ms worst at ten colors, 209ms at
 eleven, 418ms at twelve on a laptop. Par is deferred, but a second-long block
 just after the board appears is a stutter on the calmest mode in the game.
 
@@ -616,7 +616,7 @@ Perf rules being followed in the UI, worth keeping:
   longer places them.
 
   **The stage grid was taken as far as opening the code, and the blocker is
-  worth writing down rather than rediscovering.** A tile's face is a centred
+  worth writing down rather than rediscovering.** A tile's face is a centered
   column of `[lock?, number, stars?]` with a 6dp gap, so the glyph's y depends
   on the rendered height of a Poppins `Text` at `s(22)` or `s(15)`. That is a
   font metric, not a number this repo owns: it cannot be computed, only
@@ -665,7 +665,7 @@ alone the whole thing reads as a snap rather than as liquid.
 
 The arriving liquid is drawn by an SkSL fragment shader, not a rectangle —
 `src/render/liquid.ts` holds the source, `liquidEffect.ts` compiles it. Every
-pixel asks "am I below the surface?", where the surface is two travelling waves
+pixel asks "am I below the surface?", where the surface is two traveling waves
 pinned at the tube walls, decaying as the liquid settles. It costs about what
 filling a rect costs, because the GPU answers for all pixels at once.
 
@@ -689,69 +689,69 @@ saturated liquids.
 **`src/theme/colors.ts` is the only file allowed to contain a hex or an
 `rgba()` string.** Everything else imports from it. Three layers:
 
-- `colours` — the raw palette, one entry per colour that exists in the design.
+- `colors` — the raw palette, one entry per color that exists in the design.
 - `ui` — semantic names (`ui.glassEdge`, `ui.wellDeep`, `ui.accentWash`).
   Components use these.
 - `gradients` — named stop pairs, so two components cannot invent the same
   ramp slightly differently.
 
 Translucency comes from `alpha(name, opacity)`, never a second hand-written
-string, so moving a base colour carries to every translucent use of it. It
+string, so moving a base color carries to every translucent use of it. It
 takes a palette _name_, not a hex, so a literal cannot be smuggled back in and
 a rename breaks the build.
 
 `src/theme/__tests__/colors.test.ts` fails the build if two palette entries
-share a value, if any board's colours come within ΔE 30 of each other, or if a
+share a value, if any board's colors come within ΔE 30 of each other, or if a
 liquid comes within ΔE 40 of the background. Those checks have already earned
 their keep — they caught `wash` and `plum` holding the same purple, and the
 liquid palette letting two near-identical purples co-occur from level 201.
 
 **The `pieces` array is ordered by separation, not by the spec's listing
 order.** `paramsForLevel` takes the first N, so the order decides which
-colours a board can use. Farthest-point ordered, the closest pair in the first
-eleven is ΔE 33; the one tight pair only ever co-occurs on a twelve-colour
+colors a board can use. Farthest-point ordered, the closest pair in the first
+eleven is ΔE 33; the one tight pair only ever co-occurs on a twelve-color
 board. Reordering repaints boards but changes no puzzle — generation, seeds
-and saved records all work in indices, never in colours. `symbols` is
+and saved records all work in indices, never in colors. `symbols` is
 index-aligned and moved with it.
 
 Slots eleven and twelve are `fern` and `olive`. Spec §3 names only ten and
 they already fill the bright end of the hue wheel, so these sit lower in
 lightness instead of squeezing between adjacent hues. They replace a near-white
-`chalk` that was ΔE 3 from the text colour.
+`chalk` that was ΔE 3 from the text color.
 
-**Never `pieces[n]` outside the board.** Decoration names its colours; the board
+**Never `pieces[n]` outside the board.** Decoration names its colors; the board
 uses indices. `AmbientVials`' rack
-holds `colours.aqua` and friends directly, not `pieces[4]` — indices move
+holds `colors.aqua` and friends directly, not `pieces[4]` — indices move
 whenever `pieces` is reordered, and holding them in a fixed decorative layout
 silently repainted the whole home rack the first time that happened.
 
 Stacked segments get a hairline seam at each boundary. Without it, two
-adjacent segments of one colour read as a single tall band and a vial stops
+adjacent segments of one color read as a single tall band and a vial stops
 looking like four units — which is the thing that tells a player what the game
 is.
 
-Colourblind marks pick their own colour via `glyphOn(fill)`. A fixed white
+Colorblind marks pick their own color via `glyphOn(fill)`. A fixed white
 mark disappeared on `lime` and `tangerine`, both above L\* 84 — the
-accessibility feature failing silently on two of twelve colours.
+accessibility feature failing silently on two of twelve colors.
 
-**The marks are load-bearing, not a nicety.** `colour vision` in
+**The marks are load-bearing, not a nicety.** `color vision` in
 `src/theme/__tests__/colors.test.ts` simulates protanopia, deuteranopia and
 tritanopia over the palette. Twelve hues do not survive two working cone
 types: at a full board the closest pair is under dE 1, and no repalette fixes
-that, so a test asserts the failure rather than hoping nobody checks. Colour
+that, so a test asserts the failure rather than hoping nobody checks. Color
 carries identity for trichromats; glyphs carry it for everyone else.
 
 `pieces` and `symbols` are both ordered for that. A board takes the first N of
-each, so the order decides what co-occurs early. The colour order was searched
+each, so the order decides what co-occurs early. The color order was searched
 under a hard floor — every pair inside the first eleven stays above dE 30 for
 normal vision — and then maximised for the worst case across the three
-deficiencies at the sizes players actually reach: dE 30 at four colours, 14 at
+deficiencies at the sizes players actually reach: dE 30 at four colors, 14 at
 six, 7 at eight. Ten and eleven came out a shade worse than the previous order
 and that was accepted; both are far below perceptible either way, and those
 sizes start at level 501. Glyphs follow the same rule, since the set holds six
 near-pairs (`dot`/`ring`, `wave`/`waves`, `plus`/`cross`, `square`/`diamond`,
 `triangle`/`star`, `stripe`/`grid`) — one of each in the first six, so a
-partner never lands before seven colours.
+partner never lands before seven colors.
 
 Both orders have regression pins in that test. Raising one number lowers
 another; check the trade before moving either list.
@@ -845,7 +845,7 @@ The rules that outrank any SDK:
   by someone who is annoyed and looking for it.
 
   **None of this is proven until it is tested on both stores.** The acceptance
-  run, with a Play licence tester and an iOS sandbox account, in release
+  run, with a Play license tester and an iOS sandbox account, in release
   builds — IAP does not work against debug signing:
 
   1. Buy `Remove ads`, confirm ads stop.
@@ -869,7 +869,7 @@ The rules that outrank any SDK:
   a casual puzzle game. The gap is covered two cheaper ways — the stores
   refuse to double-charge for a non-consumable, so a player who never finds
   the Restore row and presses Buy again lands on their entitlement anyway
-  (test this with a licence tester, it is the common path); and a genuine
+  (test this with a license tester, it is the common path); and a genuine
   platform switcher gets a promotional entitlement granted by hand from the
   RevenueCat dashboard. Revisit only if switchers show up as a real number
   there, which is a problem worth having.
@@ -900,9 +900,9 @@ Shared chrome is in `src/ui/chrome/`: `Backdrop`, `Panel`, `GlossButton`,
   not restart the mote drift or pay for a new Skia surface. Screens are
   transparent; they no longer paint their own background.
 - **Buttons have no raised bottom lip.** The spec flags this as an explicit
-  design correction — flat glossy face, press down 2px, no coloured bevel.
+  design correction — flat glossy face, press down 2px, no colored bevel.
 - The wordmark is Skia text with a gradient shader. RN `Text` can only take a
-  flat colour, so gold lettering has to be drawn.
+  flat color, so gold lettering has to be drawn.
 
 All nine screens are converted: Splash, Home, Stages, Board, Complete, Daily,
 Shop, Stats, Settings, plus the global modal and toast. `IconButton` was
@@ -922,7 +922,7 @@ on those however well the level was played.
 The fix is affordable because `moveLowerBound` is an admissible heuristic, so
 IDA* prunes hard on it — most boards close in a few dozen nodes. Over all 800
 boards in levels 501–900 across classic and fiendish, which is the worst the
-game can produce at 12 colours and one spare: median 1ms, p95 11ms, worst 133ms,
+game can produce at 12 colors and one spare: median 1ms, p95 11ms, worst 133ms,
 none hitting the 2M node cap.
 
 It still runs **off the level-load path**. `refinePar` in `gameStore` defers it
@@ -1076,10 +1076,10 @@ silently not:
 app icon.** Worth knowing before anyone tries again to "just use the app icon":
 
 - The **small icon** — status bar and notification header — is alpha-only.
-  Since API 21 the system throws away every colour and refills the shape with
-  one tint, so a colour icon there becomes the famous white square. It is
+  Since API 21 the system throws away every color and refills the shape with
+  one tint, so a color icon there becomes the famous white square. It is
   `assets/android-icon-monochrome.png`, and it has to say everything through
-  shape. The first version traced the colour icon's outline; flattened, the
+  shape. The first version traced the color icon's outline; flattened, the
   glass, the liquid and the four bands all carried the same alpha and merged
   into a pill on a stick, which at 24dp reads as a bell. It is now an outlined
   vial with two liquid blocks and a deliberately wide gap — a narrow gap closes
@@ -1087,7 +1087,7 @@ app icon.** Worth knowing before anyone tries again to "just use the app icon":
   change to it at 24, 32 and 48dp, tinted flat white on dark.** At 1024 the
   broken one looked fine too, which is how it shipped.
 - The **large icon** — the square beside the text — is an ordinary bitmap, full
-  colour, untinted, and it is the one place a notification shows what the
+  color, untinted, and it is the one place a notification shows what the
   launcher shows. expo-notifications reads it from a manifest key its own config
   plugin does not expose, so `plugins/withNotificationLargeIcon.js` sets
   `expo.modules.notifications.large_notification_icon` and copies
@@ -1166,7 +1166,7 @@ and survives a reinstall.
 
 **The shape follows the player: the Hard curve at `furthest + BREW_LEAD` (30),
 taking the max across all three modes.** It used to be a constant at the ceiling
-— twelve colours, one spare — and that was right for the player it was written
+— twelve colors, one spare — and that was right for the player it was written
 for and wrong for everyone else, because **nothing gates the Rewards row on
 progress**. Someone an hour into the game could open the hardest board the
 generator makes holding zero coins, one free hint, and a board that is not saved
@@ -1175,7 +1175,7 @@ winning line at all. Scaling fixes that without a lock, and converges on the old
 fixed shape past roughly level 400 — so nothing changes for the player it was
 originally tuned for.
 
-Measured across a career: furthest 1 → 6 colours / cap 4 / 2 spare, par 14; 100
+Measured across a career: furthest 1 → 6 colors / cap 4 / 2 spare, par 14; 100
 → 8c/4/**1**; 200 → 10c/5/1; 400+ → 12c/5/1, par 32. Ahead of the player's own
 ladder in every mode at every point sampled, 0 rejections, generation ≤ 28ms.
 
@@ -1195,7 +1195,7 @@ and a migration to make a board slightly less current.
 
 It pays **per star** (`bonusPuzzlePerStar`, 20 → 20/40/60), not flat. Flat was
 right while the board was always the ceiling; with the shape following the
-player it would hand the same coins to a six-colour brew and a twelve-colour
+player it would hand the same coins to a six-color brew and a twelve-color
 one. The Rewards row advertises the ceiling for the same reason — a row
 promising the maximum for any completion is a small lie a player notices
 exactly once. The row's copy derives from the constant, so it moved with the
@@ -1243,7 +1243,7 @@ Two new stores: `economyStore` (coins, daily streak, owned cosmetics) and
 callbacks or re-rendering the screen below). Settings grew to spec §8 and the
 key moved to `settings.v3`.
 
-Spec §7's music-icon behaviour — dimmed with sound off, cycling tracks and
+Spec §7's music-icon behavior — dimmed with sound off, cycling tracks and
 toasting their names with sound on — is **not implemented and will not be**.
 The game has no background music; see the Sound section for why the whole
 feature was removed rather than left badged.
@@ -1313,7 +1313,7 @@ have one, and that rule is held structurally rather than by remembering:
   from the rest.
 - A disabled `Pressable` never fires `onPress`, so dead controls are silent for
   free. That is why the dead ones are now genuinely disabled rather than merely
-  greyed: a locked stage tile, Undo at zero moves, the page arrow past the
+  grayed: a locked stage tile, Undo at zero moves, the page arrow past the
   frontier, and the tab or segment you are already on. Each of those used to
   take a press and do nothing.
 - The board's `ignored` outcome — empty glass, nothing held — stays silent.
@@ -1411,7 +1411,7 @@ game, and a device that cannot load a sound should not crash.
 Recorded sources only. An audio layer was built and deleted before this one and
 the reason still governs the file: its effects were **synthesised**, and sine
 waves and filtered noise do not sound like liquid or wood. Every file's origin
-and licence is in `assets/audio/CREDITS.md`, and a file with no entry there
+and license is in `assets/audio/CREDITS.md`, and a file with no entry there
 does not ship.
 
 **Every cue is CC0 1.0 and clears commercial release** — sold, ad-funded, on
@@ -1527,7 +1527,7 @@ the default today.
 
 **`modules/system-sound` needs no Jest mock** — `requireOptionalNativeModule`
 returns `null` with no native runtime and the audio layer treats that as "play
-nothing", which is exactly the production behaviour on a device that failed to
+nothing", which is exactly the production behavior on a device that failed to
 load a cue. `feedbackAndroid.test.ts` is the exception and mocks it explicitly,
 because its gutted `react-native` mock kills the `expo` import underneath.
 `spacing.test.ts` mocks it the other way, with a fake that records call times,
@@ -1591,7 +1591,7 @@ Three things are deliberately outside it:
   nobody would look for it. The glass in `SplashScreen.styles.ts` sits under a
   fenced comment saying so, and a test pins `splash.ts` as device-independent.
 - **1dp hairlines and `borderWidth: 1`.** A scaled hairline lands between
-  physical pixels and renders as a grey smear.
+  physical pixels and renders as a gray smear.
 
 **Grids derive their column count; they do not hold one.** `columnsFor` and
 `gridTile` in `src/theme/grid.ts`. The stage grid was a hardcoded `COLUMNS = 4`,
@@ -1625,17 +1625,17 @@ work and would need the board layout to handle a wide, short box.
 
 Cartoon, not realistic. Two rules, both learned by getting them wrong:
 
-- **Flat fills. No gradients on liquid.** A vertical gradient makes one colour
+- **Flat fills. No gradients on liquid.** A vertical gradient makes one color
   read as three shades, which breaks the cartoon look and makes matching
   segments hard to compare — the one thing the player does constantly.
-- **Bold dark outlines** on tubes, not thin grey hairlines. Hairlines read as a
+- **Bold dark outlines** on tubes, not thin gray hairlines. Hairlines read as a
   chart; a heavy `theme.ink` stroke reads as drawn.
 
 Paths are built with `Skia.PathBuilder.Make()...detach()`, never
 `Skia.Path.Make()` plus mutating calls — the mutating API is deprecated in Skia
 2.x and warns on every build. `detach()` hands back an immutable path, which is
 what the memoised layout wants anyway. `Skia.Path.MakeFromSVGString` is **not**
-deprecated; icons and colourblind glyphs still use it.
+deprecated; icons and colorblind glyphs still use it.
 
 **Two Skia traps, both found the hard way. Do not undo these.**
 
@@ -1656,26 +1656,26 @@ Everything still runs on the UI thread; React does not re-render during a pour.
 Keep it that way.
 
 Home uses `src/render/AmbientVials.tsx`, a slow decorative loop, in place of the
-static board preview it had before. One shared value, cancelled on unmount.
+static board preview it had before. One shared value, canceled on unmount.
 
 Not started: `src/audio`, `src/analytics`, `src/ads`. Sound settings persist but
 no audio assets exist yet. `android/` and `ios/` already exist — prebuild has
 been run.
 
-Colourblind marks are done end to end: `src/render/ColourMark.tsx` draws them,
-`Board` takes a `marks` prop, and `GameScreen` feeds it the `colourblind`
+Colorblind marks are done end to end: `src/render/ColorMark.tsx` draws them,
+`Board` takes a `marks` prop, and `GameScreen` feeds it the `colorblind`
 setting. The toggle is purely additive — it overlays glyphs and never touches a
 fill, so a player who leaves it off sees exactly the board they see today.
 
 **It defaults to off, and that is the decision.** An earlier note here argued
 for switching it on, on the grounds that the palette "collapses from four
-colours on, around level 6" — which is simply wrong, and the wrong number is
-the part worth not repeating: `colors.test.ts` measures four colours at dE 30
+colors on, around level 6" — which is simply wrong, and the wrong number is
+the part worth not repeating: `colors.test.ts` measures four colors at dE 30
 for the worst deficiency, the same floor normal vision is held to. The opening
 levels are fine.
 
 The separation across the rest of the curve is measured and pinned in
-`colour vision` in that test, which is where those numbers belong. Read it
+`color vision` in that test, which is where those numbers belong. Read it
 before proposing a change to the default or to the `pieces` order.
 
 The app icons are original vector art, not Expo defaults. `assets/icons/*.svg`
@@ -1695,7 +1695,7 @@ build or run time needs it.
 
 The adaptive foreground keeps its padding on purpose: launchers crop the outer
 ~18% to whatever mask shape they use, so the vial sits inside the safe zone.
-`adaptiveIcon.backgroundColor` is `colours.nightDeep`, from the palette — the
+`adaptiveIcon.backgroundColor` is `colors.nightDeep`, from the palette — the
 icon README suggests `#140A32`, a shade off, and the palette wins so there is
 one source for it.
 
@@ -1729,18 +1729,18 @@ expo-splash-screen generates a square imageset (54×54, 108×108, 162×162) and
 fits the image inside it, so a 54×150 vial passed `imageWidth: 54` rendered
 19dp wide against the animated vial's 54. It takes `VIAL_HEIGHT`, and the
 contained image then measures exactly 54×150. Verified by measuring the
-highlight stripe across a launch burst: 9×89dp centred at (186, 417) in both the
+highlight stripe across a launch burst: 9×89dp centered at (186, 417) in both the
 native frame and the first React frame.
 
 The vial **rises** rather than starting high (`VIAL_RISE`, 44dp). Composition
-wants it above centre with the wordmark beneath, but centre is where the OS
+wants it above center with the wordmark beneath, but center is where the OS
 draws the native image — so it begins there and glides up as the wordmark
 arrives, which also makes the two read as one movement. Any static offset here
 puts the jump straight back.
 
 The splash's own layout follows from this. The vial is the only thing in the
-centred column and the wordmark is absolutely positioned beneath it — anything
-stacked in that flow would push the vial off centre, and the OS centres the
+centered column and the wordmark is absolutely positioned beneath it — anything
+stacked in that flow would push the vial off center, and the OS centers the
 native image with no such offset.
 
 **The window itself is painted, in three places.** Between the OS dismissing the
@@ -1748,10 +1748,10 @@ splash and React drawing its first frame, what shows is the native root view —
 white by default, which flashed for a frame on every launch:
 
 - `backgroundColor` in `app.config.ts` (and `android.backgroundColor`), which
-  becomes iOS's root view colour and Android's `windowBackground`.
+  becomes iOS's root view color and Android's `windowBackground`.
 - `SystemUI.setBackgroundColorAsync` at module scope in `App.tsx`, so a dev
   reload or an Android config change cannot repaint it white later.
-- `App.styles.ts` colours the outermost React view, for the instant before the
+- `App.styles.ts` colors the outermost React view, for the instant before the
   screens below paint themselves.
 
 A dev build can still show a brief white frame from expo-dev-client's own
@@ -1775,14 +1775,14 @@ Two details there are load-bearing:
   happened — and the flash it was meant to prevent has already been seen.
 - `hideNativeSplash()` is called from `Root`'s `onLayout`, not from the effect
   that loads the fonts. Hiding while the tree is still blank shows the ground
-  colour for a beat, which reads as a stutter rather than a launch.
+  color for a beat, which reads as a stutter rather than a launch.
 
 Changing any splash value needs `npm run prebuild` — it is baked into native
 assets, not read at runtime.
 
 ## `app.config.ts`, not `app.json`
 
-The Expo config is TypeScript so it can `import { colours }`. JSON cannot, which
+The Expo config is TypeScript so it can `import { colors }`. JSON cannot, which
 meant the splash background and the Android adaptive-icon background were second
 copies of hexes that already lived in the palette — and the icon was still
 carrying Expo's default pale blue behind a near-black app.

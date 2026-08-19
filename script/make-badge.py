@@ -21,7 +21,7 @@ and the sweep is a band, not a wash.
 trick as `make-shine.py`, and the same reason: masks and track mattes are where
 the three Lottie renderers stop agreeing.
 
-Run it after changing any colour it reads. The JSON is written minified and the
+Run it after changing any color it reads. The JSON is written minified and the
 commit gate checks formatting, so `npm run format` is the second half of the
 command, not an optional tidy-up:
 
@@ -56,7 +56,7 @@ DURATION = 156
 STEP = 2
 
 SIZE = 100
-CENTRE = SIZE / 2
+CENTER = SIZE / 2
 
 SWEEP_START = 0.06
 SWEEP_LENGTH = 0.26
@@ -97,7 +97,7 @@ SPARK_INNER = 3.4
 # --- The palette -------------------------------------------------------------
 #
 # From `src/theme/colors.ts`. The tile is a gold gradient, so the mark is white:
-# a highlight is the light source's colour, not the surface's, and a gold sheen
+# a highlight is the light source's color, not the surface's, and a gold sheen
 # on gold goes muddy — the exact finding `make-shine.py` records for the green
 # disc.
 
@@ -129,7 +129,7 @@ def sweep(index: int, start: float, length: float, strength: float) -> dict:
 
     def across(t: float):
         k = since(t, start, length)
-        return [round(START_X + (END_X - START_X) * smoothstep(k), 2), CENTRE, 0]
+        return [round(START_X + (END_X - START_X) * smoothstep(k), 2), CENTER, 0]
 
     return shape_layer(
         1 + index * 6,

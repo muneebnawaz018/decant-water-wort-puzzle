@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 
 import { apothecary, SPACE } from '@/theme/apothecary';
-import { colours, ui } from '@/theme/colors';
+import { colors, ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
 import { s } from '@/theme/scale';
 import { text } from '@/theme/typography';
@@ -28,7 +28,7 @@ export const styles = StyleSheet.create({
   /**
    * A row that is showing something rather than offering it.
    *
-   * One opacity on the whole row instead of a muted colour per element. The
+   * One opacity on the whole row instead of a muted color per element. The
    * icon is gold, the label is near-white and the trailing control is whatever
    * the caller passed — dimming each in its own way is three chances to end up
    * with a row that is half lit, and the caller's control cannot be reached
@@ -69,10 +69,10 @@ export const styles = StyleSheet.create({
    * The trailing `›`.
    *
    * `lineHeight` and `includeFontPadding` are not decoration. `alignItems:
-   * 'center'` centres each child's **box**, and a text box is the font's full
+   * 'center'` centers each child's **box**, and a text box is the font's full
    * ascent-to-descent, not the ink inside it. `›` is a small glyph sitting high
-   * in a tall box, so a centred box leaves visibly off-centre ink — the row
-   * reads as misaligned even though every child is centred correctly.
+   * in a tall box, so a centered box leaves visibly off-center ink — the row
+   * reads as misaligned even though every child is centered correctly.
    *
    * Pinning the line height to the glyph size collapses the box onto the mark,
    * and `includeFontPadding: false` drops the extra leading Android adds on top
@@ -98,7 +98,7 @@ export const styles = StyleSheet.create({
     width: s(21),
     height: s(21),
     borderRadius: s(11),
-    backgroundColor: colours.white,
+    backgroundColor: colors.white,
     shadowColor: ui.shadow,
     shadowOpacity: 0.4,
     shadowRadius: s(3),

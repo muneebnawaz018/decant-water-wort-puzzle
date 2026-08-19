@@ -24,7 +24,7 @@ always needs and never has: one channel, 44.1kHz, a level that matches the rest
 of the set, and edges faded to true zero so the buffer cannot click.
 
 Source files are gitignored. They are large, they are not shipped, and the
-licence on them is recorded in assets/audio/CREDITS.md.
+license on them is recorded in assets/audio/CREDITS.md.
 """
 
 from __future__ import annotations

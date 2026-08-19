@@ -61,12 +61,12 @@ export const styles = StyleSheet.create({
     paddingBottom: s(12),
   },
   /**
-   * Centred between the mark and the close button.
+   * Centered between the mark and the close button.
    *
    * `flex: 1` plus `textAlign` rather than absolute positioning: the two
    * flanking controls are within 6dp of each other in width, so the optical
-   * centre and the true centre of the header agree closely enough that taking
-   * the title out of flow would buy nothing and cost the truncation behaviour.
+   * center and the true center of the header agree closely enough that taking
+   * the title out of flow would buy nothing and cost the truncation behavior.
    */
   name: {
     flex: 1,

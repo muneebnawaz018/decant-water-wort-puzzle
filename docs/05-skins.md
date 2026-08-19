@@ -1,13 +1,13 @@
 # Skins — design materials
 
-The reference pack for the skin catalogue: what the genre's best-looking games
+The reference pack for the skin catalog: what the genre's best-looking games
 do visually, what Decant will do in its own identity, and every number the
 implementation needs. Written from direct study of competitor store screenshots
 (saved to the session scratchpad, not committed — they are their marketing
 assets, our reference only) plus market research summarised in the appendix.
 
 **The one rule above all of it, restated from `src/theme/skins.ts`:** a skin
-never touches the liquid palette. Colours are pinned by accessibility tests —
+never touches the liquid palette. Colors are pinned by accessibility tests —
 ΔE separation between every pair, glyph contrast per fill — and no cosmetic is
 allowed to trade against that. Everything below skins the _glass_, the _scene_,
 or a hue-free _finish_.
@@ -21,7 +21,7 @@ Offline, Ball Sort Color Game, Get Color). Patterns, most useful first:
 
 1. **Silhouette is the skin.** The games that sell "bottle sets" change the
    vessel dramatically — milk bottles with caps and straws, lava-lamp curves,
-   cone-bottomed tubes. A recolour is invisible; a new outline reads from
+   cone-bottomed tubes. A recolor is invisible; a new outline reads from
    across the room.
 2. **Glass is an outline, not a texture.** Every title draws the vessel as a
    light 2–3px stroke with a transparent interior — the backdrop shows through
@@ -33,7 +33,7 @@ Offline, Ball Sort Color Game, Get Color). Patterns, most useful first:
    Decant's backdrop already has the gradient and the motes; the silhouette
    strip is the missing element, and it is what makes a "set" feel like a
    place rather than a wallpaper.
-4. **The premium liquid finish is glitter, not colour.** Water Sort Offline's
+4. **The premium liquid finish is glitter, not color.** Water Sort Offline's
    richest-looking board scatters tiny sparkles _inside_ the liquid — hue
    untouched, pure white twinkle overlay. That is a premium marker this
    project can adopt without touching a single accessibility guarantee, and it
@@ -45,7 +45,7 @@ Offline, Ball Sort Color Game, Get Color). Patterns, most useful first:
 6. **Flat liquid everywhere.** No shipped game gradients its liquid. Decant's
    cartoon-flat rule matches the entire genre.
 
-## 2. The catalogue
+## 2. The catalog
 
 Seven skins, three tiers. Free ones unlock by progression (the genre's
 retention pattern); paid ones are the coin sink the economy audit called for.
@@ -65,14 +65,14 @@ lands (phase 2).
 
 Geometry notes:
 
-- **One silhouette family per skin, enforced by test.** The first catalogue
+- **One silhouette family per skin, enforced by test.** The first catalog
   was four corner radii on the same straight tube — beaker, flask and ampoule
   all read as the vial with different corners, and the shop was rightly called
   out for selling one shape five times. `Vessel` is now a discriminated union
   and each family is its own path code in `render/vessel.ts`; those three ids
   were retired pre-release and skins 2, 3 and 5 re-cut as real shapes.
 - **No glass narrower than `0.46` of the tube's width, anywhere** — mouth,
-  neck or waist. The colourblind glyphs draw at `0.42` of the width, centred,
+  neck or waist. The colorblind glyphs draw at `0.42` of the width, centered,
   and tighter glass clips the accessibility mark. Tubes render **29dp wide on
   a 13-tube board**, so every candidate is also eyeballed at 29dp before it
   ships.
@@ -91,21 +91,21 @@ untouched:
 
 ```ts
 interface GlassSpec {
-  /** Stroke colour, a `colours` name. Default: white. */
+  /** Stroke color, a `colors` name. Default: white. */
   stroke?: string;
   /** Resting stroke opacity. Default 0.32, the shipped look. */
   strokeOpacity?: number;
-  /** Highlight stripe colour. Default: white at 0.5. */
+  /** Highlight stripe color. Default: white at 0.5. */
   highlight?: string;
 }
 ```
 
 The gilded alembic sets `stroke: gold, strokeOpacity: 0.85, highlight:
-goldPale`. Selection and hint strokes keep their existing colours on every
+goldPale`. Selection and hint strokes keep their existing colors on every
 skin — those are game signals, not decoration, and a skin that repainted them
 would trade legibility for looks.
 
-## 4. The liquid finish — sparkle without colour
+## 4. The liquid finish — sparkle without color
 
 A per-skin `finish: 'plain' | 'sparkle'`. Sparkle scatters 3–4 tiny white
 points per segment (`glyphOn`-style contrast handling is unnecessary — white
@@ -131,7 +131,7 @@ This is the Nightfall Set's liquid. It changes no hue, so
 interface Scene {
   /** Ground gradient stops, replacing the default pair. */
   ground: [string, string];
-  /** Mote colour. Default: the warm lamp motes. */
+  /** Mote color. Default: the warm lamp motes. */
   mote?: string;
   /** A silhouette strip along the bottom, drawn once, behind the rack. */
   silhouette?: 'skyline' | null;
@@ -145,9 +145,9 @@ identity (competitors use castles and mountains; we are not copying either).
 The silhouette is static art on an animated canvas, so it goes in the
 gradient's own once-rasterised layer, per the render rules in `AGENTS.md`.
 
-Every scene's ground colours must keep the liquid-vs-background guarantee:
+Every scene's ground colors must keep the liquid-vs-background guarantee:
 extend `colors.test.ts` so the ΔE > 40 check runs against **every** scene
-ground, not just `colours.night`. A scene that fails the check does not ship.
+ground, not just `colors.night`. A scene that fails the check does not ship.
 
 ## 6. Motion
 
@@ -183,7 +183,7 @@ migration.
 ## Appendix: market research summary (Aug 2026)
 
 - Genre skins vessel shape and backgrounds; **no shipped title skins liquid
-  colour**. Unlocks: coins, level milestones, quests, rewarded ads.
+  color**. Unlocks: coins, level milestones, quests, rewarded ads.
 - Per-skin real-money SKUs effectively do not exist; cosmetic money appears
   only as "Unlock All" bundles or VIP subscriptions. The subgenre's top
   grosser sells no cosmetics at all — skins are a coin sink and retention

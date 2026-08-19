@@ -89,7 +89,7 @@ export const ChromeIconButton = memo(function ChromeIconButton({
   icon: IconName;
   onPress: () => void;
   label: string;
-  /** Nothing left in this direction. Greys the button and stops the press —
+  /** Nothing left in this direction. Grays the button and stops the press —
    * a control that looks spent should not answer a tap, least of all with a
    * buzz that says something happened. */
   dimmed?: boolean;

@@ -12,7 +12,7 @@ import { BackHandler } from 'react-native';
  *
  * The handler returns true when it has dealt with the press, and false to let
  * Android have it. False is the right answer exactly once, on Home: backing out
- * of the top of the app is the platform behaviour and overriding it traps the
+ * of the top of the app is the platform behavior and overriding it traps the
  * player in a game they cannot leave.
  *
  * iOS has no such event and `BackHandler` is a no-op there, so this needs no

@@ -12,7 +12,7 @@ import { s } from './scale';
  * 10/0.8 on Home and 10/0.9 in Shop. A preset makes "the same thing" literally
  * the same object; a screen that genuinely needs a different size composes on
  * top with `[text.caption, styles.bigger]` rather than restating the family and
- * the colour.
+ * the color.
  *
  * Nothing here sets layout. These are text-only so they can be spread into any
  * position without dragging spacing along.

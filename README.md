@@ -1,8 +1,8 @@
 # Decant
 
-A water sort puzzle game for iOS and Android. Coloured liquid sits in glass
+A water sort puzzle game for iOS and Android. Colored liquid sits in glass
 vials; tap a source, tap a destination, the liquid pours. A level is solved when
-every vial holds one colour or none.
+every vial holds one color or none.
 
 No timer, no fail state. The genre sells relaxation, and a clock works against
 that.
@@ -53,7 +53,7 @@ src/core/      pure game logic — no React, unit-tested
 src/game/      level generation, difficulty, star rating
 src/render/    Skia board, tubes, pour animation, shaders
 src/state/     zustand stores + MMKV persistence
-src/theme/     colours, typography, fonts
+src/theme/     colors, typography, fonts
 src/ui/        screens; chrome/ shared components; hooks/; styles/
 src/utils/     small pure helpers
 script/        CLI tooling and custom ESLint rules
@@ -68,12 +68,12 @@ others.
 Each of these is a lint rule or a test, because each one describes a bug that
 already happened here.
 
-- **`src/theme/colors.ts` is the only file that may contain a colour.**
+- **`src/theme/colors.ts` is the only file that may contain a color.**
   Everything else imports from it; translucency comes from `alpha(name, n)` so
-  moving a base colour carries to every translucent use of it.
-  `local/no-raw-colour` enforces it, and a test fails the build if two palette
-  entries share a value or if two colours on one board come within ΔE 30 of each
-  other. Even `app.config.ts` imports its splash and icon colours from there,
+  moving a base color carries to every translucent use of it.
+  `local/no-raw-color` enforces it, and a test fails the build if two palette
+  entries share a value or if two colors on one board come within ΔE 30 of each
+  other. Even `app.config.ts` imports its splash and icon colors from there,
   which is why the Expo config is TypeScript rather than `app.json`.
 - **Components hold no `StyleSheet`.** Every `Foo.tsx` has a
   `styles/Foo.styles.ts` beside it. `local/no-inline-stylesheet` enforces it.
@@ -141,32 +141,32 @@ every PNG an icon field in `app.config.ts` points at is generated from them by
 iOS, the Android adaptive foreground/background pair, and the Android 13+
 monochrome layer. Prebuild expands those into every size each platform wants.
 
-### Colourblind marks
+### Colorblind marks
 
 A toggle in Settings stamps a distinct glyph on every liquid — dot, wave, plus,
-square, and so on, one per colour. It is purely additive: colours do not change,
+square, and so on, one per color. It is purely additive: colors do not change,
 so a player who leaves it off sees exactly the board they see today.
 
-The marks are not a courtesy. Twelve colours cannot be told apart by hue alone
+The marks are not a courtesy. Twelve colors cannot be told apart by hue alone
 with two working cone types: simulate protanopia over a full board and the
-closest pair lands under dE 1, the same pixel in effect. `colour vision` in
+closest pair lands under dE 1, the same pixel in effect. `color vision` in
 `src/theme/__tests__/colors.test.ts` asserts that failure, so nobody later reads
 a healthy-looking palette and deletes the glyphs to save a draw call.
 
 What the palette _can_ do is decide how early the marks become mandatory. Both
 `pieces` and `symbols` in `src/theme/apothecary.ts` are ordered for it — a board
 takes the first N of each, so the order controls what co-occurs early. The
-colours were searched under a hard floor (every pair in the first eleven stays
+colors were searched under a hard floor (every pair in the first eleven stays
 above dE 30 for normal vision) and then tuned for the worst case across the
-three deficiencies: dE 30 at four colours, 14 at six, 7 at eight. The glyphs
+three deficiencies: dE 30 at four colors, 14 at six, 7 at eight. The glyphs
 follow the same rule, keeping look-alike pairs off the board until seven
-colours. Both have regression pins in that test; raising one number lowers
+colors. Both have regression pins in that test; raising one number lowers
 another.
 
 It currently defaults to off, which is worth revisiting before release — the
-palette turns ambiguous for a deuteranope from four colours on, around level 6,
+palette turns ambiguous for a deuteranope from four colors on, around level 6,
 long before anyone thinks to open Settings.
 
-## Licence
+## License
 
 Private and unpublished.

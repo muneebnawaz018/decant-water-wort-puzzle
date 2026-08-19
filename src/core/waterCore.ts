@@ -1,11 +1,11 @@
-import type { Colour, PourMove, WaterState } from './types';
+import type { Color, PourMove, WaterState } from './types';
 
-export function topOf(tube: Colour[]): Colour | undefined {
+export function topOf(tube: Color[]): Color | undefined {
   return tube[tube.length - 1];
 }
 
 /** Length of the run of identical segments at the top of a tube. */
-export function topRun(tube: Colour[]): number {
+export function topRun(tube: Color[]): number {
   const top = topOf(tube);
   if (top === undefined) return 0;
   let run = 0;
@@ -80,7 +80,7 @@ export function undoPour(state: WaterState, move: PourMove): WaterState {
   return pour(state, move.to, move.from, move.count);
 }
 
-export function isTubeComplete(tube: Colour[], capacity: number): boolean {
+export function isTubeComplete(tube: Color[], capacity: number): boolean {
   return tube.length === capacity && topRun(tube) === capacity;
 }
 

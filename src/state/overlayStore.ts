@@ -13,7 +13,7 @@ export interface ModalSpec {
    * A `ModalSpec` is data raised from a handler — `confirmDifficulty`, the
    * reward dialog — and several of those live outside React entirely. Holding
    * an `IconName` keeps the spec serialisable and leaves `Overlays` to decide
-   * the size and colour each variant needs, which it already does for the
+   * the size and color each variant needs, which it already does for the
    * labels.
    *
    * Both optional, because most dialogs are questions rather than offers and a

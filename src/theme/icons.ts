@@ -144,7 +144,7 @@ export const ICONS = {
    * three edits will each look like nothing happening.
    *
    * The play triangle is scaled about 1.15 from Material's, about its own
-   * centre. Rounding the body's corners moved its edges inward, so the same
+   * center. Rounding the body's corners moved its edges inward, so the same
    * triangle read smaller inside it — the glyph needs the mark to hold the
    * middle, not the frame.
    *

@@ -100,7 +100,7 @@ export const styles = StyleSheet.create({
    * One action, then two ways out.
    *
    * The old screen gave Replay and the next level equal weight, side by side in
-   * the same colour. They are not equal: the next level is what almost everyone
+   * the same color. They are not equal: the next level is what almost everyone
    * wants, and replaying a board you have just solved is a minority choice. So
    * the next level takes the full width as the only primary button, and Replay
    * drops to a ghost beside Home.
@@ -108,8 +108,8 @@ export const styles = StyleSheet.create({
   /**
    * The dismiss cross, pinned to the card's top-right.
    *
-   * Absolute, so it is out of the centred column the card lays its content in —
-   * anything in that flow pushes the stars off centre, and the stars are the
+   * Absolute, so it is out of the centered column the card lays its content in —
+   * anything in that flow pushes the stars off center, and the stars are the
    * one thing on this card that has to look placed.
    *
    * No background disc. The corner is empty, the glyph is muted, and a chip

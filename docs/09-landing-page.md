@@ -33,8 +33,8 @@ showing the game, not by introducing a company.
 
 ## 2. The product
 
-Decant is a **water sort puzzle**. You pour coloured liquid between glass vials
-until each vial holds a single colour. That is the entire game.
+Decant is a **water sort puzzle**. You pour colored liquid between glass vials
+until each vial holds a single color. That is the entire game.
 
 The genre is crowded, and the differentiator is tone: **no timer, no lives, no
 way to lose.** Most competitors bolt a fail state and an energy meter onto the
@@ -51,7 +51,7 @@ same mechanic. This one does not, and the site should say so early and plainly.
 | Network       | Fully playable offline                       |
 | Account       | None. No sign-up, no login, no server        |
 | Data          | Progress stored on the device only           |
-| Accessibility | Colourblind symbols on every colour          |
+| Accessibility | Colorblind symbols on every color            |
 | Publisher     | `TODO(owner)` — legal entity name            |
 | Support email | `TODO(owner)` — must still work in two years |
 | Domain        | `TODO(owner)`                                |
@@ -96,7 +96,7 @@ Write like this:
 
 Not like this:
 
-> Embark on an unforgettable journey through a world of vibrant colours!
+> Embark on an unforgettable journey through a world of vibrant colors!
 
 Hard rules:
 
@@ -108,12 +108,12 @@ Hard rules:
   testimonials, no "as featured in". Nothing has launched. Inventing any of it
   is the one thing on this page that would be genuinely dishonest — and a
   fabricated `aggregateRating` in structured data is a search penalty on top.
-- **British spelling.** "Colour", not "color". The app uses it throughout.
+- **British spelling.** "Color", not "color". The app uses it throughout.
 - **Never say "AI-powered"**, "revolutionary", "seamless", or "elevate".
 
 ---
 
-## 4. Brand colours
+## 4. Brand colors
 
 **Exact values from the app's own palette.** Use them verbatim. The game
 enforces a lint rule that forbids a raw hex anywhere outside its single palette
@@ -150,7 +150,7 @@ then reference only the variables.
 | `--gold-pale`   | `#FFEFB4` | Highlights                   |
 | `--lamp`        | `#FFBE64` | Warm glow behind the hero    |
 
-### Green — the action colour
+### Green — the action color
 
 | Token             | Hex       | Use            |
 | ----------------- | --------- | -------------- |
@@ -160,8 +160,8 @@ then reference only the variables.
 
 ### The liquids
 
-The twelve puzzle colours, in the order the game introduces them. Use for
-decoration — hero vials, a colour strip, list bullets. **Never for body text**;
+The twelve puzzle colors, in the order the game introduces them. Use for
+decoration — hero vials, a color strip, list bullets. **Never for body text**;
 several are far too bright on the dark ground.
 
 | Name      | Hex       |
@@ -190,7 +190,7 @@ several are far too bright on the dark ground.
   fails WCAG outright. This is the easiest mistake to make on this palette.
 - **Surfaces get lighter as they come forward**: `--night-deep` for the page,
   `--night` for a section band, `--panel` for a card on top of that.
-- **Borders are `--panel-top` at low opacity**, not grey. A neutral grey
+- **Borders are `--panel-top` at low opacity**, not gray. A neutral gray
   hairline reads as a dashboard.
 
 ---
@@ -447,7 +447,7 @@ mobile with the text first.
 **Sub-headline:**
 
 > A water sort puzzle with no timer, no lives, and no way to lose. Just
-> coloured liquid, glass vials, and as long as you like.
+> colored liquid, glass vials, and as long as you like.
 
 **Buttons:** the two store badges. See §11.
 
@@ -460,7 +460,7 @@ radial glow behind it in `--lamp` at ~12% opacity, fading to nothing. The glow
 is what makes the composition feel lamplit rather than flat.
 
 Optional, worth it if time allows: three CSS-drawn vials drifting slowly
-behind the phone, filled with bands of the liquid colours. The app's own home
+behind the phone, filled with bands of the liquid colors. The app's own home
 screen does exactly this, so it is on-brand rather than decoration. Drift
 slowly — 20s+ per cycle — and stop entirely under `prefers-reduced-motion`.
 
@@ -470,9 +470,9 @@ Three steps. Side by side on desktop, stacked on mobile. Each is a numbered
 badge in gold, a two-word heading, one sentence.
 
 1. **Tap to lift** — Tap a vial and it rises out of the rack.
-2. **Tap to pour** — Tap another. Liquid moves onto its own colour, or into
+2. **Tap to pour** — Tap another. Liquid moves onto its own color, or into
    empty space.
-3. **Sort them all** — When every vial holds a single colour, the board is
+3. **Sort them all** — When every vial holds a single color, the board is
    done.
 
 ### 8.4 Features
@@ -491,7 +491,7 @@ Nobody hands you a level that cannot be finished.
 
 **Three difficulties**
 Gentle for room to breathe, Classic for the curve most people want, Fiendish
-for twelve colours and a single spare vial.
+for twelve colors and a single spare vial.
 
 **Hints that actually help**
 A hint shows the next pour, and it is always drawn from the shortest way home
@@ -502,7 +502,7 @@ One fresh puzzle every day, tuned to how far you have come. Come back
 tomorrow and keep the streak.
 
 **Made to be read**
-Colourblind marks give every colour its own symbol, so the board works whether
+Colorblind marks give every color its own symbol, so the board works whether
 or not you can tell two purples apart.
 
 ### 8.5 Screenshot gallery
@@ -510,13 +510,13 @@ or not you can tell two purples apart.
 Horizontal strip of five phone screenshots. Scroll-snapped and swipeable on
 mobile, laid flat on desktop.
 
-Caption underneath, small, centred, `--ink-muted`:
+Caption underneath, small, centered, `--ink-muted`:
 
 > Every board is generated. No two players get the same run.
 
 ### 8.6 The honest bit
 
-Short and quiet — one centred column, no card. Unusual for a game site and
+Short and quiet — one centered column, no card. Unusual for a game site and
 deliberate: it is the part that makes everything above it credible.
 
 **Heading:** What it does not do
@@ -549,8 +549,8 @@ No. There is no sign-up and no login. Your progress is stored on your device.
 Levels are generated rather than hand-built, so there is no end to reach.
 Every one is checked to be solvable before it reaches you.
 
-**Is it colourblind friendly?**
-There is a setting that puts a distinct symbol on every colour, so a board can
+**Is it colorblind friendly?**
+There is a setting that puts a distinct symbol on every color, so a board can
 be read by shape as well as by hue.
 
 **Will my progress carry to a new phone?**
@@ -582,13 +582,13 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://TODO-domain.com'),
   title: 'Decant — Water Sort Puzzle | No timers, no fails',
   description:
-    'A calm water sort puzzle. Pour coloured liquid between vials until ' +
-    'each holds a single colour. No timer, no lives, no way to lose. ' +
+    'A calm water sort puzzle. Pour colored liquid between vials until ' +
+    'each holds a single color. No timer, no lives, no way to lose. ' +
     'Free on Android and iOS.',
   applicationName: 'Decant',
   keywords: [
     'water sort puzzle',
-    'colour sort game',
+    'color sort game',
     'relaxing puzzle game',
     'offline puzzle game',
     'no timer puzzle',
@@ -598,7 +598,7 @@ export const metadata: Metadata = {
     type: 'website',
     title: 'Decant — Water Sort Puzzle',
     description:
-      'Pour coloured liquid between vials until each holds one colour. ' +
+      'Pour colored liquid between vials until each holds one color. ' +
       'No timer, no lives, no way to lose.',
     images: [{ url: '/images/og-image.png', width: 1200, height: 630 }],
   },
@@ -670,7 +670,7 @@ and can be used today for the favicon, the header mark and the OG card.
 **Alt text**, written properly rather than "screenshot":
 
 - `hero-board` — "A Decant puzzle in progress, with several vials already
-  sorted into single colours"
+  sorted into single colors"
 - `shot-win` — "The level complete screen showing three stars"
 
 ---
@@ -700,7 +700,7 @@ one that says it is not ready.
 
 Both platforms have strict badge rules:
 
-- Use the **official badge artwork**. Do not redraw, recolour, or place it on
+- Use the **official badge artwork**. Do not redraw, recolor, or place it on
   a gold background.
 - Keep the required clear space around each badge.
 - If the badges look wrong this early, a plain gold `Get the game` button is a
@@ -725,7 +725,7 @@ Both platforms have strict badge rules:
     on `--gold` is ~9:1, both fine; `--ink-muted` on `--night-deep` is ~6:1,
     fine for body but do not go smaller than 14px with it
   - One `<h1>`, headings in order, no level skipped
-  - The app ships colourblind support; a site that fails contrast would be a
+  - The app ships colorblind support; a site that fails contrast would be a
     poor advert for it
 - **`prefers-reduced-motion` respected** — the global rule in §7 covers it.
 - **No cookie banner**, because nothing should set a cookie. If analytics is
@@ -780,7 +780,7 @@ us:
 - which levels you have finished, your star ratings and your best scores
 - the puzzle you are part way through, so a level survives closing the app
 - your coin balance, daily reward streak and anything you have unlocked
-- your settings, including sound, haptics, difficulty and colourblind marks
+- your settings, including sound, haptics, difficulty and colorblind marks
 - a short diagnostic log of recent in-game actions — levels started and
   finished, hints used, rewards claimed — kept so a fault can be
   investigated if you report one
@@ -900,13 +900,13 @@ advice.
 These terms cover your use of Decant, a mobile game published by
 [PUBLISHER]. By installing or playing it, you agree to them.
 
-## The licence
+## The license
 
-We give you a personal, non-exclusive, non-transferable licence to install
+We give you a personal, non-exclusive, non-transferable license to install
 and play Decant on devices you own or control, for your own
 non-commercial use.
 
-You may not sell, rent, sub-licence or redistribute the app, modify or
+You may not sell, rent, sub-license or redistribute the app, modify or
 reverse-engineer it except where the law expressly allows, or use it to
 break any law.
 

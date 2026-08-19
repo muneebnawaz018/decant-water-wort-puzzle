@@ -12,14 +12,14 @@ we have run out of the levers the current formula knows how to pull.
 
 ## What the game is, for anyone new
 
-Coloured liquid sits in a column of glass vials. Tapping a source vial and then
+Colored liquid sits in a column of glass vials. Tapping a source vial and then
 a destination pours the **whole top run** of matching segments, capped by the
 free space in the destination. A level is solved when every vial holds one
-colour or is empty. There is no timer and no fail state.
+color or is empty. There is no timer and no fail state.
 
 The three numbers that describe a board:
 
-- **colour count** — how many distinct liquids, each with exactly `capacity`
+- **color count** — how many distinct liquids, each with exactly `capacity`
   segments in play
 - **capacity** — segments per vial
 - **spare vials** — empty vials above the minimum, the working space
@@ -34,7 +34,7 @@ device and no board is ever stored.
 `src/game/levelParams.ts` holds an eight-row table. The last row is open-ended:
 
 ```text
-maxLevel     colours  capacity  spare  scramble
+maxLevel     colors  capacity  spare  scramble
 5            3        4         2      8
 20           4        4         2      16
 50           5        4         2      28
@@ -46,17 +46,17 @@ Infinity     10-12    5         1      110
 ```
 
 Three difficulty modes then adjust that row: Easy adds a spare vial and scrambles
-less, Hard adds a colour, removes a spare vial and scrambles more.
+less, Hard adds a color, removes a spare vial and scrambles more.
 
-So a level past 500 is: 10 to 12 colours, capacity 5, one spare vial, 110
+So a level past 500 is: 10 to 12 colors, capacity 5, one spare vial, 110
 scramble steps. Forever.
 
 ## Why each existing lever is finished
 
-**Colours are capped at 12.** Not by the code — by human vision. The palette
+**Colors are capped at 12.** Not by the code — by human vision. The palette
 already fails under simulated protanopia and deuteranopia at full board size
-(closest pair under dE 1), which is why colourblind glyphs exist and why a test
-asserts the failure rather than pretending otherwise. A thirteenth colour makes
+(closest pair under dE 1), which is why colorblind glyphs exist and why a test
+asserts the failure rather than pretending otherwise. A thirteenth color makes
 the accessibility story worse without making the puzzle deeper.
 
 **Spare vials are floored at one.** Zero spare vials is not a hard puzzle, it is
@@ -74,7 +74,7 @@ number can be raised; nothing happens except slower generation.
 
 Worth stating, because the obvious answers are wrong.
 
-Not "more colours" — that is more bookkeeping, not more thinking.
+Not "more colors" — that is more bookkeeping, not more thinking.
 
 Not "more moves" — a board can need 50 moves and demand no planning at all if
 every move is forced.
@@ -124,7 +124,7 @@ be generated on demand.
 
 When arithmetic runs out, the genre's usual answers are hidden segments (lower
 segments revealed only as they are uncovered), locked vials (unusable until N
-colours are complete), mixed capacities on one board, and segments that take two
+colors are complete), mixed capacities on one board, and segments that take two
 pours to move.
 
 Each of these is a real feature: the core, the solver, the generator and the

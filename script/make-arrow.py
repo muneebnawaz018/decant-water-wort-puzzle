@@ -18,7 +18,7 @@ than as a wobble.
 promises a start rather than a resume — the same note `HomeScreen` carries at the
 icon it replaces.
 
-Run it after changing any colour it reads. The JSON is written minified and the
+Run it after changing any color it reads. The JSON is written minified and the
 commit gate checks formatting, so `npm run format` is the second half of the
 command, not an optional tidy-up:
 
@@ -56,7 +56,7 @@ DURATION = 102
 STEP = 2
 
 SIZE = 100
-CENTRE = SIZE / 2
+CENTER = SIZE / 2
 
 # --- The beat ----------------------------------------------------------------
 
@@ -70,10 +70,10 @@ SHAFT_LEN = 30
 SHAFT_W = 7.5
 HEAD_LEN = 15
 HEAD_HALF = 12.5
-# Pulled left of the frame's centre so the head, not the whole glyph, sits in the
-# middle of the disc. An arrow centred on its bounding box always looks pushed
+# Pulled left of the frame's center so the head, not the whole glyph, sits in the
+# middle of the disc. An arrow centered on its bounding box always looks pushed
 # right, because the head carries the visual weight.
-ARROW_X = CENTRE - 5
+ARROW_X = CENTER - 5
 
 NUDGE = 7
 
@@ -89,8 +89,8 @@ RING_END = 46
 # From `src/theme/colors.ts`. The disc is a translucent accent wash, so the mark
 # is `accentBright`, exactly what the static glyph used.
 #
-# **One colour, separated by alpha, not two greens.** A second pale green would
-# be a palette entry invented in a build script — the thing `no-raw-colour` exists
+# **One color, separated by alpha, not two greens.** A second pale green would
+# be a palette entry invented in a build script — the thing `no-raw-color` exists
 # to stop on the TypeScript side, and no less wrong here. The trail and the ring
 # read as lighter because they are thinner and more transparent, which is what
 # light actually does.
@@ -153,7 +153,7 @@ def arrow() -> dict:
     """
 
     def slide(t: float):
-        return [round(ARROW_X + NUDGE * travel(t), 2), CENTRE, 0]
+        return [round(ARROW_X + NUDGE * travel(t), 2), CENTER, 0]
 
     def stretch(t: float):
         # Wider and a touch shorter as it leaves, which is the oldest trick in
@@ -200,7 +200,7 @@ def chevron(index: int) -> dict:
 
     def out(t: float):
         k = since(t, start, length)
-        return [round(base + 12 * smoothstep(k), 2), CENTRE, 0]
+        return [round(base + 12 * smoothstep(k), 2), CENTER, 0]
 
     def alpha(t: float):
         k = since(t, start, length)
@@ -250,7 +250,7 @@ def ring() -> dict:
         1,
         "ring",
         [group([ellipse(windowed(size, start, length)), band])],
-        transform([CENTRE, CENTRE, 0], opacity=windowed(alpha, start, length)),
+        transform([CENTER, CENTER, 0], opacity=windowed(alpha, start, length)),
         DURATION,
     )
 
@@ -274,7 +274,7 @@ def glow() -> dict:
         6,
         "glow",
         [group([ellipse(sample(breathe, 6)), fill(ACCENT_BRIGHT)])],
-        transform([CENTRE, CENTRE, 0], opacity=sample(alpha, 6)),
+        transform([CENTER, CENTER, 0], opacity=sample(alpha, 6)),
         DURATION,
     )
 

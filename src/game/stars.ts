@@ -36,7 +36,7 @@ const TWO_STAR_EFFICIENCY = 0.5;
  * Par is the true fewest pours that finish the board — `optimalMoves`, IDA*
  * over the generator's own output. Not hand-authored, deterministic, and it
  * scales with the board instead of assuming capacity 4 the way the prototype's
- * `colours * 2` did.
+ * `colors * 2` did.
  *
  * It used to be `moveLowerBound`, and that was a bug worth remembering. A
  * lower bound is not a target: measured against an exhaustive search it sat
@@ -48,7 +48,7 @@ const TWO_STAR_EFFICIENCY = 0.5;
  *
  * Three stars is deliberately not a demand for optimal play. With par exact,
  * `moves <= par` would ask the player to solve the whole board in their head
- * before touching it, which turns a colour sorter into an optimisation puzzle.
+ * before touching it, which turns a color sorter into an optimisation puzzle.
  * The cushion is not there to cover exploration — an undone pour leaves no
  * trace, since `moves` is `history.length` and undo drops the move from it —
  * it is there so that playing well is enough without playing perfectly.

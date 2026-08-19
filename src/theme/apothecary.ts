@@ -1,4 +1,4 @@
-import { colours, gradients, ui } from './colors';
+import { colors, gradients, ui } from './colors';
 import { s } from './scale';
 
 /**
@@ -7,7 +7,7 @@ import { s } from './scale';
  * The theme went dark at the handoff: deep purple ground, warm lamp glow, gold
  * chrome, and pure saturated liquids. The old parchment palette is gone.
  *
- * Liquid colours are deliberately loud. On a dark ground a muted palette reads
+ * Liquid colors are deliberately loud. On a dark ground a muted palette reads
  * as mud, and the player's whole job is telling two segments apart at a glance.
  */
 export interface Theme {
@@ -30,16 +30,16 @@ export interface Theme {
   goldLight: string;
   goldDark: string;
 
-  /** Green, the primary action colour. */
+  /** Green, the primary action color. */
   accent: string;
   accentDark: string;
 
   pieces: string[];
-  /** Colourblind glyph per piece, index-aligned with `pieces`. */
+  /** Colorblind glyph per piece, index-aligned with `pieces`. */
   symbols: PieceSymbol[];
 }
 
-/** Glyphs from spec §9. One per liquid colour, all visually distinct. */
+/** Glyphs from spec §9. One per liquid color, all visually distinct. */
 export type PieceSymbol =
   | 'dot'
   | 'triangle'
@@ -71,12 +71,12 @@ export const apothecary: Theme = {
   goldDark: ui.goldDark,
 
   accent: ui.accent,
-  accentDark: colours.accentDark,
+  accentDark: colors.accentDark,
 
   /**
    * Ordered by separation, not by the spec's listing order.
    *
-   * `paramsForLevel` takes the first N, so this order decides which colours a
+   * `paramsForLevel` takes the first N, so this order decides which colors a
    * board actually uses. Two measures are held at once, and the order was
    * searched rather than hand-picked:
    *
@@ -86,50 +86,50 @@ export const apothecary: Theme = {
    *   otherwise.
    * - Subject to that, the worst pair under simulated protanopia,
    *   deuteranopia and tritanopia is pushed as high as it will go at the board
-   *   sizes players actually meet. Four colours went from dE 14 to 30, six
+   *   sizes players actually meet. Four colors went from dE 14 to 30, six
    *   from 5 to 14, eight from 5 to 7.
    *
-   * Ten and eleven colours come out marginally worse than the previous order
+   * Ten and eleven colors come out marginally worse than the previous order
    *   (4.8 and 0.2, against 5.3 and 0.5) and that is accepted: both numbers are
    *   far below perceptible either way, so nothing is lost that was working,
    *   and those sizes start at level 501. The gain sits on levels 6 to 350,
    *   where nearly every player is.
    *
-   * None of this makes colour alone sufficient — see the `colour vision` tests
-   * for how badly twelve hues collapse. Colourblind marks remain the mechanism
+   * None of this makes color alone sufficient — see the `color vision` tests
+   * for how badly twelve hues collapse. Colorblind marks remain the mechanism
    * that carries identity; this ordering only decides how much work they have
    * to do, and how early.
    *
    * The index is a piece's identity, so this reordering repaints every board
    * without changing any puzzle: generation, seeds and the saved records all
-   * work in indices, never in colours.
+   * work in indices, never in colors.
    */
   pieces: [
-    colours.aqua,
-    colours.tangerine,
-    colours.rose,
-    colours.olive,
-    colours.coral,
-    colours.mango,
-    colours.fern,
-    colours.plum,
-    colours.teal,
-    colours.lime,
-    colours.blueberry,
-    colours.grape,
+    colors.aqua,
+    colors.tangerine,
+    colors.rose,
+    colors.olive,
+    colors.coral,
+    colors.mango,
+    colors.fern,
+    colors.plum,
+    colors.teal,
+    colors.lime,
+    colors.blueberry,
+    colors.grape,
   ],
   /**
    * Index-aligned with `pieces`.
    *
-   * Ordered on the same principle as the colours, for the same reason: a board
+   * Ordered on the same principle as the colors, for the same reason: a board
    * takes the first N, so the glyphs that co-occur early have to be the ones
    * least like each other. The set holds six near-pairs — filled against
    * outlined (`dot`/`ring`), one against two (`wave`/`waves`), and rotations of
    * each other (`plus`/`cross`, `square`/`diamond`, `triangle`/`star`,
    * `stripe`/`grid`). The first six entries take one from each pair, so no
-   * partner appears until seven colours are on the board.
+   * partner appears until seven colors are on the board.
    *
-   * These deliberately do not travel with their old colours. A glyph carries
+   * These deliberately do not travel with their old colors. A glyph carries
    * no meaning of its own — only its distinctness from the others on screen
    * matters — so pairing was free to be re-spent on separation.
    */
@@ -159,13 +159,13 @@ export const apothecary: Theme = {
  * corners where the curve exposes more of it. iOS paints the background under
  * the border and shows nothing.
  *
- * Filling that sliver with a solid colour was tried and does not work: the
- * sliver is still a third colour between two others, so on a `panelTop → panel`
+ * Filling that sliver with a solid color was tried and does not work: the
+ * sliver is still a third color between two others, so on a `panelTop → panel`
  * gradient it stays visible at the top corners however it is tinted.
  *
  * The portable form is a stroke made of padding: the outer view takes
  * `backgroundColor: line` and `padding: HAIRLINE`, the gradient sits inside at
- * `borderRadius - HAIRLINE`. Any rounding error then exposes the stroke colour
+ * `borderRadius - HAIRLINE`. Any rounding error then exposes the stroke color
  * itself, which is invisible by construction.
  *
  * 1dp, not `StyleSheet.hairlineWidth` — the design calls for a visible edge,

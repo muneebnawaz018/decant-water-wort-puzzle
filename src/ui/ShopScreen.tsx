@@ -19,15 +19,15 @@ import { PRODUCTS, SKIN_PRICES } from '@/game/economy';
 /**
  * The shop, spec §4.7. Cosmetic only — nothing here may affect play.
  *
- * What it sells is the **shape of the glass**, not its colour. The four
+ * What it sells is the **shape of the glass**, not its color. The four
  * "Ocean / Sunset / Berry / Meadow glass" entries this replaces were palettes,
- * and a palette is the one cosmetic this game cannot sell: board colours are
+ * and a palette is the one cosmetic this game cannot sell: board colors are
  * chosen for separation and pinned by a test that fails if any two come within
- * ΔE 30, the colourblind glyphs are index-aligned to that same order, and a
+ * ΔE 30, the colorblind glyphs are index-aligned to that same order, and a
  * purchase that repaints them puts an accessibility guarantee behind a paywall.
  * A silhouette touches none of it.
  *
- * The catalogue is `docs/05-skins.md`'s slice one: the default, a free ladder
+ * The catalog is `docs/05-skins.md`'s slice one: the default, a free ladder
  * that unlocks by level, and one coin skin. Every tile shows its true state —
  * equippable, locked behind a level, or priced — and every control delivers
  * what it says. The "coming soon" veils that used to stand here taught the

@@ -61,7 +61,7 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     // Tight vertically, because the waiting state's mark is what sets this
     // control's height now and it should reach close to the card's edges. The
-    // ready state is a single line and is centred in whatever height the row
+    // ready state is a single line and is centered in whatever height the row
     // gives it, so it is unaffected.
     paddingVertical: s(8),
     paddingHorizontal: s(10),
@@ -71,8 +71,8 @@ export const styles = StyleSheet.create({
   /**
    * The waiting layout: a mark, then the caption over the clock.
    *
-   * A row rather than a centred stack, because the clock has to stay the widest
-   * thing in the control and a stack would centre a 36dp mark above it with
+   * A row rather than a centered stack, because the clock has to stay the widest
+   * thing in the control and a stack would center a 36dp mark above it with
    * nothing beside it — which spends the height this control does not have.
    */
   // The gap is wider than the app's usual 8 because the mark is artwork rather
@@ -97,17 +97,17 @@ export const styles = StyleSheet.create({
     width: s(38),
     height: s(69),
     /**
-     * Lifted, because the artwork is not centred in its own canvas.
+     * Lifted, because the artwork is not centered in its own canvas.
      *
      * `brew.json` is 110x200 and the glass sits at y=120 spanning 46 to 194 —
      * the empty forty units above it are headroom for the drop to fall
-     * through. Flex centres the *box*, so the visible vial hung about 7dp below
+     * through. Flex centers the *box*, so the visible vial hung about 7dp below
      * the text beside it, which reads as two things that were meant to line up
      * and did not.
      *
      * A transform rather than a margin: the glass has to move without the row's
      * height changing, and a margin large enough to shift it would also push
-     * the row's own centring around. The number is the composition's imbalance
+     * the row's own centering around. The number is the composition's imbalance
      * scaled to the box — (120 - 100) / 200 * 69 — not a value picked by eye.
      */
     transform: [{ translateY: -s(7) }],
@@ -119,7 +119,7 @@ export const styles = StyleSheet.create({
    * The eyebrow and the prize, on one line.
    *
    * `space-between` rather than a gap, so the coin sits at the clock's right
-   * edge underneath it. Aligned to the caption's baseline by centring: the coin
+   * edge underneath it. Aligned to the caption's baseline by centering: the coin
    * is a glyph of its own size and hanging it off the text's baseline leaves it
    * riding high on the taller cap.
    */
@@ -148,7 +148,7 @@ export const styles = StyleSheet.create({
    * clock can show rather than by the one it happens to be showing.
    *
    * `alignSelf: 'flex-start'` keeps the digits left-aligned against the caption
-   * above them; centring inside the floor would drift them right whenever the
+   * above them; centering inside the floor would drift them right whenever the
    * time is narrow, which is the same twitch one level down.
    */
   clockBox: { minWidth: s(148), alignSelf: 'flex-start' },
@@ -191,13 +191,13 @@ export const styles = StyleSheet.create({
     fontSize: s(21),
     letterSpacing: s(0.2),
     // Android pads a `Text` box with the font's own ascender and descender
-    // space unless told not to. Flex then centres the *box*, leaving the
+    // space unless told not to. Flex then centers the *box*, leaving the
     // visible digits sitting high with the slack below them — which is what
-    // made a perfectly centred control look off. The caption already sets it;
+    // made a perfectly centered control look off. The caption already sets it;
     // the clock is the bigger type and was the one showing it.
     includeFontPadding: false,
   },
-  /** Gold on the panel surface: a live clock, not a greyed-out control. */
+  /** Gold on the panel surface: a live clock, not a grayed-out control. */
   restLabel: { color: apothecary.goldLight },
   /** Dark ink on the lit face. White on gold measures 1.7:1. */
   readyLabel: { color: ui.onGold },

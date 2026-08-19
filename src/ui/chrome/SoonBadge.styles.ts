@@ -13,7 +13,7 @@ export const styles = StyleSheet.create({
    * on both platforms — Android's is taller by the font padding it reserves for
    * an ascender and descender this uppercase string never uses. Two paddings
    * around two different heights give two different pills. Stated outright and
-   * centred, the glyphs sit in the middle of a box neither platform gets a vote
+   * centered, the glyphs sit in the middle of a box neither platform gets a vote
    * on.
    */
   badge: {
@@ -31,13 +31,13 @@ export const styles = StyleSheet.create({
    *
    * Letter spacing is trailing: it is added after every glyph including the
    * last, so the measured text is one space wider than what is drawn and the
-   * lettering sits that far left of the pill's centre. Small enough to look
+   * lettering sits that far left of the pill's center. Small enough to look
    * like nothing and just enough to look wrong.
    */
   /**
    * `includeFontPadding: false` drops Android's reserved ascender/descender
    * band, which is both taller than iOS's line box and asymmetric — so it also
-   * pushed the lettering above centre. Turning it off leaves the line box
+   * pushed the lettering above center. Turning it off leaves the line box
    * undefined, hence the explicit `lineHeight`.
    */
   text: {

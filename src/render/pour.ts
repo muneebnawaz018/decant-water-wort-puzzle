@@ -60,7 +60,7 @@ export interface PourGeometry {
   target: Point;
   /** Tilt at full extension. Signed so the body leans away from the target. */
   tilt: number;
-  /** Horizontal centre of the falling stream. */
+  /** Horizontal center of the falling stream. */
   streamX: number;
   /** Surface of the destination before this pour started. */
   surfaceY: number;

@@ -24,12 +24,12 @@ export const styles = StyleSheet.create({
     zIndex: 2,
   },
   /**
-   * Centred on the header, not on the space left over beside the buttons.
+   * Centered on the header, not on the space left over beside the buttons.
    *
    * Absolute rather than a flexed middle column: the back button is always
    * there but the trailing slot is empty on Settings and a coin pill on Shop,
-   * so a flexed title centres itself somewhere different on each screen. Taken
-   * out of the flow it centres on the header, and the two buttons sit over it.
+   * so a flexed title centers itself somewhere different on each screen. Taken
+   * out of the flow it centers on the header, and the two buttons sit over it.
    *
    * The side padding is the button plus the row's gap, so a long title wraps or
    * truncates before it can run under either one.
@@ -43,19 +43,19 @@ export const styles = StyleSheet.create({
   title: { ...text.screenTitle, textAlign: 'center' },
   /**
    * The slot for a header with a coin pill at one end and a button at the
-   * other: **centred between the two, not on the header.**
+   * other: **centered between the two, not on the header.**
    *
    * The two ends are different widths — a 94dp pill against a 42dp square — so
-   * the two things that could be called centred are not the same place, and
-   * only one of them looks it. Centred on the header, the title sits about 25dp
+   * the two things that could be called centered are not the same place, and
+   * only one of them looks it. Centered on the header, the title sits about 25dp
    * nearer the pill than the button, and every screen with a pill reads as
    * slightly misaligned even though the arithmetic is exact. What the eye
    * checks is the gap either side of the words.
    *
    * **It lands halfway between the two.** Both extremes were tried on a device
-   * and both read as off: centred on the header the title crowds the pill,
-   * centred in the gap it sits visibly right of everything else on the screen —
-   * the grid and cards below are centred on the header, and the title stops
+   * and both read as off: centered on the header the title crowds the pill,
+   * centered in the gap it sits visibly right of everything else on the screen —
+   * the grid and cards below are centered on the header, and the title stops
    * agreeing with them. Splitting the difference is not a fudge; it is the only
    * position that answers to both, because the header's own two ends disagree
    * about where the middle is.
@@ -102,7 +102,7 @@ export const styles = StyleSheet.create({
    *
    * See `HAIRLINE` in `@/theme/apothecary` for why. Short version: on Android a
    * `LinearGradient` inside a bordered view lands a pixel short of the stroke
-   * and leaves a sliver of a third colour at the corners.
+   * and leaves a sliver of a third color at the corners.
    */
   button: {
     width: s(42),

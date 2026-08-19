@@ -28,8 +28,8 @@ type Builder = ReturnType<typeof Skia.PathBuilder.Make>;
  * is what a memoised layout wants anyway.
  *
  * Every family keeps its narrowest glass at or above `0.46` of the tube's
- * width, pinned in `skins.test.ts`: the colourblind glyphs are drawn at `0.42`
- * of the width, centred, and glass narrower than that clips the accessibility
+ * width, pinned in `skins.test.ts`: the colorblind glyphs are drawn at `0.42`
+ * of the width, centered, and glass narrower than that clips the accessibility
  * mark.
  */
 export function vesselPath(tube: TubeRect, vessel: Vessel): SkPath {
@@ -125,14 +125,14 @@ const ORB_SHOULDER = Math.PI / 4;
 function orbGeometry(tube: TubeRect, mouth: number) {
   const { y, width, height } = tube;
   const r = width / 2;
-  const centreY = y + height - r;
+  const centerY = y + height - r;
   const halfMouth = (mouth * width) / 2;
 
   // Where the fillet touches the bulb, and the bulb's tangent direction there.
   const sin = Math.sin(ORB_SHOULDER);
   const cos = Math.cos(ORB_SHOULDER);
   const touchHalf = r * sin;
-  const touchY = centreY - r * cos;
+  const touchY = centerY - r * cos;
 
   // The corner the fillet rounds off: where that tangent crosses the neck
   // wall. Distance along the tangent is negative — the crossing is back up
@@ -141,7 +141,7 @@ function orbGeometry(tube: TubeRect, mouth: number) {
   const reach = (r * sin - halfMouth) / cos;
   const cornerY = touchY - reach * sin;
 
-  return { r, centreY, halfMouth, touchHalf, touchY, cornerY, startY: cornerY - reach };
+  return { r, centerY, halfMouth, touchHalf, touchY, cornerY, startY: cornerY - reach };
 }
 
 /**
@@ -163,7 +163,7 @@ function traceOrb(tube: TubeRect, mouth: number): Builder {
   const cx = x + width / 2;
   const lip = width * 0.06;
   const lipDrop = height * 0.025;
-  const { r, centreY, halfMouth, touchHalf, touchY, cornerY, startY } = orbGeometry(
+  const { r, centerY, halfMouth, touchHalf, touchY, cornerY, startY } = orbGeometry(
     tube,
     mouth
   );
@@ -172,7 +172,7 @@ function traceOrb(tube: TubeRect, mouth: number): Builder {
   // coordinates. The arc runs from the right tangent point, under the bulb,
   // to its mirror on the left.
   const shoulderDeg = (ORB_SHOULDER * 180) / Math.PI;
-  const oval = Skia.XYWHRect(x, centreY - r, width, width);
+  const oval = Skia.XYWHRect(x, centerY - r, width, width);
 
   const builder = Skia.PathBuilder.Make();
   builder.moveTo(cx + halfMouth + lip, y);
@@ -291,11 +291,11 @@ function traceHourglass(tube: TubeRect, waist: number): Builder {
  *
  * One shape, on purpose, second time around: a per-family set (bung, ball
  * stopper, T-cork, end plate) was built and rolled back on review — the slab
- * read best on the board. Geometry only: the board paints it in the colour of
- * the liquid it seals, so the cap keeps saying which colour is finished after
+ * read best on the board. Geometry only: the board paints it in the color of
+ * the liquid it seals, so the cap keeps saying which color is finished after
  * the meniscus is hidden under it.
  *
- * Drawn only when a tube holds one colour at full capacity: an open mouth is
+ * Drawn only when a tube holds one color at full capacity: an open mouth is
  * the resting state, and the cap arriving is the reward for closing one out.
  */
 export function vesselCap(tube: TubeRect, vessel: Vessel): SkPath {
@@ -342,7 +342,7 @@ function mouthHalfWidth(tube: TubeRect, vessel: Vessel): number {
 }
 
 /**
- * The specular stripe down the glass — a **centreline**, stroked by the
+ * The specular stripe down the glass — a **centerline**, stroked by the
  * caller with `strokeWidth = HIGHLIGHT_WIDTH * tube.width` and round caps.
  *
  * It follows the wall. The first version was a straight rect pushed down to
@@ -378,8 +378,8 @@ export function vesselHighlight(tube: TubeRect, vessel: Vessel): SkPath {
     // two different margins down its own length.
     const x = Math.min(
       cx - half + tube.width * STRIPE_GAP,
-      // Guard for glass narrower than the catalogue currently allows: the
-      // stripe stays left of centre rather than crossing it.
+      // Guard for glass narrower than the catalog currently allows: the
+      // stripe stays left of center rather than crossing it.
       cx - tube.width * HIGHLIGHT_WIDTH
     );
     if (step === 0) builder.moveTo(x, y);
@@ -465,7 +465,7 @@ function wallHalfWidth(tube: TubeRect, vessel: Vessel, y: number): number {
     // quadratic, degree-elevated to a cubic so one solver covers every curve
     // in this file.
     case 'orb': {
-      const { r, centreY, halfMouth, touchHalf, touchY, cornerY, startY } = orbGeometry(
+      const { r, centerY, halfMouth, touchHalf, touchY, cornerY, startY } = orbGeometry(
         tube,
         vessel.mouth
       );
@@ -482,7 +482,7 @@ function wallHalfWidth(tube: TubeRect, vessel: Vessel, y: number): number {
           y
         );
       }
-      const dy = y - centreY;
+      const dy = y - centerY;
       return Math.max(halfMouth, Math.sqrt(Math.max(0, r * r - dy * dy)));
     }
 

@@ -1,7 +1,7 @@
 # 11 — Deployment, in order
 
 `docs/06-launch.md` says what is required and why. This file says **what to do
-next, in the order to do it**, because that document is organised by what blocks
+next, in the order to do it**, because that document is organized by what blocks
 what rather than as a list you can work down.
 
 Nothing here is new information. It is the same requirements, sequenced, with

@@ -4,20 +4,20 @@
 Why this is generated rather than authored
 ------------------------------------------
 The same route the icons, the splash and the other marks take: a script that
-draws the asset from the palette, so a colour moving in `src/theme/colors.ts`
+draws the asset from the palette, so a color moving in `src/theme/colors.ts`
 cannot leave a committed binary behind. `script/make-coins.py` has the longer
 version of this argument.
 
 Gold, tilted, and no chip
 -------------------------
-Two versions were rejected before this and both are worth naming. A muted grey
+Two versions were rejected before this and both are worth naming. A muted gray
 cross read as browser chrome pasted onto the card — every other thing there is
 gold, so the one thing that was not looked like it belonged to another app. A
 translucent disc behind it fixed the weight and cost more than it bought: a
 second bordered shape in a corner already holding three stars, competing with
 them for the same glance.
 
-What was actually wrong was the colour, not the missing body. In gold it is part
+What was actually wrong was the color, not the missing body. In gold it is part
 of the card's own family, and the tilt is what keeps it from reading as a
 multiplication sign or a form-field clear button — an ✕ standing square is a
 symbol, one at an angle is a mark.
@@ -37,7 +37,7 @@ This takes the same exemption the coin pill's sheen does, on the same grounds:
 the frame is 40 units square and it is mounted only while the win card is up,
 which is seconds at a time. Anything larger owes the usual argument.
 
-Run after changing any colour it reads:
+Run after changing any color it reads:
 
     python3 script/make-close.py
 """
@@ -50,14 +50,14 @@ FPS = 60
 # pulse on a dismiss control is a nag.
 DURATION = 144
 SIZE = 44
-CENTRE = SIZE / 2
+CENTER = SIZE / 2
 
 # `goldLight` from the palette rather than the full gold: this sits above three
 # gold stars and a gold button, and matching their strength would make the way
 # out compete with the reward.
 GOLD = "#FFDE86"
 
-# The arm's reach from centre, and its weight. Heavier than the grey cross was
+# The arm's reach from center, and its weight. Heavier than the gray cross was
 # (2.6): gold on a purple panel needs less contrast help than a muted lilac did,
 # but a thin stroke at this size reads as a hairline rather than as a mark.
 ARM = 8.0
@@ -68,9 +68,9 @@ STROKE = 3.0
 TILT = 14
 
 
-def rgba(hex_colour: str) -> list[float]:
+def rgba(hex_color: str) -> list[float]:
     """Lottie wants normalised floats, not bytes."""
-    h = hex_colour.lstrip("#")
+    h = hex_color.lstrip("#")
     return [int(h[i : i + 2], 16) / 255 for i in (0, 2, 4)] + [1.0]
 
 
@@ -174,7 +174,7 @@ def build() -> dict:
                             (DURATION, [TILT - 2]),
                         ]
                     ),
-                    "p": value([CENTRE, CENTRE, 0]),
+                    "p": value([CENTER, CENTER, 0]),
                     "a": value([0, 0, 0]),
                     "s": keyed(
                         [

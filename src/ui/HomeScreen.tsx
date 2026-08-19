@@ -12,7 +12,7 @@ import { useGameStore } from '@/state/gameStore';
 import { firstUnsolved } from '@/state/progress';
 import { overlay } from '@/state/overlayStore';
 import { apothecary } from '@/theme/apothecary';
-import { colours, gradients } from '@/theme/colors';
+import { colors, gradients } from '@/theme/colors';
 import { s } from '@/theme/scale';
 import { countdown, percentWidth } from '@/utils';
 import { CoinPill } from './chrome/CoinPill';
@@ -192,7 +192,7 @@ export const HomeScreen = memo(function HomeScreen({
   /*
     The music button is gone from this corner.
 
-    Spec §7 gives it real behaviour — cycle the track and toast its name, or
+    Spec §7 gives it real behavior — cycle the track and toast its name, or
     offer to turn master sound back on when it is off — and that is what it did
     until there was no audio in the build to cycle. What was left was a dimmed
     control whose entire function was to say "not yet", sitting in the top-right
@@ -250,7 +250,7 @@ export const HomeScreen = memo(function HomeScreen({
                 <Text style={styles.continueLevel}>Level {level}</Text>
                 <View style={styles.bar}>
                   <LinearGradient
-                    colors={[apothecary.accent, colours.lime]}
+                    colors={[apothecary.accent, colors.lime]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={[styles.barFill, { width: percentWidth(blockDone, PAGE_SIZE) }]}

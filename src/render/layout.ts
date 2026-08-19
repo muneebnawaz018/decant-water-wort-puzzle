@@ -29,7 +29,7 @@ export interface LayoutInput {
 /**
  * Air left above a full tube, as a fraction of one segment.
  *
- * A glass filled to its own rim reads as a solid block of colour, and once a
+ * A glass filled to its own rim reads as a solid block of color, and once a
  * completed tube wears a stopper the liquid appeared glued to the underside
  * of it. So a tube holds `capacity` segments **plus** this much empty glass —
  * always, not only when sealed. That last part is the whole point: derive the
@@ -95,7 +95,7 @@ export function computeLayout(input: LayoutInput): BoardLayout {
   const segmentHeight = tubeHeight / (capacity + FILL_HEADROOM);
 
   // Tube height is usually capped by width, so the rows are shorter than their
-  // share of the box. Centre the stack, or the spare space pools between rows.
+  // share of the box. Center the stack, or the spare space pools between rows.
   const stackHeight = rows * tubeHeight + (rows - 1) * rowGap;
   const offsetY = Math.max(0, (height - stackHeight) / 2);
 

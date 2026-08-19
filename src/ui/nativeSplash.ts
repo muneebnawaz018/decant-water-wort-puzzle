@@ -26,7 +26,7 @@ ExpoSplashScreen.setOptions({ duration: 260, fade: true });
  * Hand off to the app.
  *
  * Call this only once there is a real frame underneath: hiding while the tree
- * is still blank shows the background colour for a beat, which reads as a
+ * is still blank shows the background color for a beat, which reads as a
  * stutter rather than a launch.
  */
 export function hideNativeSplash(): void {
