@@ -413,7 +413,7 @@ Start these first. They gate everything downstream and none of them are fast.
 - [ ] **Store name availability and trademark check for "Decant"** — never run.
       `docs/00-overview.md` and `AGENTS.md` both flag it. Do it before
       reserving either listing, because the name is baked into the bundle id
-      (`com.decant.watersort`), which cannot be changed after publication.
+      (`com.walqalum.decant`), which cannot be changed after publication.
 - [ ] **Bundle id registered** on both platforms
 - [ ] **Payment profile and tax forms** on both — takes longer than the code
 
@@ -547,7 +547,7 @@ Nothing on this list is proven by a green build.
    Google Drive. To get genuine first-run state, clear the data instead:
 
    ```sh
-   adb shell pm clear com.decant.watersort
+   adb shell pm clear com.walqalum.decant
    ```
 
 3. **Listen to the sounds through a phone speaker**, not a simulator — see §4.

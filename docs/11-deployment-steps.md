@@ -13,17 +13,71 @@ Two rules govern the order:
   account cannot publish to production until it has run a closed test with 12
   testers for 14 continuous days. Everything else fits inside that window.
 - **The name check comes before anything that reserves the name.** The bundle id
-  `com.decant.watersort` cannot change after publication.
+  `com.walqalum.decant` cannot change after publication.
 
 ---
 
 ## Stage 0 — before spending money
 
-- [ ] **Trademark and store-name availability check for "Decant".** Never run.
-      Both `docs/00-overview.md` and `AGENTS.md` flag it. Do this first: the name
-      is baked into the bundle id, which is permanent after the first
-      publication, and a rename after launch means a new listing under a new
-      package name with every install and review forfeited.
+- [x] **Store-name availability check — run 19 August 2026.** Results below.
+      Decided: **keep "Decant"**, knowing what the search found.
+- [ ] **Trademark search — still outstanding, and it is the one with legal
+      rather than commercial consequences.** USPTO TESS, WIPO Global Brand
+      Database, EUIPO eSearch and IPO Pakistan all need an interactive browser
+      session, so this cannot be scripted from the repo. Search **Class 9**
+      (downloadable game software) and **Class 41** (online game services);
+      a DECANT mark registered for wine in Class 33 does not block a game, one
+      in 9 or 41 does. Note that **DECANT GROUP LIMITED** exists as a company
+      and ships an App Store app.
+
+### What the name search found
+
+The bundle id is what makes this urgent: `com.walqalum.decant` is permanent
+after the first publication, and a rename afterwards means a new listing with
+every install and review forfeited.
+
+**Clear, and verified against Apple's lookup API and Play's listing endpoint:**
+
+| Check                                   | Result       |
+| --------------------------------------- | ------------ |
+| `com.walqalum.decant` on the App Store  | free         |
+| `com.walqalum.decant` on Play           | free (404)   |
+| Exact title `Decant: Water Sort Puzzle` | no collision |
+| Clash with any competitor's bundle id   | none         |
+
+**Not clear, and the reason the decision needed making.** A sweep of ten App
+Store regions found **17 apps whose name starts with "Decant"** — 14 of them
+wine or drink apps, and **three of them liquid-sorting puzzle games**:
+
+| App                         | Bundle id                      | Released   |
+| --------------------------- | ------------------------------ | ---------- |
+| `Decant: Color Sort Puzzle` | `com.stackforgestudios.decant` | 2026-08-18 |
+| `Decant Grove`              | `com.uuuu.tx`                  | 2026-07-15 |
+| `DecantLab`                 | `es.inbee.ios.DecantLab`       | 2025-12-11 |
+
+Plus `Decantra`, a bottle-sorting puzzle live on Play, and a `Decant` jug puzzle
+whose Play listing now 404s.
+
+`Decant: Color Sort Puzzle` shipped **one day** before this search was run, and
+its store description argues difficulty from spare-tube count and describes
+pouring "one top run at a time" — both positions this project's `AGENTS.md`
+records as its own. Water sort is a heavily cloned genre and convergent design
+is entirely possible; it is recorded as a fact, not a claim.
+
+**Two risks were accepted knowingly:**
+
+1. **App Review may reject the title** as confusingly similar to
+   `Decant: Color Sort Puzzle` — same word, same category, one word apart,
+   theirs published first. Not certain, but it would be discovered after the
+   listing is built.
+2. **Permanent second place in search.** Four Decant-named sorting puzzles
+   would then exist, three of them already indexed.
+
+Alternatives were screened the same way and are recorded here so the work is not
+repeated: `Phial` is taken by `Phial - Water Sort Puzzle`, same genre.
+`Apothecary` and `Brew` were both entirely clear — zero games using either word
+— and `Water Sort: Apothecary` was the keyword-led recommendation. Neither was
+taken up.
 
 ---
 
@@ -32,15 +86,41 @@ Two rules govern the order:
 None of these are fast and none depend on each other. Start them all on the same
 day.
 
-- [ ] **Google Play Console** — $25 one-time, plus identity verification
-- [ ] **Apple Developer Program** — $99/yr. If enrolling as an organisation, the
-      D-U-N-S number has to come first and is its own multi-week wait
-- [ ] **AdMob account owned by the company**, not a personal one — see stage 4
-- [ ] Payment profile and tax forms on both stores. These take longer than the
-      code does
+- [x] **Google Play Console — done 19 August 2026.** Personal account, developer
+      name `Walqalum Games`, account ID `8345660181900594121`, owned by
+      `games.walqalum@gmail.com`. Website `https://walqalum.com` recorded on the
+      account.
+- [ ] **Apple Developer Program** — $99/yr. Deliberately deferred: Android is
+      being taken to store first, and iOS follows once it is done.
+- [ ] **AdMob account**, under `games.walqalum@gmail.com` — see stage 4. The
+      one-way door there is that an app entry cannot be moved between AdMob
+      accounts, and a listing linked to the wrong one is a support case rather
+      than a settings change.
+- [ ] Payment profile and tax forms. These take longer than the code does.
 
 Already done, needs nothing: the **Expo account**. `walqalum-games`, holding
 `@walqalum-games/decant`, free tier. See `docs/10-updates.md`.
+
+### One identity, and what each anchor says
+
+Settled 19 August 2026, after the account was opened under a different name.
+`Walqalum` won because two of the anchors already said it and one of those — the
+signing certificate — cannot be changed without generating a new key.
+
+| Anchor         | Value                 |
+| -------------- | --------------------- |
+| Publisher      | Walqalum              |
+| Play developer | `Walqalum Games`      |
+| Expo org       | `walqalum-games`      |
+| Keystore       | `O=Walqalum`          |
+| Package        | `com.walqalum.decant` |
+| Future games   | `com.walqalum.<name>` |
+
+**The package was `com.decant.watersort` until an hour before the Play form was
+submitted**, which had the shape backwards — the app standing where the
+publisher belongs, and nowhere sensible for a second game to go. Caught in time
+because the Create app form asks for the package up front and it is permanent
+from that moment.
 
 ---
 
@@ -48,11 +128,23 @@ Already done, needs nothing: the **Expo account**. `walqalum-games`, holding
 
 This is the item that decides the launch date, so it goes before the polish.
 
-- [ ] **Enrol in Play App Signing** when creating the listing. Google then
-      holds the real signing key and `decant-playstore.keystore` is demoted to
-      an _upload_ key, which support can reset. Without it, losing that file
-      means a new listing under a new package name
-- [ ] Register the bundle id `com.decant.watersort` on both platforms
+- [x] **App record created, 19 August 2026.** `Decant: Water Sort Puzzle`,
+      package `com.walqalum.decant`, Game, Free, status Draft.
+- [x] **Play App Signing accepted** — it is a declaration on the Create app
+      form rather than a separate step, which is easy to miss. Google now holds
+      the real signing key and `decant-playstore.keystore` is demoted to an
+      _upload_ key that support can reset. Without it, losing that file would
+      mean a new listing under a new package name.
+- [x] **Android developer verification — registered, 19 August 2026.**
+      `com.walqalum.decant`, status Registered, 3 keys. New apps are registered
+      automatically at creation, so this needed no action — but **the home
+      page said the opposite for several minutes after the app was created**,
+      listing it under _apps not registered_. The Android developer
+      verification page was already showing Registered, and the banner caught
+      up on a reload. Believe that page, not the banner. The deadline this
+      guards is 30 September 2026, after which unregistered apps are removed
+      from Play and become uninstallable on certified devices.
+- [ ] Register the bundle id on the App Store side, when iOS starts
 - [ ] Build the store artefact and upload it to a closed track, with
       `npm run build:aab -- --production`. That flag sets the EAS Update
       channel, and note the deliberate exception in `docs/10-updates.md` §4: a
@@ -195,7 +287,7 @@ reinstalling — `allowBackup` is on, so a reinstall restores progress from Goog
 Drive:
 
 ```sh
-adb shell pm clear com.decant.watersort
+adb shell pm clear com.walqalum.decant
 ```
 
 ---

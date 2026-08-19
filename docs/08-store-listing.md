@@ -25,7 +25,7 @@ publication.
 | Launcher name (`expo.name`) | `Decant`                    | —     |
 
 **The name has never been checked for availability or trademark conflict.**
-Do that before reserving either listing — the bundle id `com.decant.watersort`
+Do that before reserving either listing — the bundle id `com.walqalum.decant`
 is derived from it and is permanent.
 
 ---

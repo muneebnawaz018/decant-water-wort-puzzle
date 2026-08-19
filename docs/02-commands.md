@@ -63,7 +63,7 @@ as of RN 0.73 and is not coming back.
 Force-quit persistence test (spec §13, save must survive):
 
 ```bash
-adb shell am force-stop com.decant.watersort
+adb shell am force-stop com.walqalum.decant
 ```
 
 ---

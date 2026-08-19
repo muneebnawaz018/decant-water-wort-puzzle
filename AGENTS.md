@@ -24,7 +24,7 @@ Names, and which is which:
 - Launcher name (`app.json` `expo.name`): `Decant` — long names truncate on the
   home screen; the full title lives in the Play/App Store listing, not here
 - npm package name and repo folder: `decant-water-wort-puzzle`
-- Expo slug: `decant`. Bundle id / package: `com.decant.watersort`
+- Expo slug: `decant`. Bundle id / package: `com.walqalum.decant`
 - Spec file kept its original filename, `docs/01-water-sort.md`
 
 ## Stack decision

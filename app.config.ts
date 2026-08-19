@@ -66,7 +66,7 @@ const config: ExpoConfig = {
   backgroundColor: colours.nightDeep,
   ios: {
     supportsTablet: true,
-    bundleIdentifier: 'com.decant.watersort',
+    bundleIdentifier: 'com.walqalum.decant',
     /**
      * `CFBundleVersion` — the build number, not the version.
      *
@@ -218,7 +218,7 @@ const config: ExpoConfig = {
       monochromeImage: './assets/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
-    package: 'com.decant.watersort',
+    package: 'com.walqalum.decant',
   },
   plugins: [
     'expo-dev-client',
