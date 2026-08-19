@@ -51,6 +51,16 @@ import { drawerWidth, styles } from './SettingsDrawer.styles';
  * `expoConfig` is the config that produced the binary, so this cannot drift
  * from what the store lists.
  */
+/**
+ * The hosted policy, which both stores require and AdMob makes unavoidable.
+ *
+ * The trailing slash is the canonical form — the site sets `trailingSlash` in
+ * its Next config, so the unslashed path 308s. Same string is filed in Play
+ * Console and AdMob; if the site ever moves off this host, all three move
+ * together or the app links somewhere the listing does not.
+ */
+const PRIVACY_URL = 'https://decant-website-rho.vercel.app/privacy/';
+
 const VERSION = `${Constants.expoConfig?.name ?? 'Decant'} · v${Constants.expoConfig?.version ?? '1.0.0'}`;
 
 // `detail` comes along now that the options are a list rather than three
@@ -323,9 +333,10 @@ function howToPlay(): void {
 function privacy(): void {
   overlay.modal({
     title: 'Your privacy',
-    body: 'Decant keeps progress on your device only. No account, no personal data collected.',
-    confirmLabel: 'Close',
-    cancelLabel: null,
+    body: 'Decant keeps progress on your device only. No account, no personal data collected. Ads are served by Google, which collects its own data — the full policy says what and why.',
+    confirmLabel: 'Read policy',
+    onConfirm: () => void Linking.openURL(PRIVACY_URL),
+    cancelLabel: 'Close',
   });
 }
 
