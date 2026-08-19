@@ -2,7 +2,7 @@ import { Canvas, Circle, Path, Skia } from '@shopify/react-native-skia';
 import { memo, useMemo } from 'react';
 
 import { apothecary } from '@/theme/apothecary';
-import { colours } from '@/theme/colors';
+import { colors } from '@/theme/colors';
 
 /**
  * The coin. One drawing, every place coins appear — the balance pill, the
@@ -19,7 +19,7 @@ import { colours } from '@/theme/colors';
  *
  * Skia rather than views: the milled edge is 28 radial strokes and the mark is
  * a stroked path, neither of which React Native can draw. A font `$` cannot be
- * stroked at all, and centres by its text box rather than by its ink.
+ * stroked at all, and centers by its text box rather than by its ink.
  */
 export const Coin = memo(function Coin({ size }: { size: number }) {
   /**
@@ -27,7 +27,7 @@ export const Coin = memo(function Coin({ size }: { size: number }) {
    *
    * 28 notches around an 18dp pill coin land under a pixel apart — they stop
    * reading as a milled edge and turn the rim into a smear, and the hairline
-   * ring closes onto the mark. The face keeps its colours and its `$`, so it is
+   * ring closes onto the mark. The face keeps its colors and its `$`, so it is
    * the same coin with less on it, which is what a real one looks like small.
    */
   const detailed = size >= 28;
@@ -39,7 +39,7 @@ export const Coin = memo(function Coin({ size }: { size: number }) {
   const g = useMemo(() => {
     const k = size / 60;
     return {
-      centre: size / 2,
+      center: size / 2,
       body: 30 * k,
       face: 25.5 * k,
       ring: 20.5 * k,
@@ -90,25 +90,25 @@ export const Coin = memo(function Coin({ size }: { size: number }) {
     <Canvas style={{ width: size, height: size }}>
       {/* The body, which is only ever seen as the rim: the face covers the
           rest of it. */}
-      <Circle cx={g.centre} cy={g.centre} r={g.body} color={colours.goldBronze} />
+      <Circle cx={g.center} cy={g.center} r={g.body} color={colors.goldBronze} />
 
       {detailed ? (
         <Path
           path={paths.milling}
-          color={colours.goldDark}
+          color={colors.goldDark}
           style="stroke"
           strokeWidth={g.notch}
         />
       ) : null}
 
-      <Circle cx={g.centre} cy={g.centre} r={g.face} color={apothecary.gold} />
+      <Circle cx={g.center} cy={g.center} r={g.face} color={apothecary.gold} />
 
       {detailed ? (
         <Circle
-          cx={g.centre}
-          cy={g.centre}
+          cx={g.center}
+          cy={g.center}
           r={g.ring}
-          color={colours.goldBronze}
+          color={colors.goldBronze}
           style="stroke"
           strokeWidth={g.ringWidth}
         />
@@ -120,7 +120,7 @@ export const Coin = memo(function Coin({ size }: { size: number }) {
           mark in a recess looks like. */}
       <Path
         path={paths.mark}
-        color={colours.goldDark}
+        color={colors.goldDark}
         style="stroke"
         strokeWidth={g.mark}
         strokeCap="round"

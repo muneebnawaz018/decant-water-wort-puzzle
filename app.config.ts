@@ -1,13 +1,13 @@
 import type { ExpoConfig } from 'expo/config';
 
-import { colours } from './src/theme/colors.ts';
+import { colors } from './src/theme/colors.ts';
 import { VIAL_HEIGHT } from './src/theme/splash.ts';
 
 /**
  * Expo config as TypeScript, not `app.json`.
  *
  * The reason is the palette rule: a static JSON file cannot import anything, so
- * every colour baked into the native shell — splash background, adaptive icon —
+ * every color baked into the native shell — splash background, adaptive icon —
  * had to be a second copy of a hex that already exists in `src/theme/colors.ts`.
  * The adaptive icon was still carrying Expo's default pale blue against a
  * near-black app, which is exactly the drift the rule exists to stop.
@@ -47,7 +47,7 @@ const config: ExpoConfig = {
    * build, a re-signed build and a metadata fix all need a fresh build number
    * against the same version.
    */
-  version: '1.0.1',
+  version: '1.0.2',
   orientation: 'portrait',
   // Phone only. Web was tried and dropped: MMKV, Skia and the worklet runtime
   // each need their own browser shim, which makes a second rendering path to
@@ -59,11 +59,11 @@ const config: ExpoConfig = {
   // `light` against a near-black app made both fight the design on first
   // launch.
   userInterfaceStyle: 'dark',
-  // The colour behind every React view, and — the reason it is here — the one
+  // The color behind every React view, and — the reason it is here — the one
   // the window shows in the gap between the OS dismissing the splash and the
   // first React frame being drawn. It defaults to white, which flashed for a
   // frame on every launch against this near-black app.
-  backgroundColor: colours.nightDeep,
+  backgroundColor: colors.nightDeep,
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.walqalum.decant',
@@ -81,7 +81,7 @@ const config: ExpoConfig = {
      * a version, but keeping it monotonic across all of them means a build
      * number identifies a build outright.
      */
-    buildNumber: '2',
+    buildNumber: '3',
     infoPlist: {
       // `UIStatusBarHidden` is set by the `expo-status-bar` plugin below. This
       // is the half it does not cover: without it iOS asks each view controller
@@ -154,7 +154,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
-    backgroundColor: colours.nightDeep,
+    backgroundColor: colors.nightDeep,
     /**
      * The counterpart to `ios.buildNumber`, and the same trap: prebuild
      * regenerates `android/app/build.gradle`, so without this key every build
@@ -166,7 +166,7 @@ const config: ExpoConfig = {
      * it in step with `ios.buildNumber` so one number describes one build on
      * both stores.
      */
-    versionCode: 2,
+    versionCode: 3,
     /**
      * The OS's default, made a decision. Auto Backup ships the MMKV file to
      * the player's Google Drive, so a new phone restores their progress —
@@ -212,7 +212,7 @@ const config: ExpoConfig = {
       'android.permission.WRITE_EXTERNAL_STORAGE',
     ],
     adaptiveIcon: {
-      backgroundColor: colours.nightDeep,
+      backgroundColor: colors.nightDeep,
       foregroundImage: './assets/android-icon-foreground.png',
       backgroundImage: './assets/android-icon-background.png',
       monochromeImage: './assets/android-icon-monochrome.png',
@@ -234,7 +234,7 @@ const config: ExpoConfig = {
     // plugin for the variables and for how a missing one behaves.
     './plugins/withReleaseSigning.js',
 
-    // Puts the app icon, in colour, on the right of every Android notification.
+    // Puts the app icon, in color, on the right of every Android notification.
     // The small icon in the status bar is alpha-only and can never be it — see
     // the plugin, which explains which slot is which.
     './plugins/withNotificationLargeIcon.js',
@@ -428,7 +428,7 @@ const config: ExpoConfig = {
         // reuses the adaptive icon's foreground rather than shipping a fifth
         // mark to keep in sync.
         icon: './assets/android-icon-monochrome.png',
-        color: colours.gold,
+        color: colors.gold,
         defaultChannel: 'daily-reward',
       },
     ],
@@ -448,7 +448,7 @@ const config: ExpoConfig = {
         resizeMode: 'contain',
         // The ground the app itself paints, so the handoff from the native
         // splash to the first frame has nothing to cut between.
-        backgroundColor: colours.nightDeep,
+        backgroundColor: colors.nightDeep,
       },
     ],
   ],

@@ -66,7 +66,7 @@ const VERSION = `${Constants.expoConfig?.name ?? 'Decant'} · v${Constants.expoC
 
 // `detail` comes along now that the options are a list rather than three
 // buttons in a row. It is the sentence that makes the choice mean something —
-// "Hard" says nothing about what changes, "One more colour, one less place to
+// "Hard" says nothing about what changes, "One more color, one less place to
 // put it" does — and there was nowhere to put it under a segmented control.
 const DIFFICULTY_OPTIONS = DIFFICULTIES.map((id) => ({
   id: id as string,
@@ -197,7 +197,7 @@ export const SettingsDrawer = memo(function SettingsDrawer() {
               <SoonBadge />
             </SettingRow>
             <SettingRow icon="eye" label="Colorblind marks" divider={false}>
-              <Toggle setting="colourblind" label="Colorblind marks" />
+              <Toggle setting="colorblind" label="Colorblind marks" />
             </SettingRow>
           </SettingGroup>
 

@@ -96,7 +96,7 @@ export const ControlButton = memo(function ControlButton({
               player hesitate over nothing. */}
           {price !== undefined && price > 0 && !disabled ? (
             <View style={styles.price}>
-              {/* `onGold`, not `ink`. `ink` is #F4ECFF — the text colour for
+              {/* `onGold`, not `ink`. `ink` is #F4ECFF — the text color for
                   this app's dark surfaces — and on a gold badge it was
                   white-on-yellow, which is why the price looked like a smudge
                   at any size. The palette already carries the ink meant for

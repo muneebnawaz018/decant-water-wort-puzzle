@@ -52,7 +52,7 @@ render decant-android-background.svg android-icon-background.png 1024
 render decant-icon-mono.svg android-icon-monochrome.png 1024
 
 # The notification LARGE icon — the square on the right of a notification, and
-# the one place Android draws the app icon in full colour. `plugins/
+# the one place Android draws the app icon in full color. `plugins/
 # withNotificationLargeIcon.js` puts it in the manifest.
 #
 # 256px because the slot is 64dp: xxxhdpi is 4x, so 256 is exactly enough and

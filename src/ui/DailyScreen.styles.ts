@@ -69,7 +69,7 @@ const CLAIM_SLOT_WIDTH = `${((SLOT * 2 + GAP) / ROW_WIDTH) * 100}%` as const;
  * The wash today's tile carries, as `Panel`'s `tint` rather than as a
  * `backgroundColor`.
  *
- * It was a background colour in `contentStyle` and had never rendered: that
+ * It was a background color in `contentStyle` and had never rendered: that
  * style lands on `Panel`'s `LinearGradient`, which paints over its own
  * background. Today's tile was a plain card with a gold border where the
  * mockup gives it a lit surface.
@@ -183,7 +183,7 @@ export const styles = StyleSheet.create({
    * Today, ringed rather than merely brighter.
    *
    * A gold border plus a wash: on a page of six panels that differ only in
-   * opacity, a colour shift alone was not enough to find at a glance.
+   * opacity, a color shift alone was not enough to find at a glance.
    */
   dayToday: {
     borderWidth: 1,
@@ -252,14 +252,14 @@ export const styles = StyleSheet.create({
   /**
    * What the bonus puzzle pays, and what it counts down.
    *
-   * Two styles rather than one with a colour prop: gold is the app's "this is
-   * available" register and the muted grey is its "not yet", and the row is
+   * Two styles rather than one with a color prop: gold is the app's "this is
+   * available" register and the muted gray is its "not yet", and the row is
    * read at a glance from three feet away.
    */
   bonusReward: { ...text.rowLabel, color: apothecary.goldLight },
   /**
    * The countdown, at full strength — the row's own `spent` opacity does the
-   * dimming. A muted colour here as well compounded with it and left the clock
+   * dimming. A muted color here as well compounded with it and left the clock
    * barely legible, which is the one thing on a spent row worth reading.
    *
    * `tabular-nums` so the digits do not jostle as the seconds tick.

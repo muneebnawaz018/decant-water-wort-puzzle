@@ -6,7 +6,7 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 import noInlineStylesheet from './script/eslint-rules/no-inline-stylesheet.cjs';
-import noRawColour from './script/eslint-rules/no-raw-colour.cjs';
+import noRawColor from './script/eslint-rules/no-raw-color.cjs';
 
 /**
  * Flat config. Three layers: the shared JS/TS baseline, then React and hooks,
@@ -38,7 +38,7 @@ export default tseslint.config(
     plugins: {
       local: {
         rules: {
-          'no-raw-colour': noRawColour,
+          'no-raw-color': noRawColor,
           'no-inline-stylesheet': noInlineStylesheet,
         },
       },
@@ -83,11 +83,11 @@ export default tseslint.config(
     },
   },
 
-  // The palette module is the one place a colour literal is allowed to exist.
+  // The palette module is the one place a color literal is allowed to exist.
   {
     files: ['src/**/*.{ts,tsx}'],
     ignores: ['src/theme/colors.ts', 'src/**/__tests__/**'],
-    rules: { 'local/no-raw-colour': 'error' },
+    rules: { 'local/no-raw-color': 'error' },
   },
 
   // Styles live beside their component, not inside it.

@@ -70,7 +70,7 @@ describe('the economy table', () => {
   });
 
   it('prices skins in whole positive coins', () => {
-    // Which ids may appear here is the catalogue's business — skins.test.ts
+    // Which ids may appear here is the catalog's business — skins.test.ts
     // holds the exact two-way match, since economy.ts imports nothing.
     for (const price of Object.values(SKIN_PRICES)) {
       expect(Number.isInteger(price)).toBe(true);

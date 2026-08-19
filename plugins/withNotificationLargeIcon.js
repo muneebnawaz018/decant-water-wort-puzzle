@@ -11,19 +11,19 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * Puts the app icon, in full colour, on the right of every Android notification.
+ * Puts the app icon, in full color, on the right of every Android notification.
  *
  * ## Android draws two icons, and only one of them can be the app icon
  *
  * The **small icon** — the one in the status bar and the notification header —
- * is alpha-only. Since API 21 the system discards every colour in it and
- * refills the shape with a single tint, so handing it a colour icon produces
+ * is alpha-only. Since API 21 the system discards every color in it and
+ * refills the shape with a single tint, so handing it a color icon produces
  * the well-known white square. That slot is `assets/android-icon-monochrome.png`
  * and it has to be a silhouette; there is no way around it and it is not an
  * Expo limitation.
  *
  * The **large icon** is the square drawn beside the text, and it is an ordinary
- * bitmap: full colour, untinted. That is the one place a notification can show
+ * bitmap: full color, untinted. That is the one place a notification can show
  * what the launcher shows, which is what makes a notification recognisable at a
  * glance rather than by reading the app name.
  *

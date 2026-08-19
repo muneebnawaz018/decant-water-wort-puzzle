@@ -26,10 +26,10 @@ Why generated rather than authored
 ----------------------------------
 The precedent is `script/make-lottie.py` and `script/make-brew.py`, and the
 reason is theirs: no After Effects pipeline, no artist, and a committed binary
-nobody can regenerate drifts from the palette the moment a colour moves. Every
-colour below comes from `src/theme/colors.ts`.
+nobody can regenerate drifts from the palette the moment a color moves. Every
+color below comes from `src/theme/colors.ts`.
 
-Run it after changing any colour it reads. The JSON is written minified and the
+Run it after changing any color it reads. The JSON is written minified and the
 commit gate checks formatting, so `npm run format` is the second half of the
 command, not an optional tidy-up:
 
@@ -42,7 +42,7 @@ two stick to, and for the same reason: it is what every `lottie-react-native`
 version renders identically on both platforms.
 
 **No trim paths, though a spinner is the obvious place for one.** Trim is how
-After Effects draws an arc, but its behaviour depends on where the modifier sits
+After Effects draws an arc, but its behavior depends on where the modifier sits
 in the group's item list, and lottie-android and lottie-ios resolve that
 differently from lottie-web — a hand-written one is a coin toss on whether the
 arc appears at all. The arcs here are plain bezier paths with the sweep baked in,
@@ -70,7 +70,7 @@ DURATION = 96
 # composition into its box, empty air included — a generous margin here is how
 # `brew.json` first shipped at 18dp tall.
 SIZE = 120
-CENTRE = SIZE / 2
+CENTER = SIZE / 2
 
 # --- The rings ---------------------------------------------------------------
 
@@ -101,9 +101,9 @@ GOLD_LIGHT = "#FFDE86"
 GOLD_PALE = "#FFEFB4"
 
 
-def rgba(hex_colour: str, alpha: float = 1.0) -> list[float]:
+def rgba(hex_color: str, alpha: float = 1.0) -> list[float]:
     """Lottie wants normalised floats, not bytes."""
-    h = hex_colour.lstrip("#")
+    h = hex_color.lstrip("#")
     return [int(h[i : i + 2], 16) / 255 for i in (0, 2, 4)] + [alpha]
 
 
@@ -131,14 +131,14 @@ def keyed(frames):
 
 
 def arc_path(radius: float, sweep_deg: float, start_deg: float = -90) -> dict:
-    """An open arc as a bezier path, centred on the origin.
+    """An open arc as a bezier path, centered on the origin.
 
     The standard cubic approximation: split the sweep into segments of at most a
     quarter turn, and give each one handles of length `4/3 * tan(quarter of the
     segment) * r` along the tangent. Below 90 degrees a segment the error is far
     under a pixel at this size.
 
-    Built around the origin rather than around the centre of the frame, so the
+    Built around the origin rather than around the center of the frame, so the
     layer's own rotation spins it in place — a path drawn at an offset rotates
     around the frame instead, which is an orbit, not a spin.
     """
@@ -174,17 +174,17 @@ def ellipse(size, position=(0, 0)) -> dict:
     return {"ty": "el", "s": value(list(size)), "p": value(list(position)), "nm": "el"}
 
 
-def fill(colour: str, alpha: float = 1.0, opacity=100) -> dict:
+def fill(color: str, alpha: float = 1.0, opacity=100) -> dict:
     return {
         "ty": "fl",
-        "c": value(rgba(colour, alpha)),
+        "c": value(rgba(color, alpha)),
         "o": opacity if isinstance(opacity, dict) else value(opacity),
         "r": 1,
         "nm": "fill",
     }
 
 
-def stroke(colour: str, width: float, alpha: float = 1.0) -> dict:
+def stroke(color: str, width: float, alpha: float = 1.0) -> dict:
     """Round caps and round joins, per the app's look.
 
     A butt-capped arc ends in a flat chop that reads as a broken ring; rounded,
@@ -192,7 +192,7 @@ def stroke(colour: str, width: float, alpha: float = 1.0) -> dict:
     """
     return {
         "ty": "st",
-        "c": value(rgba(colour, alpha)),
+        "c": value(rgba(color, alpha)),
         "o": value(100),
         "w": value(width),
         "lc": 2,
@@ -246,7 +246,7 @@ def shape_layer(index: int, name: str, shapes: list, transform: dict) -> dict:
 
 
 def transform(rotation=0, opacity=100, scale=None) -> dict:
-    """Everything here turns about the centre of the frame, so position is fixed.
+    """Everything here turns about the center of the frame, so position is fixed.
 
     The anchor stays at the origin because the paths are already built around it
     — see `arc_path`.
@@ -254,7 +254,7 @@ def transform(rotation=0, opacity=100, scale=None) -> dict:
     return {
         "o": opacity if isinstance(opacity, dict) else value(opacity),
         "r": rotation if isinstance(rotation, dict) else value(rotation),
-        "p": value([CENTRE, CENTRE, 0]),
+        "p": value([CENTER, CENTER, 0]),
         "a": value([0, 0, 0]),
         "s": scale if isinstance(scale, dict) else value(scale or [100, 100, 100]),
     }

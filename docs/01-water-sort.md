@@ -12,7 +12,7 @@ managed-only)
 ## 1. Why this one goes first
 
 It has the least that can go wrong. No physics, no real-time loop, no art
-dependency, no camera. The board is coloured rectangles in glass tubes. Every
+dependency, no camera. The board is colored rectangles in glass tubes. Every
 visual asset is a shape you can draw in Skia.
 
 Its real job is not to succeed commercially. It is to prove the pipeline works
@@ -28,7 +28,7 @@ Reference on store: Get Color,
 ## 2. Core loop
 
 Tap a source tube, tap a destination tube, liquid pours. Repeat until every
-tube holds one colour or is empty.
+tube holds one color or is empty.
 
 Session shape: 30 to 90 seconds per level, players chain 5 to 15 levels.
 
@@ -49,7 +49,7 @@ limited by free space in B. Moving one at a time feels sluggish and players
 hate it.
 
 The level is solved when every tube is either empty or contains `capacity`
-segments of a single colour.
+segments of a single color.
 
 There is no fail state and no timer. Players restart or undo. This matters: the
 genre sells relaxation, and adding a timer breaks the entire proposition.
@@ -59,13 +59,13 @@ genre sells relaxation, and adding a timer breaks the entire proposition.
 ## 4. Data model
 
 ```ts
-type Colour = number; // index into theme.pieces
+type Color = number; // index into theme.pieces
 
 interface WaterState {
-  tubes: Colour[][]; // index 0 = bottom
+  tubes: Color[][]; // index 0 = bottom
   capacity: number;
-  colourCount: number;
-  extraTubes: number; // empty tubes beyond colourCount
+  colorCount: number;
+  extraTubes: number; // empty tubes beyond colorCount
 }
 
 interface PourMove {
@@ -83,8 +83,8 @@ Reverse-generation. Start solved, un-pour repeatedly.
 
 ```ts
 buildSolved(params, rng): WaterState {
-  const tubes: Colour[][] = [];
-  for (let c = 0; c < params.colourCount; c++) {
+  const tubes: Color[][] = [];
+  for (let c = 0; c < params.colorCount; c++) {
     tubes.push(Array(params.capacity).fill(c));
   }
   for (let e = 0; e < params.extraTubes; e++) tubes.push([]);
@@ -131,20 +131,20 @@ Run 200 boards through `tools/level-preview` and look at them before shipping.
 
 ### Difficulty curve
 
-| Levels  | Colours | Capacity | Extra tubes | Scramble steps |
-| ------- | ------- | -------- | ----------- | -------------- |
-| 1–5     | 3       | 4        | 2           | 8              |
-| 6–20    | 4       | 4        | 2           | 16             |
-| 21–50   | 5       | 4        | 2           | 28             |
-| 51–100  | 6       | 4        | 2           | 40             |
-| 101–200 | 7       | 4        | 2           | 55             |
-| 201–350 | 8       | 4        | 1           | 70             |
-| 351–500 | 9       | 5        | 1           | 90             |
-| 501+    | 10–12   | 5        | 1           | 110            |
+| Levels  | Colors | Capacity | Extra tubes | Scramble steps |
+| ------- | ------ | -------- | ----------- | -------------- |
+| 1–5     | 3      | 4        | 2           | 8              |
+| 6–20    | 4      | 4        | 2           | 16             |
+| 21–50   | 5      | 4        | 2           | 28             |
+| 51–100  | 6      | 4        | 2           | 40             |
+| 101–200 | 7      | 4        | 2           | 55             |
+| 201–350 | 8      | 4        | 1           | 70             |
+| 351–500 | 9      | 5        | 1           | 90             |
+| 501+    | 10–12  | 5        | 1           | 110            |
 
-The lever that actually controls difficulty is **extra tubes**, not colour
+The lever that actually controls difficulty is **extra tubes**, not color
 count. Going from 2 spare tubes to 1 is a much bigger jump than adding a
-colour. Save it.
+color. Save it.
 
 Every 10th level, drop back one row in this table.
 
@@ -152,7 +152,7 @@ Every 10th level, drop back one row in this table.
 
 ## 6. Screens
 
-**Board:** tubes laid out in two rows, centred. Level number top-left, move
+**Board:** tubes laid out in two rows, centered. Level number top-left, move
 counter top-right. Undo, hint, restart along the bottom.
 
 Tube layout by count:
@@ -179,7 +179,7 @@ follows.
 - The receiving level rises as the arc lands, not before.
 - Pour sound pitched by how full the destination is. Higher as it fills.
 - Selected tube lifts 8px with a soft shadow.
-- Illegal tap: tube shudders 3px horizontally, muted thud, no colour change.
+- Illegal tap: tube shudders 3px horizontally, muted thud, no color change.
 - Tube completing: brief ring of light, sparkle burst, distinct chime.
 - Level completing: tubes chime left to right in sequence, then celebration.
 - Haptic on every pour, heavier on tube completion.
@@ -229,7 +229,7 @@ Liquids render with a subtle vertical gradient and a meniscus curve at the top.
 Glass gets a thin specular highlight down the left edge. Skip real refraction,
 it costs frames and nobody notices.
 
-Colourblind mode: each colour gets a small repeating symbol embossed on the
+Colorblind mode: each color gets a small repeating symbol embossed on the
 segment (dot, stripe, cross, wave, triangle, grid).
 
 ---
@@ -246,7 +246,7 @@ Long description angles to use:
 - No move limits, no forced timers
 - Thousands of generated levels, daily puzzle
 
-Keywords worth targeting: water sort, colour sort, liquid sort, pour puzzle,
+Keywords worth targeting: water sort, color sort, liquid sort, pour puzzle,
 tube puzzle, offline puzzle, relaxing puzzle.
 
 The genre is crowded. Your listing differentiator is the ad promise, because
@@ -263,7 +263,7 @@ two lines.
 | 2   | Skia board render, tube layout, tap handling, selection state         |
 | 3   | Pour animation, difficulty ramp, generate and review 200 levels       |
 | 4   | Juice pass, sound, haptics, completion sequence                       |
-| 5   | Theme, colourblind mode, icon, screenshots, listing                   |
+| 5   | Theme, colorblind mode, icon, screenshots, listing                    |
 | 6   | QA on three devices, offline test, build, submit                      |
 
 ---
@@ -283,7 +283,7 @@ two lines.
 
 - [ ] 200 levels reviewed, all solvable, difficulty rises smoothly
 - [ ] Pour animation passes the feel checklist
-- [ ] Colourblind mode ships
+- [ ] Colorblind mode ships
 - [ ] Offline works, save survives force-quit
 - [ ] Analytics firing, ad stubs logging
 - [ ] Under 40MB, targets API 36

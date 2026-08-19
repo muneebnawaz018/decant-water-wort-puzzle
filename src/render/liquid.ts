@@ -1,7 +1,7 @@
 /**
  * The liquid surface, as a GPU fragment shader.
  *
- * Every pixel asks "am I below the surface?", where the surface is a travelling
+ * Every pixel asks "am I below the surface?", where the surface is a traveling
  * wave rather than a straight line. That is the difference between liquid and a
  * rectangle: the boundary moves, bulges, and settles, and it costs the same as
  * filling a rect because the GPU does it per pixel in parallel.
@@ -15,8 +15,8 @@ uniform vec2 origin;    // left edge, and the top of the drawn region
 uniform vec2 size;      // width and height of the drawn region
 uniform float surface;  // resting y of the liquid surface
 uniform float amp;      // wave height, decays to zero as it settles
-uniform float phase;    // travelling-wave phase
-uniform vec4 fill;      // liquid colour, straight alpha
+uniform float phase;    // traveling-wave phase
+uniform vec4 fill;      // liquid color, straight alpha
 
 half4 main(vec2 pos) {
   float u = clamp((pos.x - origin.x) / max(size.x, 1.0), 0.0, 1.0);

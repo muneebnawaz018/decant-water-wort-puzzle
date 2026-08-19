@@ -11,7 +11,7 @@ import { useGameStore } from '../gameStore';
 
 const store = () => useGameStore.getState();
 
-/** First tube holding something, so tests do not depend on generated colours. */
+/** First tube holding something, so tests do not depend on generated colors. */
 function firstNonEmpty(): number {
   return store().board.tubes.findIndex((tube) => tube.length > 0);
 }
@@ -805,7 +805,7 @@ describe('solving a whole level on hints', () => {
    * 1,000,000 cycled inside four moves in two of three modes — a paid button
    * charging for a loop.
    *
-   * Difficulty caps out (12 colours, capacity 5, one spare), so a level in the
+   * Difficulty caps out (12 colors, capacity 5, one spare), so a level in the
    * millions is the same *size* board as level 501 — which is exactly why the
    * bug was about consistency between searches and not about scale.
    */
@@ -900,7 +900,7 @@ describe('the daily bonus puzzle', () => {
 
   /**
    * On stars, not flat. The brew's shape follows the player now, so one figure
-   * for every brew would pay a six-colour board and a twelve-colour one the
+   * for every brew would pay a six-color board and a twelve-color one the
    * same — and there is no fail state, so a finished brew always pays at least
    * one star's worth.
    */

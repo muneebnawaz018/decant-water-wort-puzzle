@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 
 import { apothecary, SPACE } from '@/theme/apothecary';
-import { colours, ui } from '@/theme/colors';
+import { colors, ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
 import { s, WINDOW_WIDTH } from '@/theme/scale';
 /**
@@ -13,7 +13,7 @@ export const COIN_SIZE = s(18);
 /**
  * The pill's drawn width, for a header that has to leave room for it.
  *
- * Summed from the parts rather than measured: `ScreenHeader` centres its title
+ * Summed from the parts rather than measured: `ScreenHeader` centers its title
  * absolutely, so it needs this number before layout runs, and an `onLayout`
  * pass would leave the title jumping on the first frame of every screen.
  *
@@ -91,7 +91,7 @@ export const styles = StyleSheet.create({
   tipText: {
     fontFamily: POPPINS.medium,
     fontSize: s(13),
-    color: colours.white,
+    color: colors.white,
   },
 
   pill: {

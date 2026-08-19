@@ -5,11 +5,11 @@ import { glyphOn } from '@/theme/colors';
 import type { PieceSymbol } from '@/theme/apothecary';
 
 /**
- * Colourblind marks, doc §9 and spec §9.
+ * Colorblind marks, doc §9 and spec §9.
  *
- * One distinct glyph per liquid colour, so colour is never the only signal.
+ * One distinct glyph per liquid color, so color is never the only signal.
  * Drawn on a 24×24 grid and scaled. These stayed hand-authored when the icons
- * moved to Material Symbols: a colourblind mark's job is to be unlike the other
+ * moved to Material Symbols: a colorblind mark's job is to be unlike the other
  * marks on the board, which is a constraint no general icon set is drawn for.
  *
  * Filled shapes, not outlines: an outline on a saturated fill is hard to read
@@ -34,7 +34,7 @@ const GLYPHS: Record<PieceSymbol, { path: string; stroke: boolean }> = {
   grid: { path: 'M4 9 H20 M4 15 H20 M9 4 V20 M15 4 V20', stroke: true },
 };
 
-export const ColourMark = memo(function ColourMark({
+export const ColorMark = memo(function ColorMark({
   symbol,
   fill,
   cx,
@@ -42,7 +42,7 @@ export const ColourMark = memo(function ColourMark({
   size,
 }: {
   symbol: PieceSymbol;
-  /** The liquid underneath — the mark picks a legible colour against it. */
+  /** The liquid underneath — the mark picks a legible color against it. */
   fill: string;
   cx: number;
   cy: number;
@@ -61,9 +61,9 @@ export const ColourMark = memo(function ColourMark({
     >
       <Path
         path={path}
-        // The mark picks its own colour: a fixed white glyph vanished on the
+        // The mark picks its own color: a fixed white glyph vanished on the
         // two liquids above L* 84, which is the accessibility feature failing
-        // silently on exactly the colours that need it.
+        // silently on exactly the colors that need it.
         color={glyphOn(fill)}
         style={glyph.stroke ? 'stroke' : 'fill'}
         strokeWidth={2.6}

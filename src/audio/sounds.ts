@@ -31,7 +31,7 @@ import { rateForFill } from './pitch';
  * governs this file. The code was fine; the *sounds* were synthesised — sine
  * waves and filtered noise — and they did not convince anyone liquid was
  * moving. **Recorded sources only.** `assets/audio/CREDITS.md` records what
- * each file is and the licence it carries.
+ * each file is and the license it carries.
  */
 
 /**
@@ -107,7 +107,7 @@ export async function primeSounds(): Promise<void> {
  *
  * The delays exist because a pour is an animation, not an instant. The tap
  * lands at t=0 but the tube spends the first 15% of `POUR_MS` flying to its
- * target, and a pour heard while the glass is still travelling reads as the
+ * target, and a pour heard while the glass is still traveling reads as the
  * phone answering, not the liquid. Each cue below carries the phase of the
  * animation it belongs to, so if the animation is retimed the audio follows.
  *

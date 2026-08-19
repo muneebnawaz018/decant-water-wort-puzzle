@@ -112,10 +112,10 @@ describe('setup', () => {
   it('keeps a reminder from banner-ing over the board mid-pour', async () => {
     await initNotifications();
     const config = mocked.setNotificationHandler.mock.calls[0]?.[0];
-    const behaviour = await config!.handleNotification({} as Notifications.Notification);
+    const behavior = await config!.handleNotification({} as Notifications.Notification);
 
-    expect(behaviour.shouldShowBanner).toBe(false);
-    expect(behaviour.shouldShowList).toBe(true);
+    expect(behavior.shouldShowBanner).toBe(false);
+    expect(behavior.shouldShowList).toBe(true);
   });
 });
 

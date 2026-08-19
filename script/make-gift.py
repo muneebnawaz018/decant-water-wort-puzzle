@@ -4,7 +4,7 @@
 What it is for
 --------------
 Home's two reward chips carried static glyphs from `Icon.tsx`: a gift box and a
-play triangle, each on a coloured tile. They read as list bullets. Both chips are
+play triangle, each on a colored tile. They read as list bullets. Both chips are
 offers rather than destinations — one pays coins today, the other pays coins for
 a watch — and an offer that sits perfectly still is indistinguishable from a
 label.
@@ -12,7 +12,7 @@ label.
 So: a box whose lid lifts, hangs, and drops back with a bounce, while a bow
 squashes on the landing and three sparks pop above it.
 
-Run it after changing any colour it reads. The JSON is written minified and the
+Run it after changing any color it reads. The JSON is written minified and the
 commit gate checks formatting, so `npm run format` is the second half of the
 command, not an optional tidy-up:
 
@@ -57,14 +57,14 @@ STEP = 2
 # The tile renders at 36dp. The frame hugs the box, because `resizeMode`
 # `contain` fits the whole composition into its box, empty air included.
 SIZE = 100
-CENTRE = SIZE / 2
+CENTER = SIZE / 2
 
 # --- The box -----------------------------------------------------------------
 
 BOX_W = 58
 BOX_H = 40
 BOX_R = 7
-# The body sits below centre so the lid, the bow and the sparks have somewhere to
+# The body sits below center so the lid, the bow and the sparks have somewhere to
 # go without the whole mark drifting downward in its tile.
 BOX_TOP = 52
 
@@ -138,11 +138,11 @@ def box() -> dict:
         return [round(100 + amount, 1), round(100 - amount, 1)]
 
     def height(t: float):
-        # The transform scales about the group's anchor, which is its centre, so
-        # a squash alone would lift the base off the floor. Sliding the centre
+        # The transform scales about the group's anchor, which is its center, so
+        # a squash alone would lift the base off the floor. Sliding the center
         # down by half the loss pins the bottom edge.
         s = squash(t)[1] / 100
-        return [CENTRE, round(BOX_TOP + BOX_H / 2 - (BOX_H * (1 - s)) / 2, 2), 0]
+        return [CENTER, round(BOX_TOP + BOX_H / 2 - (BOX_H * (1 - s)) / 2, 2), 0]
 
     return shape_layer(
         3,
@@ -178,7 +178,7 @@ def lid() -> dict:
             group([ellipse((BOW_R * 2, BOW_R * 1.5), (BOW_R * 0.75, -LID_H)), fill(GOLD_PALE)]),
         ],
         transform(
-            sample(lambda t: [CENTRE, round(LID_REST_Y + lid_offset(t), 2), 0], LIFT_START, DROP_END),
+            sample(lambda t: [CENTER, round(LID_REST_Y + lid_offset(t), 2), 0], LIFT_START, DROP_END),
             # A slight tilt at the top of the lift, unwound by the time it lands.
             # A lid that rises perfectly square reads as a panel on a rail.
             rotation=sample(
@@ -204,7 +204,7 @@ def spark(index: int) -> dict:
         k = max(0.0, min(1.0, (t - delay) / (0.55 - delay * 0.5)))
         reach = SPARK_REACH * overshoot(k)
         return [
-            round(CENTRE + math.cos(angle) * reach, 2),
+            round(CENTER + math.cos(angle) * reach, 2),
             round(LID_REST_Y - 6 + math.sin(angle) * reach, 2),
             0,
         ]

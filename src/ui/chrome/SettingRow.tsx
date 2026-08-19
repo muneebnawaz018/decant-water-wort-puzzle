@@ -60,7 +60,7 @@ interface RowProps {
    *
    * Not the same as having no `onPress`. A row with no handler is often still
    * live information — a value, a badge, a switch someone else owns — and
-   * dimming every one of those would grey out half the settings screen. This is
+   * dimming every one of those would gray out half the settings screen. This is
    * for the narrower case where the row *was* an action and is spent: today's
    * bonus puzzle, once it has been played.
    */

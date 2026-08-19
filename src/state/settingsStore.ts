@@ -10,8 +10,8 @@ export interface Settings {
   /** A tick on every vial tap, separate from pour and win sounds. */
   tapSound: boolean;
   haptics: boolean;
-  /** Embossed symbols per colour, doc §9 / spec §9. */
-  colourblind: boolean;
+  /** Embossed symbols per color, doc §9 / spec §9. */
+  colorblind: boolean;
   dailyReminder: boolean;
   difficulty: Difficulty;
   /**
@@ -25,7 +25,7 @@ export interface Settings {
   skin: string;
 }
 
-export type ToggleKey = 'sound' | 'tapSound' | 'haptics' | 'colourblind' | 'dailyReminder';
+export type ToggleKey = 'sound' | 'tapSound' | 'haptics' | 'colorblind' | 'dailyReminder';
 
 export interface SettingsState extends Settings {
   toggle: (key: ToggleKey) => void;
@@ -39,19 +39,38 @@ const DEFAULTS: Settings = {
   sound: true,
   tapSound: true,
   haptics: true,
-  colourblind: false,
+  colorblind: false,
   dailyReminder: false,
   difficulty: DEFAULT_DIFFICULTY,
   skin: DEFAULT_SKIN,
 };
 
+/**
+ * The pre-rename spelling of the accessibility toggle, still on disk.
+ *
+ * The field was `colourblind` until the app's user-visible text moved to
+ * American English, and the field name is the **serialised key** — so a rename
+ * alone would read as a missing field on every existing install and silently
+ * switch the marks off for anyone who had them on. An accessibility feature
+ * disappearing on update is the worst shape this class of bug takes: nothing
+ * errors, and the player who needs it is the only one who notices.
+ *
+ * Additive, so no key bump — `AGENTS.md`'s rule for a field whose *meaning* is
+ * unchanged. Once a build carrying this has been out long enough that no device
+ * still holds a v3 record written by an older one, it can go; until then it
+ * costs one `??`.
+ */
+interface LegacySettings extends Partial<Settings> {
+  colourblind?: boolean;
+}
+
 function load(): Settings {
-  const stored = readJson<Partial<Settings>>(KEY, {});
+  const stored = readJson<LegacySettings>(KEY, {});
   return {
     sound: stored.sound ?? DEFAULTS.sound,
     tapSound: stored.tapSound ?? DEFAULTS.tapSound,
     haptics: stored.haptics ?? DEFAULTS.haptics,
-    colourblind: stored.colourblind ?? DEFAULTS.colourblind,
+    colorblind: stored.colorblind ?? stored.colourblind ?? DEFAULTS.colorblind,
     dailyReminder: stored.dailyReminder ?? DEFAULTS.dailyReminder,
     difficulty: isDifficulty(stored.difficulty) ? stored.difficulty : DEFAULT_DIFFICULTY,
     // Validated, not trusted: the record outlives the build that wrote it, so
@@ -62,12 +81,12 @@ function load(): Settings {
 }
 
 function persist(state: Settings): void {
-  const { sound, tapSound, haptics, colourblind, dailyReminder, difficulty, skin } = state;
+  const { sound, tapSound, haptics, colorblind, dailyReminder, difficulty, skin } = state;
   writeJson(KEY, {
     sound,
     tapSound,
     haptics,
-    colourblind,
+    colorblind,
     dailyReminder,
     difficulty,
     skin,
@@ -100,13 +119,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
 /** Read settings outside React — handlers should not subscribe to them. */
 export function currentSettings(): Settings {
-  const { sound, tapSound, haptics, colourblind, dailyReminder, difficulty, skin } =
+  const { sound, tapSound, haptics, colorblind, dailyReminder, difficulty, skin } =
     useSettingsStore.getState();
   return {
     sound,
     tapSound,
     haptics,
-    colourblind,
+    colorblind,
     dailyReminder,
     difficulty,
     skin,

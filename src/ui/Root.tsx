@@ -88,7 +88,7 @@ export function Root() {
   // The native splash stays up until there is a real frame to replace it with.
   // `onLayout` fires once this tree has been measured, which is the closest
   // signal React gives to "something is actually on screen" — hiding any
-  // earlier shows the background colour for a beat and reads as a stutter.
+  // earlier shows the background color for a beat and reads as a stutter.
   const onFirstLayout = useCallback(() => {
     if (handedOff.current) return;
     handedOff.current = true;
@@ -309,7 +309,7 @@ export function Root() {
   // font would flash and then reflow every screen once the real face landed.
   if (!fontsReady) {
     // No `onLayout` here on purpose: the native splash covers this frame, and
-    // handing off to a blank view would flash the ground colour before the
+    // handing off to a blank view would flash the ground color before the
     // fonts land.
     return <View style={styles.blank} />;
   }

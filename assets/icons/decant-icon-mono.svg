@@ -2,10 +2,10 @@
   The Android monochrome mark: the notification small icon, and the themed
   launcher layer on Android 13+.
 
-  **Android keeps only the alpha channel here.** Every colour is discarded and
-  the shape is refilled with a single tint, so anything the full-colour icon
-  says with colour says nothing at all in this file. That is what broke the
-  first version of this mark: it traced the colour icon's outer shape, and the
+  **Android keeps only the alpha channel here.** Every color is discarded and
+  the shape is refilled with a single tint, so anything the full-color icon
+  says with color says nothing at all in this file. That is what broke the
+  first version of this mark: it traced the color icon's outer shape, and the
   four liquid bands - the thing that makes the icon read as a water-sort puzzle
   - differ only in hue. Flattened, the glass, the liquid and the highlight all
   carried the same alpha and merged into one pill on a stick, which at 24dp in
@@ -21,7 +21,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <!-- the rack bar -->
   <rect x="118" y="908" width="788" height="52" rx="26" fill="#fff"/>
-  <!-- the vial: an outline, so the glass stays glass once colour is gone -->
+  <!-- the vial: an outline, so the glass stays glass once color is gone -->
   <rect x="322" y="72" width="380" height="820" rx="190" fill="none" stroke="#fff" stroke-width="60"/>
   <!-- two liquid segments; the gap between them is the whole idea -->
   <path d="M382 430 h260 v150 h-260 z" fill="#fff"/>

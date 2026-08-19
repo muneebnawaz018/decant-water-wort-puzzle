@@ -54,7 +54,7 @@ const GLEAM = require('../../../assets/lottie/gleam.json');
  */
 const SMALL_HIT_SLOP = { top: 6, bottom: 6, left: 6, right: 6 } as const;
 
-/** Where the lit face's middle stop sits — it holds the colour longer than half. */
+/** Where the lit face's middle stop sits — it holds the color longer than half. */
 const PRIMARY_STOPS = [0, 0.55, 1] as const;
 const FLAT_STOPS = [0, 1] as const;
 
@@ -88,7 +88,7 @@ interface GlossButtonProps {
    * Rendered *after* the label — an icon, usually.
    *
    * On the right on purpose, and app-wide. A leading icon pushes the label off
-   * the button's centre, so a row of buttons has its text at a different offset
+   * the button's center, so a row of buttons has its text at a different offset
    * in each one depending on whether it carries a glyph. Trailing, the label
    * stays where a label with no icon would be.
    */
@@ -101,7 +101,7 @@ interface GlossButtonProps {
  * The button from spec §3.
  *
  * Note the explicit design correction the spec carries: **no raised bottom
- * lip**. Coloured bottom bevels were tried and rejected. What is left is a flat
+ * lip**. Colored bottom bevels were tried and rejected. What is left is a flat
  * glossy face — bright top highlight, soft bottom shade, neutral drop shadow —
  * that presses down 2px.
  */
@@ -229,9 +229,9 @@ export const GlossButton = memo(function GlossButton({
               Derived from the ramp, never stated beside it.
 
               These were two independent expressions — a three-stop list keyed
-              on `primary`, and a colour list keyed on `primary` *and*
-              `disabled`. A disabled primary takes the two-colour panel ramp, so
-              it got three locations for two colours and expo warned on every
+              on `primary`, and a color list keyed on `primary` *and*
+              `disabled`. A disabled primary takes the two-color panel ramp, so
+              it got three locations for two colors and expo warned on every
               render. Reading the length is the only form that cannot drift.
             */
             locations={face.length === 3 ? PRIMARY_STOPS : FLAT_STOPS}
@@ -260,7 +260,7 @@ export const GlossButton = memo(function GlossButton({
               The hard edge comes from the layer's *height*, not from
               `locations`. Android was washing the whole face instead of the
               top half, which turned a gold button tan and left its dark label
-              looking grey — the two platforms disagreeing about a stop list is
+              looking gray — the two platforms disagreeing about a stop list is
               not worth diagnosing when half a box is unambiguous.
             */}
             <LinearGradient
@@ -272,7 +272,7 @@ export const GlossButton = memo(function GlossButton({
               The glint, on lit faces only.
 
               Not on a dead one: `dim` is a button that cannot do its job, and a
-              highlight travelling across it says the opposite. Not on a
+              highlight traveling across it says the opposite. Not on a
               `neutral` or `ghost` face either — those are dark panel surfaces,
               and a white sweep across one reads as a rendering artefact rather
               than as polish.
@@ -317,7 +317,7 @@ export const GlossButton = memo(function GlossButton({
                 Rendered only when there is one. An empty wrapper is still a
                 flex child, so `content`'s gap opened between the label and
                 nothing and left every icon-less button's text sitting half a
-                gap left of centre.
+                gap left of center.
               */}
               {trailing ? (
                 <Animated.View style={iconScale}>{trailing}</Animated.View>

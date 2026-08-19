@@ -91,7 +91,7 @@ const BOLT_HEIGHT = 1.0;
 /**
  * The bolt's own extent in its unit box, on x.
  *
- * The path is 1 tall but does not start at x 0, so centring it means offsetting
+ * The path is 1 tall but does not start at x 0, so centering it means offsetting
  * by its left edge as well as by half its width. Stated rather than measured:
  * `computeTightBounds` is a native call, and these two numbers are visible in
  * the path above.
@@ -104,7 +104,7 @@ const BOLT_X1 = 0.8;
  * Not decoration. The bolt lies across both lit cells and unlit background, and
  * it has to read on both — gold on green and gold on the drawer's purple are
  * each fine on their own, but the boundary between them runs straight through
- * the glyph. A ground-coloured stroke separates it from whatever is behind, the
+ * the glyph. A ground-colored stroke separates it from whatever is behind, the
  * same trick the status bar's own bolt uses.
  */
 const BOLT_EDGE = 0.11;
@@ -122,15 +122,15 @@ function boltTransform(
   cellHeight: number
   // Mutable, not `ReadonlyArray` — Skia's transform prop takes an array it
   // reserves the right to write to, the same constraint `NavBar` hits with its
-  // gradient colours.
+  // gradient colors.
 ): Array<{ translateX: number } | { translateY: number } | { scale: number }> {
   const boltHeight = cellHeight * BOLT_HEIGHT;
   const boltWidth = boltHeight * (BOLT_X1 - BOLT_X0);
 
   return [
     // Half the leftover, less the path's own left edge — the glyph starts at
-    // `BOLT_X0`, not at zero, so centring on width alone lands it right of
-    // centre by a fifth of its height.
+    // `BOLT_X0`, not at zero, so centering on width alone lands it right of
+    // center by a fifth of its height.
     { translateX: (bodyWidth - boltWidth) / 2 - BOLT_X0 * boltHeight },
     { translateY: (height - boltHeight) / 2 },
     { scale: boltHeight },
@@ -163,7 +163,7 @@ export const AppMark = memo(function AppMark({
     const capHeight = height * CAP_HEIGHT;
     const bodyWidth = size - capWidth - size * CAP_GAP;
 
-    // The blocks sit inside the outline, not under it. A stroke is centred on
+    // The blocks sit inside the outline, not under it. A stroke is centered on
     // the path it follows, so clearing it costs a whole stroke plus the gap.
     const inset = stroke + height * PADDING;
     const track = bodyWidth - inset * 2;
@@ -184,8 +184,8 @@ export const AppMark = memo(function AppMark({
       // Blocks stack from the left, so the first one drawn is the leftmost.
       firstCellX: inset,
       boltEdge: height * BOLT_EDGE,
-      // Centred on the *body*, not the mark. The terminal is not part of the
-      // battery's face, and a bolt centred over both sits visibly right of
+      // Centered on the *body*, not the mark. The terminal is not part of the
+      // battery's face, and a bolt centered over both sits visibly right of
       // where the cells it describes actually are.
       bolt: boltTransform(bodyWidth, height, height - inset * 2),
     };
@@ -210,8 +210,8 @@ export const AppMark = memo(function AppMark({
       />
 
       {/* The casing. Stroked rather than filled, so the unlit part of the
-          battery is the drawer showing through rather than a second grey — one
-          less colour to read, and empty cells are then simply absent. */}
+          battery is the drawer showing through rather than a second gray — one
+          less color to read, and empty cells are then simply absent. */}
       <RoundedRect
         x={geometry.stroke / 2}
         y={geometry.stroke / 2}
@@ -231,21 +231,21 @@ export const AppMark = memo(function AppMark({
           width={geometry.cellWidth}
           height={geometry.cellHeight}
           r={geometry.cellWidth * 0.2}
-          color={charge.colour}
+          color={charge.color}
         />
       ))}
 
       {/*
         The charging bolt, over the cells rather than instead of them.
 
-        Colour already says plugged in — `chargeFor` holds the healthy green
-        instead of dropping to the warning red — but colour alone is the signal
+        Color already says plugged in — `chargeFor` holds the healthy green
+        instead of dropping to the warning red — but color alone is the signal
         this project does not rely on anywhere else. The board carries glyphs
         for the same reason: green and red are the two hues a deuteranope is
         least able to separate, and "charging" is exactly the state where a
         player would otherwise read 8% as an emergency.
 
-        Stroked first, then filled. The stroke is the ground colour and it is
+        Stroked first, then filled. The stroke is the ground color and it is
         what makes the glyph survive the boundary it lies across — gold reads on
         green and gold reads on the drawer's purple, but the edge between them
         runs through the middle of the bolt, and a dark rim separates it from

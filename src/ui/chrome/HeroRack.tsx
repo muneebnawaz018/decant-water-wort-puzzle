@@ -37,7 +37,7 @@ export const HeroRack = memo(function HeroRack() {
 
       <View style={styles.title}>
         <Wordmark size={s(38)} />
-        <Text style={styles.tagline}>an apothecary of colour</Text>
+        <Text style={styles.tagline}>an apothecary of color</Text>
       </View>
     </View>
   );

@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 
 import { apothecary } from '@/theme/apothecary';
-import { colours, ui } from '@/theme/colors';
+import { colors, ui } from '@/theme/colors';
 import { POPPINS } from '@/theme/fonts';
 import { s } from '@/theme/scale';
 import { text } from '@/theme/typography';
@@ -81,11 +81,11 @@ export const styles = StyleSheet.create({
    */
   buttonsSingle: {
     flexDirection: 'row',
-    // Full card width with the button centred inside it, rather than a row
-    // shrunk to its content. A shrink-wrapped row is centred by the card's
+    // Full card width with the button centered inside it, rather than a row
+    // shrunk to its content. A shrink-wrapped row is centered by the card's
     // `alignItems`, which puts it at the mercy of anything that measures wide —
     // the primary's glow spills past the face, and the label carries a trailing
-    // letter-space. Centring within a known width has nothing to drift against.
+    // letter-space. Centering within a known width has nothing to drift against.
     alignSelf: 'stretch',
     justifyContent: 'center',
   },
@@ -106,6 +106,6 @@ export const styles = StyleSheet.create({
   toastText: {
     fontFamily: POPPINS.medium,
     fontSize: s(13),
-    color: colours.white,
+    color: colors.white,
   },
 });

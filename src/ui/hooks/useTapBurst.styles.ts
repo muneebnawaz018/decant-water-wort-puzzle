@@ -22,7 +22,7 @@ export const styles = StyleSheet.create({
    * its style gives it no resolved width — and `flex: 1` inside an absolutely
    * positioned parent is not one. A 300×300 player then inflated a 42dp chrome
    * button to three times its size, with the composition's bounds showing as a
-   * grey square in the corner. iOS resolved the flex and looked correct, which
+   * gray square in the corner. iOS resolved the flex and looked correct, which
    * is what made it look like a styling bug rather than a measurement one.
    */
   fill: { width: '100%', height: '100%' },

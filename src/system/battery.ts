@@ -1,15 +1,15 @@
-import { colours } from '@/theme/colors';
+import { colors } from '@/theme/colors';
 
 /**
  * The battery mark's arithmetic, with no `expo-battery` in it.
  *
  * Its own module for the same reason `src/core` is React-free: importing the
  * battery module pulls a native module, which cannot load in a test. What is
- * decided here — how full the vial is drawn, what colour the liquid takes, and
+ * decided here — how full the vial is drawn, what color the liquid takes, and
  * whether a reading is worth re-rendering for — is the part that can be wrong.
  */
 
-/** Below this, the liquid turns to the warning colour. */
+/** Below this, the liquid turns to the warning color. */
 export const LOW_LEVEL = 0.2;
 
 /**
@@ -25,7 +25,7 @@ export type PowerSource = 'battery' | 'plugged' | 'unknown';
 export interface Charge {
   /** How many cells are lit, 0..`total`. */
   filled: number;
-  colour: string;
+  color: string;
 }
 
 /** Cells in the mark. Five, like every battery glyph people already read. */
@@ -37,13 +37,13 @@ export const CELLS = 5;
  * What the drawer shows when there is no reading — an iOS simulator, a device
  * that does not report, or the first frame before the first read resolves.
  *
- * It was the brand's two-colour stack first, on the theory that a mark unable
+ * It was the brand's two-color stack first, on the theory that a mark unable
  * to show a level should look like a logo rather than a broken gauge. In the
  * hand it reads as a *reading*: bands at fixed heights look like a battery at
- * some strange level in strange colours, and nothing on screen says otherwise.
+ * some strange level in strange colors, and nothing on screen says otherwise.
  * Full and green is the one fallback that cannot be misread as bad news.
  */
-const FALLBACK: Charge = { filled: CELLS, colour: colours.accent };
+const FALLBACK: Charge = { filled: CELLS, color: colors.accent };
 
 /**
  * A reading the platform actually gave us.
@@ -84,29 +84,28 @@ export function isKnownLevel(level: number): boolean {
  * 3% left shows the red block it is warning about, where an empty outline would
  * say "no reading" — a different thing entirely.
  *
- * Green, and red when it is nearly out. Those are the two colours a battery is
+ * Green, and red when it is nearly out. Those are the two colors a battery is
  * read in everywhere else on the phone, and a gauge is not the place to be
  * inventive — the status bar two inches above this one uses exactly them.
  *
- * The healthy colour was the app's aqua at first, to tie the mark to the brand.
+ * The healthy color was the app's aqua at first, to tie the mark to the brand.
  * It reads as blue on a device, and blue on a battery means nothing to anyone;
  * worse, it is the one part of this mark carrying information that has to land
  * without a caption. Green is not decoration here, it is the label.
  *
- * Plugged in draws the same green rather than a third colour. It is not a
- * warning and the level is not falling, which is all the colour has to say —
+ * Plugged in draws the same green rather than a third color. It is not a
+ * warning and the level is not falling, which is all the color has to say —
  * and `low` never overrides it, because a phone on 5% and climbing is not what
- * a warning colour is for.
+ * a warning color is for.
  */
 export function chargeFor(level: number | null, source: PowerSource): Charge {
   if (level === null || !isKnownLevel(level)) return FALLBACK;
 
-  const colour =
-    source !== 'plugged' && level <= LOW_LEVEL ? colours.coral : colours.accent;
+  const color = source !== 'plugged' && level <= LOW_LEVEL ? colors.coral : colors.accent;
 
   const filled = Math.ceil(level * CELLS);
 
-  return { filled, colour };
+  return { filled, color };
 }
 
 /**

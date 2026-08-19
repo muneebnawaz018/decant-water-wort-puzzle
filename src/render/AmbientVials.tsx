@@ -21,13 +21,13 @@ import {
   type SharedValue,
 } from 'react-native-reanimated';
 
-import { colours, tint, ui } from '@/theme/colors';
+import { colors, tint, ui } from '@/theme/colors';
 import { useUiValue2, useUiValue3 } from './useUiValue';
 
 interface AmbientVialsProps {
   width: number;
   height: number;
-  /** Stand the vials on the bottom edge instead of centring them. */
+  /** Stand the vials on the bottom edge instead of centering them. */
   standing?: boolean;
 }
 
@@ -57,7 +57,7 @@ const CAPACITY = 4;
 const GLOW_BLUR = 8;
 
 /**
- * How far each segment is lightened from its vial's base colour, bottom to
+ * How far each segment is lightened from its vial's base color, bottom to
  * top. Deepest at the base, palest at the lip — the way a lamp above a real
  * vial catches it.
  *
@@ -75,7 +75,7 @@ const SHADES = [0, 0.2, 0.44, 0.72] as const;
  * arrangement rather than a puzzle mid-solve.
  *
  * One hue per vial, four shades of it. The earlier arrangement gave every
- * segment its own colour, which forced the twelve-colour palette's two dark
+ * segment its own color, which forced the twelve-color palette's two dark
  * entries (`fern`, `olive`) onto the shelf; against the bright ten they read
  * as mud. A single-hue ramp gets its separation from lightness instead, so
  * nothing has to be dark to be distinct.
@@ -89,11 +89,11 @@ const SHADES = [0, 0.2, 0.44, 0.72] as const;
  * should be four shades reads as one pale wash.
  *
  * Worth knowing if this is ever revisited: shades are the one arrangement the
- * game itself would never generate, since the board needs colours a player can
+ * game itself would never generate, since the board needs colors a player can
  * tell apart at speed. Fine for decoration that never has to be sorted, wrong
  * the moment this rack is reused to preview real play.
  *
- * Named colours, not palette indices: this is decoration with a fixed look,
+ * Named colors, not palette indices: this is decoration with a fixed look,
  * and indices move whenever `pieces` is reordered for separation. Holding
  * indices here silently repainted the whole rack the last time that happened.
  */
@@ -109,7 +109,7 @@ const RACK: ReadonlyArray<readonly string[]> = (['aqua', 'rose', 'mango'] as con
  * itself, which competes with the Play button for attention.
  *
  * Cost: one shared value drives everything on the UI thread. React renders
- * this once and never again, and the loop is cancelled on unmount, so leaving
+ * this once and never again, and the loop is canceled on unmount, so leaving
  * Home stops all of it.
  */
 export const AmbientVials = memo(function AmbientVials({
@@ -220,17 +220,17 @@ export const AmbientVials = memo(function AmbientVials({
       (canvas) => {
         const glass = Skia.Paint();
         glass.setAntiAlias(true);
-        glass.setColor(Skia.Color(colours.white));
+        glass.setColor(Skia.Color(colors.white));
         glass.setAlphaf(0.08);
 
         const highlight = Skia.Paint();
         highlight.setAntiAlias(true);
-        highlight.setColor(Skia.Color(colours.white));
+        highlight.setColor(Skia.Color(colors.white));
         highlight.setAlphaf(0.42);
 
         const edge = Skia.Paint();
         edge.setAntiAlias(true);
-        edge.setColor(Skia.Color(colours.white));
+        edge.setColor(Skia.Color(colors.white));
         edge.setAlphaf(0.32);
         edge.setStyle(PaintStyle.Stroke);
         edge.setStrokeWidth(3);
@@ -256,7 +256,7 @@ export const AmbientVials = memo(function AmbientVials({
 
           segments.forEach((fill, segment) => {
             const y = tube.y + h - (segment + 1) * sh;
-            const colour = Skia.Color(fill);
+            const color = Skia.Color(fill);
             const band = Skia.XYWHRect(tube.x, y, w, sh + 0.5);
 
             // Spec §3 asks for an outer glow per segment. A blurred copy under
@@ -264,18 +264,18 @@ export const AmbientVials = memo(function AmbientVials({
             // into stripes.
             const glow = Skia.Paint();
             glow.setAntiAlias(true);
-            glow.setColor(colour);
+            glow.setColor(color);
             glow.setAlphaf(0.55);
             glow.setMaskFilter(bloom);
             canvas.drawRect(band, glow);
 
             const flat = Skia.Paint();
             flat.setAntiAlias(true);
-            flat.setColor(colour);
+            flat.setColor(color);
             canvas.drawRect(band, flat);
 
             // A hairline at each seam. Without it two adjacent segments of one
-            // colour read as a single tall band, and the rack loses the "four
+            // color read as a single tall band, and the rack loses the "four
             // units per vial" that tells a player what the game is.
             if (segment < segments.length - 1) {
               canvas.drawRect(Skia.XYWHRect(tube.x, y, w, 1), seam);
@@ -352,7 +352,7 @@ const Meniscus = memo(function Meniscus({
       'worklet';
       const wave = Math.sin((input + phase) * Math.PI * 4);
       const w = width * (0.94 + wave * 0.06);
-      // Keep it centred as it narrows.
+      // Keep it centered as it narrows.
       return [w, x + (width - w) / 2];
     },
     [phase, width, x]
@@ -361,7 +361,7 @@ const Meniscus = memo(function Meniscus({
   const [w, cx] = useUiValue2(clock, compute, compute(0));
 
   return (
-    <Rect x={cx} y={y - 1} width={w} height={3.5} color={colours.white} opacity={0.5} />
+    <Rect x={cx} y={y - 1} width={w} height={3.5} color={colors.white} opacity={0.5} />
   );
 });
 
@@ -466,7 +466,7 @@ const Bubbles = memo(function Bubbles({
   return (
     <Group>
       {bubbles.map((bubble) => (
-        <Bubble key={bubble.key} clock={clock} bubble={bubble} colour={colours.white} />
+        <Bubble key={bubble.key} clock={clock} bubble={bubble} color={colors.white} />
       ))}
     </Group>
   );
@@ -475,7 +475,7 @@ const Bubbles = memo(function Bubbles({
 const Bubble = memo(function Bubble({
   clock,
   bubble,
-  colour,
+  color,
 }: {
   clock: SharedValue<number>;
   bubble: {
@@ -489,7 +489,7 @@ const Bubble = memo(function Bubble({
     swayWidth: number;
     swayRate: number;
   };
-  colour: string;
+  color: string;
 }) {
   // All three values come off the same phase, so they share one reaction. Nine
   // bubbles at three subscriptions each would be twenty-seven a frame for nine
@@ -517,5 +517,5 @@ const Bubble = memo(function Bubble({
 
   const [cx, cy, opacity] = useUiValue3(clock, compute, compute(0));
 
-  return <Circle cx={cx} cy={cy} r={bubble.radius} color={colour} opacity={opacity} />;
+  return <Circle cx={cx} cy={cy} r={bubble.radius} color={color} opacity={opacity} />;
 });

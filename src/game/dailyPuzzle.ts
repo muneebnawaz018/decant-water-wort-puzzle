@@ -26,7 +26,7 @@ import { generateLevel, type GeneratedLevel } from './waterGenerator';
 /**
  * The bonus board's shape: the Hard curve, `BREW_LEAD` levels past the player.
  *
- * **It used to be a constant at the ceiling** — twelve colours, one spare — and
+ * **It used to be a constant at the ceiling** — twelve colors, one spare — and
  * that shape was right for the player it was written for and wrong for
  * everyone else. Nothing gates the Rewards row on progress, so somebody who
  * installed the game an hour ago could open the hardest board it can produce,
@@ -52,8 +52,8 @@ import { generateLevel, type GeneratedLevel } from './waterGenerator';
  * fixed shape used to be: a harder board needs a longer walk to be more than a
  * long board.
  *
- * Worth knowing what the top of this costs the player: at twelve colours the
- * palette collapses for a deuteranope, which is why the colourblind glyphs
+ * Worth knowing what the top of this costs the player: at twelve colors the
+ * palette collapses for a deuteranope, which is why the colorblind glyphs
  * exist and why this is the board most likely to be played with them on.
  */
 export function brewParamsFor(furthest: number): LevelParams {
@@ -131,7 +131,7 @@ export function generateBonus(day: number, furthest: number): GeneratedLevel {
      * naming on its own.
      *
      * Three is one 3-run on the whole board — the floor the walk can actually
-     * reach at capacity 5 with a single spare, where five segments of a colour
+     * reach at capacity 5 with a single spare, where five segments of a color
      * cannot always be prised apart. Capacity-4 shapes reach zero, so this is
      * slack they never need. A gate the generator usually misses is worse than
      * a slightly looser one it always makes, because a missed gate falls back

@@ -19,13 +19,13 @@ Why generated rather than authored
 The precedent is `script/make-lottie.py`, and the reasoning is the same one it
 records: this project has no After Effects pipeline and no artist, and a
 committed binary nobody can regenerate drifts from the palette the moment a
-colour moves. Every value below that has a colour in it comes from
+color moves. Every value below that has a color in it comes from
 `src/theme/colors.ts`.
 
 A dripping vial also survives being generated in the way a drawn character would
 not — it is three primitives under one rule, so the work is arithmetic.
 
-Run it after changing any colour it reads:
+Run it after changing any color it reads:
 
     python3 script/make-brew.py
 
@@ -62,7 +62,7 @@ DURATION = 240
 # the vial's own size. Anything left over is the drop's runway above the glass.
 WIDTH = 110
 HEIGHT = 200
-CENTRE = WIDTH / 2
+CENTER = WIDTH / 2
 
 # --- The vial ---------------------------------------------------------------
 
@@ -98,9 +98,9 @@ GOLD_LIGHT = "#FFDE86"
 GOLD_PALE = "#FFEFB4"
 
 
-def rgba(hex_colour: str, alpha: float = 1.0) -> list[float]:
+def rgba(hex_color: str, alpha: float = 1.0) -> list[float]:
     """Lottie wants normalised floats, not bytes."""
-    h = hex_colour.lstrip("#")
+    h = hex_color.lstrip("#")
     return [int(h[i : i + 2], 16) / 255 for i in (0, 2, 4)] + [alpha]
 
 
@@ -173,20 +173,20 @@ def ellipse(size, position=(0, 0)) -> dict:
     return {"ty": "el", "s": value(list(size)), "p": value(list(position)), "nm": "el"}
 
 
-def fill(colour: str, alpha: float = 1.0, opacity=100) -> dict:
+def fill(color: str, alpha: float = 1.0, opacity=100) -> dict:
     return {
         "ty": "fl",
-        "c": value(rgba(colour, alpha)),
+        "c": value(rgba(color, alpha)),
         "o": opacity if isinstance(opacity, dict) else value(opacity),
         "r": 1,
         "nm": "fill",
     }
 
 
-def stroke(colour: str, width: float, alpha: float = 1.0) -> dict:
+def stroke(color: str, width: float, alpha: float = 1.0) -> dict:
     return {
         "ty": "st",
-        "c": value(rgba(colour, alpha)),
+        "c": value(rgba(color, alpha)),
         "o": value(100),
         "w": value(width),
         "lc": 2,
@@ -222,23 +222,23 @@ def group(items: list) -> dict:
 def glass() -> dict:
     """The empty vial: a stroked outline, no fill.
 
-    Bold rather than a hairline, per the app's own look rule — a thin grey
+    Bold rather than a hairline, per the app's own look rule — a thin gray
     outline reads as a chart, a heavy one reads as drawn.
     """
     return shape_layer(
         1,
         "glass",
         [group([rounded_rect((VIAL_W, VIAL_H), VIAL_R), stroke(GOLD, WALL, 0.85)])],
-        transform([CENTRE, (VIAL_TOP + VIAL_BOTTOM) / 2, 0]),
+        transform([CENTER, (VIAL_TOP + VIAL_BOTTOM) / 2, 0]),
     )
 
 
 def liquid() -> dict:
     """The level, rising and falling on the loop.
 
-    Both the height and the centre are animated, and they have to move together:
+    Both the height and the center are animated, and they have to move together:
     a rectangle grows from its middle, so raising the level means growing it
-    *and* sliding its centre down by half of what it grew.
+    *and* sliding its center down by half of what it grew.
 
     Sampled every twelve frames. The level moves a few pixels over four seconds
     — the segments are far below what the eye resolves at this size.
@@ -248,7 +248,7 @@ def liquid() -> dict:
     bottom = VIAL_BOTTOM - WALL
 
     sizes = []
-    centres = []
+    centers = []
     for frame in range(0, DURATION + 1, 12):
         # One full rise and fall across the loop, so the first and last frames
         # agree and the seam is invisible.
@@ -257,7 +257,7 @@ def liquid() -> dict:
         height = inside_h * (FILL_LOW + (FILL_HIGH - FILL_LOW) * eased)
 
         sizes.append((frame, [inside_w, round(height, 1)]))
-        centres.append((frame, [CENTRE, round(bottom - height / 2, 1), 0]))
+        centers.append((frame, [CENTER, round(bottom - height / 2, 1), 0]))
 
     body = {
         "ty": "rc",
@@ -274,7 +274,7 @@ def liquid() -> dict:
         2,
         "liquid",
         [group([body, fill(GOLD_LIGHT, 0.9)])],
-        transform(keyed(centres)),
+        transform(keyed(centers)),
     )
 
 
@@ -296,10 +296,10 @@ def drop() -> dict:
     for frame in range(fall_start, fall_end + 1, 6):
         t = (frame - fall_start) / span
         y = start_y + (end_y - start_y) * (t * t)
-        positions.append((frame, [CENTRE, round(y, 1), 0]))
+        positions.append((frame, [CENTER, round(y, 1), 0]))
     # Held off-screen for the rest of the loop, so it is not seen resetting.
-    positions.append((fall_end + 1, [CENTRE, start_y, 0]))
-    positions.append((DURATION, [CENTRE, start_y, 0]))
+    positions.append((fall_end + 1, [CENTER, start_y, 0]))
+    positions.append((DURATION, [CENTER, start_y, 0]))
 
     # Visible only while falling. The gap is what makes it read as one drop
     # every few seconds rather than a stream.
@@ -350,7 +350,7 @@ def ripple() -> dict:
         4,
         "ripple",
         [group([ring, stroke(GOLD_PALE, 4)])],
-        transform([CENTRE, VIAL_BOTTOM - 34, 0], opacity),
+        transform([CENTER, VIAL_BOTTOM - 34, 0], opacity),
     )
 
 

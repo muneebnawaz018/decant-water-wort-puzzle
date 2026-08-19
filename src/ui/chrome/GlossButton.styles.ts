@@ -23,15 +23,15 @@ export const styles = StyleSheet.create({
    *
    * On a dark ground a black shadow under a lit button only darkens the purple
    * beneath it, so the button sits in a hole and the whole screen reads flat.
-   * Spilling the button's own colour instead makes it the light source, which
+   * Spilling the button's own color instead makes it the light source, which
    * is most of what "glossy" means here.
    *
    * **`boxShadow`, not `shadow*` plus `elevation`.** That pairing draws this on
    * iOS and cannot draw it on Android: `elevation` renders a system shadow the
-   * platform colours itself, so the gold was simply missing there and a lit
+   * platform colors itself, so the gold was simply missing there and a lit
    * button sat flat against the purple — the one place the effect matters most.
    * `boxShadow` is honoured by both under the new architecture, from one
-   * declaration. Its alpha comes from the colour, since `shadowOpacity` is
+   * declaration. Its alpha comes from the color, since `shadowOpacity` is
    * iOS-only and would reintroduce the same split.
    *
    * **No offset, unlike the neutral shadow above.** A drop shadow is cast by a
@@ -55,8 +55,8 @@ export const styles = StyleSheet.create({
   /**
    * The stroke. A padded background, not a `borderWidth` — see `HAIRLINE`.
    *
-   * Its colour is per variant because the two faces are different colours: the
-   * neutral one edges a purple panel, the primary a gold one. One stroke colour
+   * Its color is per variant because the two faces are different colors: the
+   * neutral one edges a purple panel, the primary a gold one. One stroke color
    * would ring the other in the wrong hue.
    */
   face: {
@@ -138,7 +138,7 @@ export const styles = StyleSheet.create({
    * Height rather than a gradient stop. This was a full-height layer with
    * `locations={[0, 0.5, 0.52]}`, which iOS drew as a bright top half and
    * Android drew across the whole button — a gold face came out tan and its
-   * dark label read as grey. A box that stops halfway cannot be interpreted
+   * dark label read as gray. A box that stops halfway cannot be interpreted
    * two ways.
    */
   sheen: { position: 'absolute', top: 0, left: 0, right: 0, height: '50%' },
@@ -161,12 +161,12 @@ export const styles = StyleSheet.create({
    *
    * Android pads a Text by the font's own ascent and descent metrics, which
    * Poppins declares asymmetrically — the extra sits mostly above the glyphs,
-   * so a label centred by flexbox draws visibly low on Android and correctly on
+   * so a label centered by flexbox draws visibly low on Android and correctly on
    * iOS, from one stylesheet. Turning it off measures the glyphs instead.
    *
    * `textAlign: 'center'` covers the other half: `letterSpacing` is applied
    * after the last character too, so a left-aligned label carries one trailing
-   * space's worth of dead width and sits off-centre by half of it.
+   * space's worth of dead width and sits off-center by half of it.
    */
   label: {
     fontFamily: POPPINS.medium,
@@ -210,9 +210,9 @@ export const styles = StyleSheet.create({
     /**
      * A wash, not a slab.
      *
-     * `ui.line` is the hairline colour and it is nearly opaque, so a pair of
-     * ghosts under a gold primary read as two grey blocks — heavier than the
-     * button they are secondary to, and the only cool-grey surfaces in a warm
+     * `ui.line` is the hairline color and it is nearly opaque, so a pair of
+     * ghosts under a gold primary read as two gray blocks — heavier than the
+     * button they are secondary to, and the only cool-gray surfaces in a warm
      * gold-on-purple screen. `ui.ghost` is half the alpha, so the panel below
      * shows through and the button reads as a tint on the card.
      */

@@ -28,8 +28,8 @@ So the order is: signing key → signed build → closed test opened → everyth
 else happens while that clock runs. Treat every other item on this page as work
 that fits inside those two weeks.
 
-Organisation accounts are exempt from the 12-tester rule but need identity
-verification, and an Apple organisation account needs a D-U-N-S number, which
+Organization accounts are exempt from the 12-tester rule but need identity
+verification, and an Apple organization account needs a D-U-N-S number, which
 is its own multi-week wait. Check which kind of account is being used before
 assuming a date.
 
@@ -121,7 +121,7 @@ Kept here so nobody re-opens them.
   environment at **build** time, so no keystore password is written into any
   file and changing the key needs no prebuild.
 
-  Three behaviours, all three exercised against gradle rather than assumed:
+  Three behaviors, all three exercised against gradle rather than assumed:
   all four variables set signs with the upload key; none set falls back to the
   debug key and prints a warning naming the consequence; a partial set throws,
   because a keystore path with no password is a typo or a half-finished CI
@@ -387,8 +387,8 @@ answer is allowed to be "not in 1.0".
 - **`Rate us` and `Theme` are badged "Soon"**, and the shop's real-money rows
   are too. `Rate us` unblocks the moment a listing exists. `Theme` and the
   money rows do not.
-- **Colourblind marks default to off.** The palette collapses for a deuteranope
-  from four colours on, which is roughly level 6 — so about one man in twelve
+- **Colorblind marks default to off.** The palette collapses for a deuteranope
+  from four colors on, which is roughly level 6 — so about one man in twelve
   meets an ambiguous board long before he would think to look in Settings.
   Worth revisiting as a default.
 - **The sounds have only been heard on a simulator.** A phone speaker is where
@@ -409,7 +409,7 @@ Start these first. They gate everything downstream and none of them are fast.
 
 - [ ] **Google Play Console** — $25 one-time, plus identity verification
 - [ ] **Apple Developer Program** — $99/yr; D-U-N-S number first if enrolling as
-      an organisation
+      an organization
 - [ ] **Store name availability and trademark check for "Decant"** — never run.
       `docs/00-overview.md` and `AGENTS.md` both flag it. Do it before
       reserving either listing, because the name is baked into the bundle id
@@ -589,7 +589,7 @@ Nothing on this list is proven by a green build.
 ## 10. Architecture work — not a launch blocker
 
 Recorded here so it is not confused with the list above. None of it changes
-behaviour and none of it gates a submission; all of it is cheaper to do before
+behavior and none of it gates a submission; all of it is cheaper to do before
 the codebase has a shipped version to keep working.
 
 - **`src/state/gameStore.ts` is a god store** — 1251 lines, 25 state fields, 15

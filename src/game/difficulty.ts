@@ -1,4 +1,4 @@
-import { colours, ui } from '@/theme/colors';
+import { colors, ui } from '@/theme/colors';
 export type Difficulty = 'gentle' | 'classic' | 'fiendish';
 
 export const DIFFICULTIES: readonly Difficulty[] = ['gentle', 'classic', 'fiendish'];
@@ -36,13 +36,13 @@ export const DIFFICULTY_INFO: Record<Difficulty, DifficultyInfo> = {
     id: 'classic',
     title: 'Medium',
     detail: 'The curve the game is tuned around',
-    accent: colours.mango,
+    accent: colors.mango,
   },
   fiendish: {
     id: 'fiendish',
     title: 'Hard',
     detail: 'One more color, one less place to put it',
-    accent: colours.rose,
+    accent: colors.rose,
   },
 };
 

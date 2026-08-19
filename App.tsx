@@ -12,7 +12,7 @@ import { styles } from './App.styles';
  *
  * `backgroundColor` in app.config.ts covers the launch, but the native root
  * view can still be repainted at runtime — a reload in dev, a config change on
- * Android. Setting it here means the colour behind React is never the platform
+ * Android. Setting it here means the color behind React is never the platform
  * default white, whatever happens later.
  */
 void SystemUI.setBackgroundColorAsync(ui.groundDeep);

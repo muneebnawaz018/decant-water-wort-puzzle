@@ -30,7 +30,7 @@ const pour = (solved = false, completed = false) => ({
   kind: 'poured' as const,
   move: { from: 0, to: 1, count: 1 },
   solved,
-  colour: 0,
+  color: 0,
   destFilled: 0,
   completed,
 });

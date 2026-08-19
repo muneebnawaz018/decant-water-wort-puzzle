@@ -52,14 +52,14 @@ const NOTCH_GAP = s(6);
 export const NOTCH_RADIUS = BUMP_SIZE / 2 + NOTCH_GAP;
 
 /**
- * How far the bump's centre sits above the bar's top edge.
+ * How far the bump's center sits above the bar's top edge.
  *
  * Exported because a screen clearing the bar has to clear this too — the raised
  * button is the tallest part of the chrome, and a tail sized to the bar alone
  * lets the last card slide under it.
  *
  * **Lowering the disc is limited by the "Home" label, not by taste.** The notch
- * follows the disc down, and its lowest point is `NOTCH_CENTRE_Y + NOTCH_RADIUS`
+ * follows the disc down, and its lowest point is `NOTCH_CENTER_Y + NOTCH_RADIUS`
  * — a hole in the bar's face. The label sits about 22 above the bar's bottom
  * edge, so once the bite reaches that far the word is rendered over background
  * rather than over the bar. At the current disc size the bite bottoms out at 41
@@ -69,16 +69,16 @@ export const NOTCH_RADIUS = BUMP_SIZE / 2 + NOTCH_GAP;
 export const BUMP_RISE = s(19);
 
 /**
- * Where the notch's centre sits relative to the bar's top edge, positive down.
+ * Where the notch's center sits relative to the bar's top edge, positive down.
  *
  * Derived, never typed in. The disc and the bite have to stay concentric or the
- * ring of background between them stops being even — and the disc's centre is
+ * ring of background between them stops being even — and the disc's center is
  * fixed by the rise, so the notch has to follow it. At the original rise of
  * `BUMP_SIZE / 2` this was exactly zero, which is why the bar was drawn with a
  * hardcoded `0` and why lowering the disc on its own would have thinned the gap
  * under it while leaving the sides alone.
  */
-export const NOTCH_CENTRE_Y = BUMP_SIZE / 2 - BUMP_RISE;
+export const NOTCH_CENTER_Y = BUMP_SIZE / 2 - BUMP_RISE;
 
 /**
  * The drawn width of the bar, which the Skia face needs as a number.
@@ -123,12 +123,12 @@ const NOTICE_NUDGE = s(5);
 export const NOTICE_HALO_START = NOTICE_SIZE / NOTICE_HALO;
 
 /**
- * Where the mark's centre sits, measured from the tab's own centre line.
+ * Where the mark's center sits, measured from the tab's own center line.
  *
  * Half the 40dp icon slot puts it on the slot's right edge; the nudge carries
  * it clear. One number for both layers, so the ring cannot drift off the dot.
  */
-const NOTICE_CENTRE_X = s(40) / 2 - NOTICE_SIZE / 2 + NOTICE_NUDGE;
+const NOTICE_CENTER_X = s(40) / 2 - NOTICE_SIZE / 2 + NOTICE_NUDGE;
 
 export const styles = StyleSheet.create({
   /**
@@ -168,7 +168,7 @@ export const styles = StyleSheet.create({
     includeFontPadding: false,
     marginBottom: s(8),
   },
-  // A slot behind the icon rather than a tint on it: at 24dp a colour shift
+  // A slot behind the icon rather than a tint on it: at 24dp a color shift
   // alone is easy to miss, and the pill reads as "you are here" at a glance.
   iconSlot: {
     width: s(40),
@@ -193,8 +193,8 @@ export const styles = StyleSheet.create({
    *
    * **`marginLeft` with no `left`, which is the part worth knowing.** An
    * absolutely positioned child with neither edge set is laid out where its
-   * parent's alignment would have put it — centred here — and the margin then
-   * nudges it from there. So this is an offset from the tab's centre line, not
+   * parent's alignment would have put it — centered here — and the margin then
+   * nudges it from there. So this is an offset from the tab's center line, not
    * from its left edge: half the 40dp slot, less the dot's own radius, lands it
    * on the icon's corner. Anchoring to the tab instead would put it a fifth of
    * the bar's width away, which is nowhere near the icon it is flagging.
@@ -208,14 +208,14 @@ export const styles = StyleSheet.create({
 
       A bare `marginLeft` on an absolutely positioned child does *not* offset it
       by that amount here. With no `left`, the child is laid out where the
-      parent's `alignItems: 'center'` puts it, and centring happens inside the
-      box the margin has already eaten — so a margin of N moves the centre by
+      parent's `alignItems: 'center'` puts it, and centering happens inside the
+      box the margin has already eaten — so a margin of N moves the center by
       N/2, and by a different amount for each layer because the dot and the halo
       are different widths. That is what left the ring sitting up and to the
       left of the mark instead of around it.
     */
     left: '50%',
-    marginLeft: NOTICE_CENTRE_X - NOTICE_SIZE / 2,
+    marginLeft: NOTICE_CENTER_X - NOTICE_SIZE / 2,
     width: NOTICE_SIZE,
     height: NOTICE_SIZE,
     borderRadius: NOTICE_SIZE / 2,
@@ -227,24 +227,24 @@ export const styles = StyleSheet.create({
   },
 
   /**
-   * The pulse: a ring of the dot's own colour expanding out of it and fading.
+   * The pulse: a ring of the dot's own color expanding out of it and fading.
    *
    * A sibling of the dot, not a child of it. Android clips a view that grows
    * past its parent's bounds once the parent has a background and a radius —
    * the same clip `wrap` documents for the Home bump — so a halo nested inside
    * the mark would have its outer half cut off exactly as it became visible.
    *
-   * Both are absolutely positioned off the tab's centre line and offset the
+   * Both are absolutely positioned off the tab's center line and offset the
    * same way, which is what keeps them concentric: the halo's own extra radius
    * is pulled back from the dot's offset rather than stated as a second number.
    */
   noticeHalo: {
     position: 'absolute',
-    // Concentric with the dot: both are placed from the same centre, each
+    // Concentric with the dot: both are placed from the same center, each
     // pulling back its own half-width. See `notice` for why `left` is required.
     top: -NOTICE_NUDGE + NOTICE_SIZE / 2 - NOTICE_HALO / 2,
     left: '50%',
-    marginLeft: NOTICE_CENTRE_X - NOTICE_HALO / 2,
+    marginLeft: NOTICE_CENTER_X - NOTICE_HALO / 2,
     width: NOTICE_HALO,
     height: NOTICE_HALO,
     borderRadius: NOTICE_HALO / 2,
@@ -261,8 +261,8 @@ export const styles = StyleSheet.create({
   /**
    * The raised Home button.
    *
-   * Centred by `left: '50%'` and a half-width pull rather than by stretching
-   * across the bar, so it stays on the notch's centre line whatever the bar
+   * Centered by `left: '50%'` and a half-width pull rather than by stretching
+   * across the bar, so it stays on the notch's center line whatever the bar
    * measures.
    */
   bump: {

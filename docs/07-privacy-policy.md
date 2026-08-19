@@ -80,7 +80,7 @@ your device, in the app's private storage, and is never transmitted to us:
 - which levels you have finished, your star ratings and your best scores
 - the puzzle you are part way through, so a level survives closing the app
 - your coin balance, daily reward streak and anything you have unlocked
-- your settings, including sound, haptics, difficulty and colourblind marks
+- your settings, including sound, haptics, difficulty and colorblind marks
 - a short diagnostic log of recent in-game actions — levels started and
   finished, hints used, rewards claimed — kept so a fault can be investigated
   if you report one

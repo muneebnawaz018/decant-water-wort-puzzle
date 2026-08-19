@@ -36,7 +36,7 @@ interface Rect {
  * The menu is placed by its right edge and the note by its left, and that is a
  * real difference rather than a stylistic one: a menu hangs off the control it
  * belongs to, so its right edge is the fixed point, while a note points at one
- * glyph and wants to sit centred under it.
+ * glyph and wants to sit centered under it.
  */
 interface Placement {
   top: number;
@@ -102,14 +102,14 @@ export const SettingSelect = memo(function SettingSelect({
   );
 
   /**
-   * Centred on whatever opened it, and kept inside both screen edges.
+   * Centered on whatever opened it, and kept inside both screen edges.
    *
    * The clamp is why this returns a `left` rather than a `marginLeft` on a
-   * centred box: an `i` near the panel edge would centre a 208dp note half off
-   * screen, and a box that has been nudged back in is no longer centred on
+   * centered box: an `i` near the panel edge would center a 208dp note half off
+   * screen, and a box that has been nudged back in is no longer centered on
    * anything. Left edge and a clamp says both things at once.
    */
-  const alignCentre = useCallback(
+  const alignCenter = useCallback(
     (rect: Rect, boxWidth: number): number =>
       Math.min(
         Math.max(MENU_MARGIN, rect.x + rect.w / 2 - boxWidth / 2),
@@ -185,12 +185,12 @@ export const SettingSelect = memo(function SettingSelect({
           : {
               id: option.id,
               text: option.detail ?? '',
-              left: alignCentre(rect, TIP_WIDTH),
+              left: alignCenter(rect, TIP_WIDTH),
               top: Math.min(rect.y + rect.h + MENU_GAP, height - MENU_MARGIN - s(76)),
             }
       );
     },
-    [alignCentre, height]
+    [alignCenter, height]
   );
 
   const selected = options.find((option) => option.id === value);
@@ -289,7 +289,7 @@ const Option = memo(function Option({
       <Pressable
         onPress={handlePress}
         // The option you are already on is not a control. Disabling it keeps
-        // the press silent, rather than greying it and still taking the tap.
+        // the press silent, rather than graying it and still taking the tap.
         disabled={on}
         style={styles.optionPress}
         accessibilityRole="radio"

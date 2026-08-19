@@ -24,7 +24,7 @@ app icon uses, so the launcher and the listing cannot drift apart.
 ## Two things to know before editing
 
 **The palette is duplicated, not imported.** The generator is Python and
-`src/theme/colors.ts` is TypeScript. Move a colour there and it has to be moved
+`src/theme/colors.ts` is TypeScript. Move a color there and it has to be moved
 here by hand — no test catches this, because nothing in the app reads these
 files. That is the one cost of keeping the generator out of the app's own
 toolchain, and it is why every constant in the script names where it came from.

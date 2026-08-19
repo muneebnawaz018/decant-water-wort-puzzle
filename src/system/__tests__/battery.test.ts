@@ -6,7 +6,7 @@ import {
   LOW_LEVEL,
   percentOf,
 } from '../battery';
-import { colours } from '@/theme/colors';
+import { colors } from '@/theme/colors';
 
 /**
  * The gauge's arithmetic.
@@ -38,21 +38,21 @@ describe('isKnownLevel', () => {
 
 describe('chargeFor', () => {
   // Full green, not the brand's two-band stack. Two bands at fixed heights
-  // read as a battery at a strange level in strange colours, which is worse
+  // read as a battery at a strange level in strange colors, which is worse
   // than saying nothing — and there is no caption to correct the impression.
   it('falls back to every cell lit, in green, with no reading', () => {
     for (const missing of [null, -1]) {
       const charge = chargeFor(missing, 'unknown');
       expect(charge.filled).toBe(CELLS);
-      expect(charge.colour).toBe(colours.accent);
+      expect(charge.color).toBe(colors.accent);
     }
   });
 
   // Blue on a battery means nothing to anyone, and this is the one part of the
   // mark carrying information that has to land without a caption.
   it('draws a healthy charge in green, never the brand aqua', () => {
-    expect(chargeFor(0.8, 'battery').colour).toBe(colours.accent);
-    expect(chargeFor(0.5, 'unknown').colour).toBe(colours.accent);
+    expect(chargeFor(0.8, 'battery').color).toBe(colors.accent);
+    expect(chargeFor(0.5, 'unknown').color).toBe(colors.accent);
   });
 
   // Each block owns a fifth, and lights the moment its slice is entered. The
@@ -86,20 +86,20 @@ describe('chargeFor', () => {
   });
 
   it('warns in coral when the charge is low', () => {
-    expect(chargeFor(LOW_LEVEL - 0.01, 'battery').colour).toBe(colours.coral);
+    expect(chargeFor(LOW_LEVEL - 0.01, 'battery').color).toBe(colors.coral);
   });
 
   it('uses the accent while plugged in', () => {
-    expect(chargeFor(0.8, 'plugged').colour).toBe(colours.accent);
+    expect(chargeFor(0.8, 'plugged').color).toBe(colors.accent);
   });
 
   /**
    * Charging beats low, and that ordering is the point. A phone on 5% and
-   * climbing is not the situation a warning colour is for — the warning would
+   * climbing is not the situation a warning color is for — the warning would
    * be telling the player about a problem they have already solved.
    */
-  it('prefers the charging colour over the warning colour', () => {
-    expect(chargeFor(0.05, 'plugged').colour).toBe(colours.accent);
+  it('prefers the charging color over the warning color', () => {
+    expect(chargeFor(0.05, 'plugged').color).toBe(colors.accent);
   });
 });
 
@@ -132,7 +132,7 @@ describe('isSameReading', () => {
   });
 
   /**
-   * A cable going in changes the colour without changing the height, so a
+   * A cable going in changes the color without changing the height, so a
    * comparison on level alone would leave the mark aqua while charging.
    */
   it('notices the power source alone changing', () => {

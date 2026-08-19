@@ -199,7 +199,7 @@ function announceUnlocks(before: ProgressByDifficulty, after: ProgressByDifficul
  * a flat 120 on the reasoning that the brew was always the hardest board the
  * generator makes, where a rating would mostly measure patience. The brew
  * follows the player now, so a flat payout would hand the same coins to a
- * six-colour board and a twelve-colour one.
+ * six-color board and a twelve-color one.
  *
  * Stars are already how this game says how well a board was played, and they
  * need no separate difficulty dial bolted on: there is no fail state, so a

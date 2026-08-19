@@ -61,7 +61,7 @@ export function compactCoins(value: number): string {
     `B` is the top tier, so a trillion is `1000B` and ten quadrillion is
     `12000000B` — nine characters in a control whose width is a declared
     constant. `COIN_PILL_WIDTH` is summed rather than measured, because
-    `ScreenHeader` centres its title absolutely and needs the number before
+    `ScreenHeader` centers its title absolutely and needs the number before
     layout runs, so nothing downstream can absorb a string this wide: the pill
     simply grows into the title.
 

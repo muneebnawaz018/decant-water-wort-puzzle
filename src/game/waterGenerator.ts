@@ -1,6 +1,6 @@
 import { createRng, seedForLevel, type Rng } from '@/core/rng';
 import { fragmentation, moveLowerBound, solve } from '@/core/solver';
-import type { Colour, LevelParams, WaterState } from '@/core/types';
+import type { Color, LevelParams, WaterState } from '@/core/types';
 import { isTubeComplete, topRun } from '@/core/waterCore';
 import { DEFAULT_DIFFICULTY, DIFFICULTY_SALT, type Difficulty } from './difficulty';
 import { generationForLevel } from './levelParams';
@@ -19,7 +19,7 @@ export interface AcceptanceOptions {
   /**
    * Tubes allowed to start one lift from finished.
    *
-   * A full-height run of one colour under a single foreign segment. Doc §5 has
+   * A full-height run of one color under a single foreign segment. Doc §5 has
    * no word for these and the gate could not see them: `isTubeComplete` is
    * false, so a board of five of them reported `solvedTubes: 0` and passed.
    *
@@ -98,14 +98,14 @@ const DEFAULTS: Required<Omit<AcceptanceOptions, 'minFragmentation'>> = {
 
 /**
  * Doc §5 wants 60% broken up. Capacity-4 boards clear that easily. Capacity-5
- * boards cannot: a colour spans 5 segments instead of 4, so reverse-generation
+ * boards cannot: a color spans 5 segments instead of 4, so reverse-generation
  * runs out of room and lands between 0.50 and 0.68 measured over 1000 levels.
  * The floor tracks capacity so a board is judged against what its shape can
  * actually produce, and `generateLevel` takes the best of several attempts
  * rather than the first that clears the bar.
  *
  * At capacity 5 this check does little — difficulty there comes from 11 or 12
- * colours sharing a single spare tube, not from fragmentation. Solvability and
+ * colors sharing a single spare tube, not from fragmentation. Solvability and
  * the already-solved-tube check carry the gate on those levels.
  */
 function defaultMinFragmentation(capacity: number): number {
@@ -113,14 +113,14 @@ function defaultMinFragmentation(capacity: number): number {
 }
 
 /**
- * A tube one lift from finished: a full-height run of one colour, capped by at
+ * A tube one lift from finished: a full-height run of one color, capped by at
  * most one segment of another.
  *
  * `capacity - 1` rather than `capacity`, because the cap is what stops
  * `isTubeComplete` from seeing it. A tube holding four 8s under a single 0 is
  * one pour from done and reads, on screen, as already sorted.
  */
-function isTubeCapped(tube: readonly Colour[], capacity: number): boolean {
+function isTubeCapped(tube: readonly Color[], capacity: number): boolean {
   if (tube.length < capacity - 1) return false;
 
   const run = tube.slice(0, capacity - 1);
@@ -167,7 +167,7 @@ function longRunMass(state: WaterState): number {
  *
  * An un-pour only touches two runs, which is what makes this exact and cheap:
  * it lifts `count` off the source's uniform top run, and drops them on a
- * destination whose top is a different colour (`inverseMoves` refuses a
+ * destination whose top is a different color (`inverseMoves` refuses a
  * re-merge). So the source's top run shrinks from `run` to `run - count`, the
  * destination gains a run of exactly `count`, and nothing else on the board
  * moves. Scoring by rebuilding the state instead cost a full tube copy per
@@ -186,18 +186,18 @@ function clumpDelta(state: WaterState, move: InversePour): number {
   return after - before + gained;
 }
 
-/** A solved board: one full tube per colour, plus the spare empties. */
+/** A solved board: one full tube per color, plus the spare empties. */
 export function buildSolved(params: LevelParams, rng: Rng): WaterState {
-  const tubes: Colour[][] = [];
-  for (let colour = 0; colour < params.colourCount; colour++) {
-    tubes.push(Array<Colour>(params.capacity).fill(colour));
+  const tubes: Color[][] = [];
+  for (let color = 0; color < params.colorCount; color++) {
+    tubes.push(Array<Color>(params.capacity).fill(color));
   }
   for (let extra = 0; extra < params.extraTubes; extra++) tubes.push([]);
 
   return {
     tubes: rng.shuffle(tubes),
     capacity: params.capacity,
-    colourCount: params.colourCount,
+    colorCount: params.colorCount,
     extraTubes: params.extraTubes,
   };
 }
@@ -208,7 +208,7 @@ export function buildSolved(params: LevelParams, rng: Rng): WaterState {
  * a destination whose top already matches would just undo itself next step.
  *
  * The doc's pseudocode is wrong on one point, and it matters: it allows taking
- * the whole top run off a tube that has other colours underneath. Pouring that
+ * the whole top run off a tube that has other colors underneath. Pouring that
  * back is then illegal, because the source tube's new top no longer matches, so
  * the scramble can walk to a board with no path home. An un-pour is only sound
  * when it leaves part of the run behind, or empties the tube outright.
@@ -233,7 +233,7 @@ export function inverseMoves(state: WaterState): InversePour[] {
         if (count === run) {
           // Taking the whole run only reverses if the tube empties.
           if (src.length !== run) continue;
-          // And emptying one colour into an empty tube is a relabelling.
+          // And emptying one color into an empty tube is a relabelling.
           if (dst.length === 0) continue;
         }
         moves.push({ from, to, count });
@@ -271,14 +271,14 @@ export function applyInverse(state: WaterState, move: InversePour): WaterState {
  * underneath; the only move that clears a tube's bottom is one that empties it
  * outright, and that is a small slice of the move list. So the long runs the
  * solved board starts with survive the walk, and more steps do not help — the
- * distribution saturates. Measured at 12 colours, capacity 5: 130 steps and
+ * distribution saturates. Measured at 12 colors, capacity 5: 130 steps and
  * 300 steps produce identical statistics, 9.1 of 13 tubes carrying a 3-run and
  * a third of all segments inside one.
  *
  * Scoring every candidate by `clumpDelta` and taking the best fixes it at the
  * source. Same shapes, same step counts, measured over 20 boards each:
  *
- * | 12 colours, cap 5 | uniform | least-clumping |
+ * | 12 colors, cap 5 | uniform | least-clumping |
  * | ----------------- | ------- | -------------- |
  * | tubes with a 3-run| 9.1     | 0.85           |
  * | segments in runs  | 32.1    | 2.5            |
@@ -328,7 +328,7 @@ export function scramble(state: WaterState, steps: number, rng: Rng): WaterState
  *
  * Deviation worth knowing: the doc phrases the third check as "reachable in
  * under 60% of the scramble steps applied". Measuring that needs an optimal
- * solution length, and optimal search on a 12-colour board is not affordable.
+ * solution length, and optimal search on a 12-color board is not affordable.
  * Fragmentation is the stand-in — same 60% intent, scale-free, and exact.
  */
 export function isAcceptable(

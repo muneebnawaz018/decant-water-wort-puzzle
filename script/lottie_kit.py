@@ -23,9 +23,9 @@ silently does not draw.
 """
 
 
-def rgba(hex_colour: str, alpha: float = 1.0) -> list[float]:
+def rgba(hex_color: str, alpha: float = 1.0) -> list[float]:
     """Lottie wants normalised floats, not bytes."""
-    h = hex_colour.lstrip("#")
+    h = hex_color.lstrip("#")
     return [int(h[i : i + 2], 16) / 255 for i in (0, 2, 4)] + [alpha]
 
 
@@ -118,17 +118,17 @@ def star(points: int, outer: float, inner: float, rotation: float = 0) -> dict:
     return polygon(verts)
 
 
-def fill(colour: str, alpha: float = 1.0, opacity=100) -> dict:
+def fill(color: str, alpha: float = 1.0, opacity=100) -> dict:
     return {
         "ty": "fl",
-        "c": value(rgba(colour, alpha)),
+        "c": value(rgba(color, alpha)),
         "o": opacity if isinstance(opacity, dict) else value(opacity),
         "r": 1,
         "nm": "fill",
     }
 
 
-def stroke(colour: str, width: float, alpha: float = 1.0, opacity=100) -> dict:
+def stroke(color: str, width: float, alpha: float = 1.0, opacity=100) -> dict:
     """Round caps and round joins, per the app's look.
 
     A butt-capped stroke ends in a flat chop that reads as broken; rounded, the
@@ -136,7 +136,7 @@ def stroke(colour: str, width: float, alpha: float = 1.0, opacity=100) -> dict:
     """
     return {
         "ty": "st",
-        "c": value(rgba(colour, alpha)),
+        "c": value(rgba(color, alpha)),
         "o": opacity if isinstance(opacity, dict) else value(opacity),
         "w": value(width),
         "lc": 2,

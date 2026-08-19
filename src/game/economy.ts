@@ -229,8 +229,8 @@ export const EARNINGS = {
    * always the hardest shape the generator makes and a star rating there would
    * mostly measure patience. The board is no longer always that shape — it
    * follows the player now (see `BREW_LEAD`) — so the reasoning went with it,
-   * and a flat payout would hand the same 120 to a six-colour brew and a
-   * twelve-colour one.
+   * and a flat payout would hand the same 120 to a six-color brew and a
+   * twelve-color one.
    *
    * Stars are what this game already uses to say how well a board was played,
    * and they need no second dial: there is no fail state, so a finished brew
@@ -251,9 +251,9 @@ export const EARNINGS = {
  * The brew is generated on the Hard curve at `furthest + BREW_LEAD`, so it is
  * always harder than anything on the player's own ladder without ever being a
  * wall. Thirty is measured against the curve rather than picked: it puts a
- * beginner on a six-colour board — clearly above the four-colour boards they
+ * beginner on a six-color board — clearly above the four-color boards they
  * are learning on, and finishable — reaches the first single-spare board
- * around level 100, and arrives at the twelve-colour ceiling near 400, after
+ * around level 100, and arrives at the twelve-color ceiling near 400, after
  * which it stops mattering because the curve itself has saturated.
  *
  * Additive rather than proportional for that last reason: the curve tops out,
@@ -297,7 +297,7 @@ export const STARTING_COINS = 0;
  *
  * Only skins whose unlock is `coins` appear; the free ladder unlocks by level
  * and prices nothing. A `coins` skin missing from this table would be
- * unsellable, and the catalogue test fails the build if one ever is.
+ * unsellable, and the catalog test fails the build if one ever is.
  *
  * 1,500 is a few days of engaged play at the rebalanced ~300/day — the same
  * "first paid skin sits a few days out" ladder the original shop priced

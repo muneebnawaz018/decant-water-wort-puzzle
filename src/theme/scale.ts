@@ -75,7 +75,7 @@ const SCALE = isTablet ? Math.min(MAX_SCALE, shortestSide / BASELINE_WIDTH) : 1;
  * Scale a phone-authored dp value for the current device.
  *
  * Snapped to the device pixel grid, because a scaled 0.5dp hairline that lands
- * between two physical pixels renders as a grey smear rather than a line.
+ * between two physical pixels renders as a gray smear rather than a line.
  */
 export const s = (value: number): number =>
   isTablet ? PixelRatio.roundToNearestPixel(value * SCALE) : value;

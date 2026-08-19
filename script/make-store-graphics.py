@@ -14,7 +14,7 @@ sharp-cli trick as `make-icons.sh`: it writes PNG bytes under the *source*
 basename, extension and all, so the file it leaves behind is called `<name>.svg`
 and is a PNG. Hence the rename.
 
-The colours below are copied from `src/theme/colors.ts` rather than imported —
+The colors below are copied from `src/theme/colors.ts` rather than imported —
 this is Python and that is TypeScript. **If the palette moves, move them here
 too**; there is no test that catches the drift, because nothing in the app reads
 these files.
@@ -30,7 +30,7 @@ OUT = ROOT / 'store'
 
 W, H = 1024, 500
 
-# From `colours` in src/theme/colors.ts.
+# From `colors` in src/theme/colors.ts.
 NIGHT, NIGHT_DEEP = '#2E1A5E', '#140A32'
 LAMP, PLUM, INK_MUTED, INK = '#FFBE64', '#A24DFF', '#B7A6E6', '#F4ECFF'
 EMBOSS = '#5A3200'
@@ -77,7 +77,7 @@ def vial(i, x, y, w, h, fills):
         sy = y + h - (n + 1) * seg
         o.append(f'<rect x="{x-2}" y="{sy}" width="{w+4}" height="{seg+1}" fill="{fill}"/>')
         o.append(f'<rect x="{x-2}" y="{sy}" width="{w+4}" height="{seg+1}" fill="url(#gloss)"/>')
-        # The seam. Without it two same-colour segments read as one tall band,
+        # The seam. Without it two same-color segments read as one tall band,
         # and the vial stops looking like four units — which is the thing that
         # tells a player what the game is.
         if n:

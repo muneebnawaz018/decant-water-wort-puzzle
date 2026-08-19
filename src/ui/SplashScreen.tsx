@@ -13,8 +13,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { colours } from '@/theme/colors';
-// The vial cannot simply *start* higher: dead centre is where the OS draws the
+import { colors } from '@/theme/colors';
+// The vial cannot simply *start* higher: dead center is where the OS draws the
 // native splash image, and the point of that image is that React takes over
 // from it without anything moving. It rises instead.
 import { VIAL_RISE } from '@/theme/splash';
@@ -35,7 +35,7 @@ const HOLD_MS = 700;
  * A vial glowing to life on a dark bench, then the wordmark rising (spec §4.1).
  *
  * Everything runs on the UI thread and stops when it finishes. The one looping
- * animation — the tap hint — is cancelled on unmount, so nothing ticks behind
+ * animation — the tap hint — is canceled on unmount, so nothing ticks behind
  * Home.
  */
 export function SplashScreen({ onDone }: SplashScreenProps) {
@@ -131,10 +131,10 @@ export function SplashScreen({ onDone }: SplashScreenProps) {
         <View style={styles.vial}>
           <Animated.View style={[styles.liquidSlot, liquidStyle]}>
             <LinearGradient
-              // Named colours, never `pieces[n]`: the palette is ordered by
-              // separation, so an index points at a different colour the next
+              // Named colors, never `pieces[n]`: the palette is ordered by
+              // separation, so an index points at a different color the next
               // time it is reordered. Decoration must not move with it.
-              colors={[colours.aqua, colours.teal]}
+              colors={[colors.aqua, colors.teal]}
               style={StyleSheet.absoluteFill}
             />
           </Animated.View>

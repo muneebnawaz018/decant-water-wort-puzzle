@@ -12,7 +12,7 @@ import { styles } from './useTapBurst.styles';
  * in the ink this app prints *on* gold, and the caller says which surface it
  * is on.
  *
- * Both are placeholders — two rings expanding out of the centre. Replace them
+ * Both are placeholders — two rings expanding out of the center. Replace them
  * and every button in the app changes; see `assets/lottie/README.md` for what
  * to check on a downloaded animation.
  */

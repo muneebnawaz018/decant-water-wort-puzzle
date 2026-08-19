@@ -147,7 +147,7 @@ export const CoinPill = memo(function CoinPill() {
               accessibilityLabel="Get more coins"
               // The disc is 20dp, under the 44dp both platforms ask for. The slop
               // takes it there without widening the pill, which is a declared
-              // constant the header centres its title against.
+              // constant the header centers its title against.
               hitSlop={s(12)}
             >
               <Animated.View style={[styles.plus, tap.style]}>

@@ -6,9 +6,9 @@ import { POPPINS } from '@/theme/fonts';
 import { VIAL_HEIGHT, VIAL_RISE, VIAL_WIDTH } from '@/theme/splash';
 import { s } from '@/theme/scale';
 export const styles = StyleSheet.create({
-  // The vial is centred on the screen and nothing else is in the flow, because
-  // the OS centres the native splash image the same way. Anything stacked in
-  // this column would push the vial off that centre and the handoff would show
+  // The vial is centered on the screen and nothing else is in the flow, because
+  // the OS centers the native splash image the same way. Anything stacked in
+  // this column would push the vial off that center and the handoff would show
   // it moving. The title sits underneath, absolutely placed.
   root: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 

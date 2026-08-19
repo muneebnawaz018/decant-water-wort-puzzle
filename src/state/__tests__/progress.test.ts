@@ -150,12 +150,12 @@ describe('progress', () => {
 });
 
 describe('settings', () => {
-  it('defaults to feedback on, colourblind off, classic difficulty', () => {
-    const { haptics, sound, colourblind, difficulty } = useSettingsStore.getState();
-    expect({ haptics, sound, colourblind, difficulty }).toEqual({
+  it('defaults to feedback on, colorblind off, classic difficulty', () => {
+    const { haptics, sound, colorblind, difficulty } = useSettingsStore.getState();
+    expect({ haptics, sound, colorblind, difficulty }).toEqual({
       haptics: true,
       sound: true,
-      colourblind: false,
+      colorblind: false,
       difficulty: 'classic',
     });
   });

@@ -2,19 +2,19 @@
  * Vessel skins — the shape of the glass the puzzle is played in.
  *
  * Spec §4.7 is explicit that nothing bought here may affect play, and a
- * silhouette cannot: capacity, colours, generation and par are all untouched.
+ * silhouette cannot: capacity, colors, generation and par are all untouched.
  * What changes is the outline the liquid is clipped to.
  *
- * **Shape, not colour.** The shop used to sell "Ocean glass" and "Berry glass",
+ * **Shape, not color.** The shop used to sell "Ocean glass" and "Berry glass",
  * which were palettes — and a palette is the one cosmetic this game cannot
- * sell. Board colours are picked for separation and pinned by a test that
+ * sell. Board colors are picked for separation and pinned by a test that
  * fails if any two come within ΔE 30; letting a purchase repaint them would put
- * an accessibility guarantee behind a paywall, and the colourblind glyphs are
+ * an accessibility guarantee behind a paywall, and the colorblind glyphs are
  * index-aligned to that same order. A different vessel is free of all of it.
  *
- * The catalogue, its tiers and every geometry number come from
+ * The catalog, its tiers and every geometry number come from
  * `docs/05-skins.md` — the design pack distilled from the genre study. The
- * short version: silhouette is the whole skin (a recolour is invisible), free
+ * short version: silhouette is the whole skin (a recolor is invisible), free
  * shapes unlock by progression because that is the genre's retention pattern,
  * and paid shapes are the coin sink the economy audit called for.
  *
@@ -28,12 +28,12 @@
  * A vessel's silhouette: a family, plus that family's own numbers, every value
  * a fraction of the tube's box.
  *
- * A discriminated union, not one bag of corner radii. The first catalogue was
+ * A discriminated union, not one bag of corner radii. The first catalog was
  * four radii on the same straight tube, and the shop got caught selling five
  * copies of one shape with different corners — a skin players can tell apart
  * needs a different *family* of glass, which is different drawing code in
  * `render/vessel.ts`, not different inputs to the same walls. One family per
- * skin, and the catalogue test holds that no two skins share one.
+ * skin, and the catalog test holds that no two skins share one.
  *
  * Fractions rather than dp because the board sizes tubes from the space it is
  * given — a 12-tube fiendish board on a phone and a 4-tube board on an iPad
@@ -41,8 +41,8 @@
  * numbers would be a different object on each.
  *
  * **The narrowest glass in any family stays at or above `0.46` of the width.**
- * Colourblind glyphs draw at `0.42` of the width, centred, and clip against
- * anything tighter — the catalogue test pins the floor per family.
+ * Colorblind glyphs draw at `0.42` of the width, centered, and clip against
+ * anything tighter — the catalog test pins the floor per family.
  */
 export type Vessel =
   /** Straight walls. Corner radii at the mouth and base, nothing else. */
@@ -115,7 +115,7 @@ const POTION: Vessel = { kind: 'pear', mouth: 0.5, neck: 0.2 };
 const HOURGLASS: Vessel = { kind: 'hourglass', waist: 0.46 };
 
 /**
- * The catalogue, in shop order: the default, the free ladder, then the shop.
+ * The catalog, in shop order: the default, the free ladder, then the shop.
  *
  * Level thresholds sit at 50 / 150 / 300 — far enough apart that each unlock
  * lands in a different phase of the game, near enough that the second is
@@ -125,7 +125,7 @@ const HOURGLASS: Vessel = { kind: 'hourglass', waist: 0.46 };
  *
  * Ids may be added, never changed or removed — they are save format
  * (`settings.skin`, `economy.owned`), and `skins.test.ts` pins them. The
- * corner-radii catalogue's ids (`skin.beaker`, `skin.flask`, `skin.ampoule`)
+ * corner-radii catalog's ids (`skin.beaker`, `skin.flask`, `skin.ampoule`)
  * were retired pre-release, before any build shipped: an id from a dev install
  * falls back to the default glass, and nothing was ever bought under one.
  */

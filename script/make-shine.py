@@ -27,9 +27,9 @@ Why generated rather than authored
 ----------------------------------
 The precedent is `script/make-lottie.py`, `make-brew.py` and `make-loader.py`,
 and the reason is theirs: no After Effects pipeline, no artist, and a committed
-binary nobody can regenerate drifts from the palette the moment a colour moves.
+binary nobody can regenerate drifts from the palette the moment a color moves.
 
-Run it after changing any colour it reads. The JSON is written minified and the
+Run it after changing any color it reads. The JSON is written minified and the
 commit gate checks formatting, so `npm run format` is the second half of the
 command, not an optional tidy-up:
 
@@ -67,7 +67,7 @@ SWEEP_FRAMES = 26
 # leave a gap at the edge of the circle — exactly where a specular highlight is
 # most visible.
 SIZE = 60
-CENTRE = SIZE / 2
+CENTER = SIZE / 2
 
 # --- The bands ---------------------------------------------------------------
 
@@ -80,7 +80,7 @@ BAND_H = 104
 # never hidden behind it.
 BAND_W = 17
 # The narrow one, trailing. A single band reads as a wipe; two at different
-# widths read as a reflection travelling across a curved face.
+# widths read as a reflection traveling across a curved face.
 TRAIL_W = 7
 TRAIL_GAP = 14
 
@@ -96,14 +96,14 @@ END_X = SIZE + 26
 #
 # From `src/theme/colors.ts`. White rather than gold: this crosses the one green
 # face in the chrome, and a gold sheen on green goes muddy. A specular highlight
-# is the light source's colour, not the surface's.
+# is the light source's color, not the surface's.
 
 WHITE = "#FFFFFF"
 
 
-def rgba(hex_colour: str, alpha: float = 1.0) -> list[float]:
+def rgba(hex_color: str, alpha: float = 1.0) -> list[float]:
     """Lottie wants normalised floats, not bytes."""
-    h = hex_colour.lstrip("#")
+    h = hex_color.lstrip("#")
     return [int(h[i : i + 2], 16) / 255 for i in (0, 2, 4)] + [alpha]
 
 
@@ -145,10 +145,10 @@ def rounded_rect(size, radius, position=(0, 0)) -> dict:
     }
 
 
-def fill(colour: str, alpha: float = 1.0) -> dict:
+def fill(color: str, alpha: float = 1.0) -> dict:
     return {
         "ty": "fl",
-        "c": value(rgba(colour, alpha)),
+        "c": value(rgba(color, alpha)),
         "o": value(100),
         "r": 1,
         "nm": "fill",
@@ -203,7 +203,7 @@ def sheen() -> dict:
     """The pair of bands, crossing once per loop.
 
     Eased at both ends rather than run at a constant speed. A highlight on a
-    curved face is not travelling — the face is turning under it — so it appears
+    curved face is not traveling — the face is turning under it — so it appears
     to gather pace across the middle and settle at the edges.
 
     Parked past the right edge for the rest of the cycle. That is the whole pause
@@ -213,11 +213,11 @@ def sheen() -> dict:
     positions = [
         (
             frame,
-            [round(START_X + (END_X - START_X) * smoothstep(frame / SWEEP_FRAMES), 2), CENTRE, 0],
+            [round(START_X + (END_X - START_X) * smoothstep(frame / SWEEP_FRAMES), 2), CENTER, 0],
         )
         for frame in range(0, SWEEP_FRAMES + 1, 2)
     ]
-    positions.append((DURATION, [END_X, CENTRE, 0]))
+    positions.append((DURATION, [END_X, CENTER, 0]))
 
     return shape_layer(
         1,

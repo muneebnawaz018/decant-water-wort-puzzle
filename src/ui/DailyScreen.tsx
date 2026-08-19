@@ -16,7 +16,7 @@ import { standingFor, type StreakStanding } from '@/game/streak';
 import { syncReminders } from '@/notifications/dailyReminder';
 import { DAILY_REWARDS, useEconomyStore } from '@/state/economyStore';
 import { overlay, useOverlayStore } from '@/state/overlayStore';
-import { colours, gradients, ui } from '@/theme/colors';
+import { colors, gradients, ui } from '@/theme/colors';
 import { s } from '@/theme/scale';
 import { countdown, percentWidth, plural } from '@/utils';
 import { ClaimButton } from './chrome/ClaimButton';
@@ -378,7 +378,7 @@ export const DailyScreen = memo(function DailyScreen({ onPlayBonus }: DailyScree
  * `game/dailyPuzzle.ts`.
  *
  * Two states and no third. Open, and it says what it pays. Played, and it
- * counts down with **no `onPress` at all** rather than a greyed one — a
+ * counts down with **no `onPress` at all** rather than a grayed one — a
  * `Pressable` that is simply absent cannot be tapped, cannot buzz, and drops
  * the trailing chevron on its own, so nothing has to remember to turn three
  * things off together.
@@ -416,7 +416,7 @@ const BonusRow = memo(function BonusRow({ onPlay }: { onPlay: () => void }) {
  * repeat, so the motion stays alive without ever calling attention to itself.
  * Both are slow on purpose: this sits beside text the player is reading.
  *
- * `transformOrigin` pins the pivot at the base. Scaled about its centre the
+ * `transformOrigin` pins the pivot at the base. Scaled about its center the
  * flame grows downward too, which nothing burning does — it is anchored at its
  * fuel.
  */
@@ -460,7 +460,7 @@ const StreakFlame = memo(function StreakFlame() {
     <View style={styles.flame}>
       <Animated.View style={[styles.flameHalo, halo]} />
       <Animated.View style={[styles.flameGlyph, flame]}>
-        <Icon name="flame" size={FLAME_SIZE} color={colours.mango} />
+        <Icon name="flame" size={FLAME_SIZE} color={colors.mango} />
       </Animated.View>
     </View>
   );

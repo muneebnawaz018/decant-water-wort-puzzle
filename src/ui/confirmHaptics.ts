@@ -77,7 +77,7 @@ export function confirmHaptics(): void {
         kind: 'poured',
         move: { from: 0, to: 1, count: 1 },
         solved: false,
-        colour: 0,
+        color: 0,
         destFilled: 0,
         completed: false,
       });

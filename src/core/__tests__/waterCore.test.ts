@@ -4,7 +4,7 @@ import type { WaterState } from '../types';
 const state = (tubes: number[][], capacity = 4): WaterState => ({
   tubes,
   capacity,
-  colourCount: 2,
+  colorCount: 2,
   extraTubes: 1,
 });
 

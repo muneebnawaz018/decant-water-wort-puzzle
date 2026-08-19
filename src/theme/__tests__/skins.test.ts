@@ -11,7 +11,7 @@ import {
 
 /**
  * The narrowest glass anywhere on a silhouette, as a fraction of the width.
- * Colourblind glyphs draw at 0.42 of the width, centred — glass tighter than
+ * Colorblind glyphs draw at 0.42 of the width, centered — glass tighter than
  * 0.46 clips the accessibility mark, with the 0.04 covering stroke width.
  */
 function narrowestGlass(vessel: Vessel): number {
@@ -27,7 +27,7 @@ function narrowestGlass(vessel: Vessel): number {
   }
 }
 
-describe('the skin catalogue', () => {
+describe('the skin catalog', () => {
   it('leads with the default vessel', () => {
     expect(SKINS[0]!.id).toBe(DEFAULT_SKIN);
     expect(SKINS[0]!.unlock.kind).toBe('default');
@@ -49,7 +49,7 @@ describe('the skin catalogue', () => {
    * move, the fix is a rename map in the stores' load paths — and then this
    * pin is re-recorded, in that order.
    *
-   * Re-recorded once, pre-release: the corner-radii catalogue's ids
+   * Re-recorded once, pre-release: the corner-radii catalog's ids
    * (`skin.beaker`, `skin.flask`, `skin.ampoule`) were retired before any
    * build shipped, so no wild record can hold one and the fallback covers dev
    * installs. From the first store release, this list only grows.
@@ -123,13 +123,13 @@ describe('the skin catalogue', () => {
   });
 
   /**
-   * The floor is a measurement, not taste, and it guards the colourblind
-   * marks: glyphs draw at 0.42 of the tube's width, centred, so any glass
+   * The floor is a measurement, not taste, and it guards the colorblind
+   * marks: glyphs draw at 0.42 of the tube's width, centered, so any glass
    * narrower than 0.46 — a mouth, a neck, a waist — clips the one signal a
-   * colourblind player has. On a 13-tube board a tube is 29dp wide, and a
+   * colorblind player has. On a 13-tube board a tube is 29dp wide, and a
    * 0.34 mouth (the first ampoule shipped one) was a ~10dp sliver besides.
    */
-  it('keeps every silhouette wide enough for the colourblind marks', () => {
+  it('keeps every silhouette wide enough for the colorblind marks', () => {
     for (const { vessel } of SKINS) {
       expect(narrowestGlass(vessel)).toBeGreaterThanOrEqual(0.46);
     }

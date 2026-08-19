@@ -1,7 +1,7 @@
 import { solve } from '@/core/solver';
 import { DIFFICULTIES } from '../difficulty';
 import { GENERATOR_VERSION } from '../generatorVersion';
-import { generationForLevel, paramsForLevel, MAX_COLOURS } from '../levelParams';
+import { generationForLevel, paramsForLevel, MAX_COLORS } from '../levelParams';
 import { generateLevel } from '../waterGenerator';
 
 describe('difficulty modes', () => {
@@ -9,7 +9,7 @@ describe('difficulty modes', () => {
    * Each curve owns its table, so the old "fiendish = classic ± 1" arithmetic
    * is gone — what must hold instead is an ordering: at any level, fiendish is
    * a strictly harder shape than classic and gentle a no-harder one. "Harder"
-   * here is the pair of levers doc §5 names — more colours, or fewer spares —
+   * here is the pair of levers doc §5 names — more colors, or fewer spares —
    * never traded against each other.
    */
   it('orders the modes at every level', () => {
@@ -18,12 +18,12 @@ describe('difficulty modes', () => {
       const fiendish = paramsForLevel(level, 'fiendish');
 
       // Fiendish leads classic: at least one dial harder, none easier. The
-      // dial can be scramble — at the shared 12-colour ceiling it and the
-      // gate ramp are what remain — but colours and spares never trail.
-      expect(fiendish.colourCount).toBeGreaterThanOrEqual(classic.colourCount);
+      // dial can be scramble — at the shared 12-color ceiling it and the
+      // gate ramp are what remain — but colors and spares never trail.
+      expect(fiendish.colorCount).toBeGreaterThanOrEqual(classic.colorCount);
       expect(fiendish.extraTubes).toBeLessThanOrEqual(classic.extraTubes);
       expect(
-        fiendish.colourCount > classic.colourCount ||
+        fiendish.colorCount > classic.colorCount ||
           fiendish.extraTubes < classic.extraTubes ||
           fiendish.capacity > classic.capacity ||
           fiendish.scrambleSteps > classic.scrambleSteps
@@ -32,13 +32,13 @@ describe('difficulty modes', () => {
 
     // Gentle trails classic on both levers through the shared climb. Past
     // classic's rotation the comparison stops meaning anything — gentle's 11
-    // colours at capacity 4 with two spares is still the softer board than
+    // colors at capacity 4 with two spares is still the softer board than
     // classic's 10 at capacity 5 with one — so the promise test below is what
     // covers the endgame.
     for (const level of [1, 15, 60, 120, 260, 420]) {
       const gentle = paramsForLevel(level, 'gentle');
       const classic = paramsForLevel(level, 'classic');
-      expect(gentle.colourCount).toBeLessThanOrEqual(classic.colourCount);
+      expect(gentle.colorCount).toBeLessThanOrEqual(classic.colorCount);
       expect(gentle.extraTubes).toBeGreaterThanOrEqual(classic.extraTubes);
     }
   });
@@ -59,11 +59,11 @@ describe('difficulty modes', () => {
     expect(paramsForLevel(201, 'classic').extraTubes).toBe(1);
   });
 
-  it('gives fiendish a fixed 12-colour endgame, clear of the clamp', () => {
+  it('gives fiendish a fixed 12-color endgame, clear of the clamp', () => {
     // The old +1-then-clamp produced 11, 12, 12 — a third of fiendish's
     // endgame was classic's exact shape on a different seed.
     for (const level of [521, 522, 523, 999, 1001]) {
-      expect(paramsForLevel(level, 'fiendish').colourCount).toBe(12);
+      expect(paramsForLevel(level, 'fiendish').colorCount).toBe(12);
     }
   });
 
@@ -78,7 +78,7 @@ describe('difficulty modes', () => {
   it('stays inside the palette the theme can render', () => {
     for (const level of [500, 501, 700, 2000]) {
       for (const mode of DIFFICULTIES) {
-        expect(paramsForLevel(level, mode).colourCount).toBeLessThanOrEqual(MAX_COLOURS);
+        expect(paramsForLevel(level, mode).colorCount).toBeLessThanOrEqual(MAX_COLORS);
       }
     }
   });
@@ -103,7 +103,7 @@ describe('difficulty modes', () => {
 });
 
 /**
- * The growth dial past the shape ceiling. Colours cap at 12, capacity at 5,
+ * The growth dial past the shape ceiling. Colors cap at 12, capacity at 5,
  * spares floor at 1 and the scramble saturates, so what keeps climbing after a
  * curve tops out is selection pressure — `generateLevel` keeps the hardest
  * board of a sample that grows with the level.
@@ -212,7 +212,7 @@ describe('the difficulty ramp', () => {
 });
 
 /**
- * The complaint this rewrite answers: "almost all vials have similar colour
+ * The complaint this rewrite answers: "almost all vials have similar color
  * patterns". They did, and it was structural — a uniform reverse walk
  * preserves whatever sits under the run it lifts, so the long runs a solved
  * board starts with survived the scramble. A real level-905 board carried a
@@ -289,7 +289,7 @@ describe('determinism', () => {
     // needs a deliberate migration — not a re-recording.
     //
     // Gentle's is unchanged from version 1, and that is not a mistake: level
-    // 30 is a breather, so it drops to a three-colour board, and three colours
+    // 30 is a breather, so it drops to a three-color board, and three colors
     // leave the walk no clumps to avoid. The walk only diverges where there is
     // something to fix.
     //

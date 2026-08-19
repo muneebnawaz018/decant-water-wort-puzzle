@@ -13,14 +13,14 @@ So the same route the app icons and the splash already take: a script that
 draws the asset from the palette. `script/make-icons.sh` and
 `script/make-splash.py` are the precedent. The point is not that generated art
 beats authored art — it does not — but that a committed binary nobody can
-regenerate drifts from the palette the moment a colour moves, and this one
+regenerate drifts from the palette the moment a color moves, and this one
 cannot.
 
 Confetti is also the one celebration shape that survives being generated. It is
 many simple pieces under one physical rule, so the work is arithmetic rather
 than draughtsmanship; a drawn character or a bespoke flourish would need a hand.
 
-Run it after changing any colour it reads:
+Run it after changing any color it reads:
 
     python3 script/make-lottie.py
 
@@ -51,7 +51,7 @@ DURATION = 96
 # A square viewport, scaled to whatever box it is dropped into. 600 rather than
 # 300 so the pieces stay whole numbers at sensible sizes.
 SIZE = 600
-CENTRE = SIZE / 2
+CENTER = SIZE / 2
 
 PIECES = 46
 
@@ -59,7 +59,7 @@ PIECES = 46
 #
 # From `src/theme/colors.ts`. Kept as a list here rather than parsed out of the
 # TypeScript: this is a *choice* of which palette entries look like confetti,
-# not the palette itself, and six of the twelve board colours would be wrong.
+# not the palette itself, and six of the twelve board colors would be wrong.
 CONFETTI = [
     "#FFC94B",  # gold
     "#FFDE86",  # goldLight
@@ -72,9 +72,9 @@ CONFETTI = [
 ]
 
 
-def rgba(hex_colour: str) -> list[float]:
+def rgba(hex_color: str) -> list[float]:
     """Lottie wants normalised floats, not bytes."""
-    h = hex_colour.lstrip("#")
+    h = hex_color.lstrip("#")
     return [int(h[i : i + 2], 16) / 255 for i in (0, 2, 4)] + [1.0]
 
 
@@ -102,7 +102,7 @@ def keyed(frames: list[tuple[int, list[float]]]):
 def piece(index: int, rng: random.Random) -> dict:
     """One scrap of confetti, on a ballistic arc.
 
-    Launched from a spread near the centre rather than from a single point: a
+    Launched from a spread near the center rather than from a single point: a
     true point source reads as an explosion, and what this wants to look like is
     a handful thrown upward.
     """
@@ -111,8 +111,8 @@ def piece(index: int, rng: random.Random) -> dict:
     angle = math.pi * (-0.95 + 0.9 * (index / PIECES)) + rng.uniform(-0.18, 0.18)
     speed = rng.uniform(4.4, 9.2)
 
-    x0 = CENTRE + rng.uniform(-70, 70)
-    y0 = CENTRE + rng.uniform(-20, 30)
+    x0 = CENTER + rng.uniform(-70, 70)
+    y0 = CENTER + rng.uniform(-20, 30)
 
     vx = math.cos(angle) * speed
     vy = math.sin(angle) * speed
@@ -196,7 +196,7 @@ def piece(index: int, rng: random.Random) -> dict:
 
 
 def flash(index: int) -> dict:
-    """A single gold ring pushing out of the centre.
+    """A single gold ring pushing out of the center.
 
     The confetti says "something good happened"; this says *where*. Without it
     the pieces appear to come from nowhere in particular, which is the same
@@ -211,7 +211,7 @@ def flash(index: int) -> dict:
         "ks": {
             "o": keyed([(0, [0]), (4, [70]), (26, [0])]),
             "r": value(0),
-            "p": value([CENTRE, CENTRE]),
+            "p": value([CENTER, CENTER]),
             "a": value([0, 0, 0]),
             "s": keyed([(0, [10, 10]), (26, [150, 150])]),
         },

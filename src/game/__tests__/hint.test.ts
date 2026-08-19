@@ -105,7 +105,7 @@ describe('suggestPour', () => {
   /**
    * The budget exists so a press can never stall the UI, and it is only worth
    * anything if it is far above what the game actually asks for. Measured worst
-   * case over random play on 12-colour boards was 520 nodes.
+   * case over random play on 12-color boards was 520 nodes.
    */
   it('stays far inside its node budget on the hardest boards', () => {
     const rng = createRng(5);

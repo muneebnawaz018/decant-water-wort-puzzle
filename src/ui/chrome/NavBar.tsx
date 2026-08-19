@@ -33,7 +33,7 @@ import {
   NAV_BAR_HEIGHT,
   NAV_RADIUS,
   navBarWidth,
-  NOTCH_CENTRE_Y,
+  NOTCH_CENTER_Y,
   NOTCH_RADIUS,
   NOTICE_HALO_START,
   styles,
@@ -135,7 +135,7 @@ export const NavBar = memo(function NavBar({
    * The bar's shape: a rounded rectangle with a circle subtracted from its top
    * edge.
    *
-   * A real boolean difference, not a circle painted in the ground colour over
+   * A real boolean difference, not a circle painted in the ground color over
    * the bar. The backdrop behind this is a live gradient with drifting motes, so
    * a painted disc would be a flat patch that only matches where the gradient
    * happens to agree — and it would slide out of register the moment the
@@ -148,7 +148,7 @@ export const NavBar = memo(function NavBar({
       )
       .detach();
     const notch = Skia.PathBuilder.Make()
-      .addCircle(width / 2, NOTCH_CENTRE_Y, NOTCH_RADIUS)
+      .addCircle(width / 2, NOTCH_CENTER_Y, NOTCH_RADIUS)
       .detach();
     // Falls back to the un-notched bar rather than to nothing: a path op is the
     // one part of this that can return null, and a bar with no bite is a far
@@ -159,15 +159,15 @@ export const NavBar = memo(function NavBar({
   const canvasStyle = useMemo(() => ({ width, height: NAV_BAR_HEIGHT }), [width]);
   const wrapStyle = useMemo(() => ({ width, height: NAV_BAR_HEIGHT }), [width]);
   const gradientEnd = useMemo(() => vec(0, NAV_BAR_HEIGHT), []);
-  // Skia's colour prop is a mutable array; the palette's ramps are `as const`
+  // Skia's color prop is a mutable array; the palette's ramps are `as const`
   // tuples so two components cannot reach in and edit a shared one.
-  const faceColours = useMemo(() => [...gradients.navBar], []);
+  const faceColors = useMemo(() => [...gradients.navBar], []);
 
   return (
     <View style={[styles.wrap, wrapStyle]}>
       <Canvas style={[styles.face, canvasStyle]} pointerEvents="none">
         <Path path={path}>
-          <SkiaGradient start={vec(0, 0)} end={gradientEnd} colors={faceColours} />
+          <SkiaGradient start={vec(0, 0)} end={gradientEnd} colors={faceColors} />
         </Path>
       </Canvas>
 
@@ -209,7 +209,7 @@ export const NavBar = memo(function NavBar({
  * It is a `Pressable` even when Home is already the screen, unlike the tabs —
  * which disable themselves so a tap that changes nothing is silent. Home here is
  * the way *back* from anything, and the one control a player reaches for without
- * looking; a dead centre button is worse than a redundant one.
+ * looking; a dead center button is worse than a redundant one.
  */
 const HomeBump = memo(function HomeBump({
   onPress,
@@ -264,7 +264,7 @@ const HomeBump = memo(function HomeBump({
  * to learn to ignore.
  *
  * One reaction driving both layers rather than one each, the same rule the rack
- * and the backdrop follow. Cancelled on unmount; nothing in this project loops
+ * and the backdrop follow. Canceled on unmount; nothing in this project loops
  * unattended.
  */
 const NoticeDot = memo(function NoticeDot() {

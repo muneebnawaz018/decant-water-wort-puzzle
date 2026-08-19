@@ -66,7 +66,7 @@ describe('compactCoins', () => {
   });
 
   /**
-   * The pill's width is a constant `ScreenHeader` centres its title against,
+   * The pill's width is a constant `ScreenHeader` centers its title against,
    * so the string has to be bounded or the balance grows into the title. `B`
    * is the top tier, and without a ceiling ten quadrillion renders as
    * `12000000B` — nine characters where four were budgeted.

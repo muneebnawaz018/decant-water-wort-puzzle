@@ -151,7 +151,7 @@ describe('splashParticles', () => {
 });
 
 describe('metaball threshold', () => {
-  it('leaves colour alone and only steepens alpha', () => {
+  it('leaves color alone and only steepens alpha', () => {
     expect(GOO_MATRIX).toHaveLength(20);
     // Rows 1-3 are identity: the effect must not tint the liquid.
     expect(GOO_MATRIX.slice(0, 5)).toEqual([1, 0, 0, 0, 0]);

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 import { track } from '@/analytics';
-import type { Colour, PourMove, WaterState } from '@/core/types';
+import type { Color, PourMove, WaterState } from '@/core/types';
 import { applyPour, canPour, isSolved, isTubeComplete } from '@/core/waterCore';
 import type { Difficulty } from '@/game/difficulty';
 import { dayIndex, generateBonus } from '@/game/dailyPuzzle';
@@ -281,9 +281,9 @@ export type TapOutcome =
       kind: 'poured';
       move: PourMove;
       solved: boolean;
-      /** Colour that moved, and how full the destination was — the renderer
+      /** Color that moved, and how full the destination was — the renderer
        * needs both to animate the pour, and they are gone once it lands. */
-      colour: Colour;
+      color: Color;
       destFilled: number;
       /**
        * Whether this pour finished the destination vial — doc §7's "brief ring
@@ -291,7 +291,7 @@ export type TapOutcome =
        *
        * Decided here rather than by whoever reacts to it, because it cannot be
        * worked out from the rest of this record: a vial is finished when it is
-       * full *and* uniform, and nothing above the store knows the colours
+       * full *and* uniform, and nothing above the store knows the colors
        * underneath the one that just landed.
        */
       completed: boolean;
@@ -493,7 +493,7 @@ export const useGameStore = create<GameState>((set, get) => {
         //
         // The target always has liquid in it: a pour into an empty tube is
         // legal whenever the source has anything, so reaching here means the
-        // target is full or holds a different colour. Guarded anyway.
+        // target is full or holds a different color. Guarded anyway.
         const takeable = board.tubes[index]!.length > 0;
         set({ selected: takeable ? index : null, hintMove: null });
         return { kind: 'illegal', tube: index, armed: takeable };
@@ -502,7 +502,7 @@ export const useGameStore = create<GameState>((set, get) => {
       // Captured before the pour lands — afterwards the source has lost the
       // segments and the destination has already grown.
       const source = board.tubes[selected]!;
-      const colour = source[source.length - 1]!;
+      const color = source[source.length - 1]!;
       const destFilled = tube.length;
 
       const applied = applyPour(board, selected, index)!;
@@ -549,7 +549,7 @@ export const useGameStore = create<GameState>((set, get) => {
         kind: 'poured',
         move: applied.move,
         solved: nowSolved,
-        colour,
+        color,
         destFilled,
         completed,
       };
@@ -656,7 +656,7 @@ export const useGameStore = create<GameState>((set, get) => {
       if (!applied) return { kind: 'ignored' };
 
       const source = board.tubes[move.from]!;
-      const colour = source[source.length - 1]!;
+      const color = source[source.length - 1]!;
       const destFilled = board.tubes[move.to]!.length;
 
       const nowSolved = isSolved(applied.state);
@@ -697,7 +697,7 @@ export const useGameStore = create<GameState>((set, get) => {
         kind: 'poured',
         move: applied.move,
         solved: nowSolved,
-        colour,
+        color,
         destFilled,
         completed,
       };

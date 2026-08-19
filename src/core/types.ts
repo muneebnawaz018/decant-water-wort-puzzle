@@ -1,16 +1,16 @@
-export type Colour = number; // index into theme.pieces
+export type Color = number; // index into theme.pieces
 
 export interface LevelParams {
   capacity: number;
-  colourCount: number;
+  colorCount: number;
   extraTubes: number;
   scrambleSteps: number;
 }
 
 export interface WaterState {
-  tubes: Colour[][]; // index 0 = bottom
+  tubes: Color[][]; // index 0 = bottom
   capacity: number;
-  colourCount: number;
+  colorCount: number;
   extraTubes: number;
 }
 

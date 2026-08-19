@@ -38,7 +38,7 @@ browser, which is why `make-icons.sh` uses `sharp-cli` instead.
 
 The Android adaptive foreground keeps its padding. Launchers crop the outer
 ~18% to whatever mask shape they use — circle, squircle, rounded square — so
-the art sits in the centre safe zone.
+the art sits in the center safe zone.
 
 The sizes above are the only ones anyone makes by hand. `expo prebuild` and EAS
 Build expand them into every size each platform wants.
@@ -49,7 +49,7 @@ Background gradient `#2E1A5E → #140A32`, warm glow `#FFBE64`, magenta wash
 `#A24DFF`, gold `#FFEFB4 → #FFCF6A → #C58A22`. Liquids match the game (aqua
 `#22C9EC`, plum `#A24DFF`, coral `#FF4242`, mango `#FF8A1E`).
 
-The adaptive icon's `backgroundColor` in `app.config.ts` is `colours.nightDeep`
+The adaptive icon's `backgroundColor` in `app.config.ts` is `colors.nightDeep`
 (`#150A34`), not the `#140A32` above — a shade apart, and the palette in
 `src/theme/colors.ts` wins so there is one source for it.
 

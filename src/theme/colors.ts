@@ -1,5 +1,5 @@
 /**
- * Every colour in the app. Nothing else may hold a hex or an `rgba()` string.
+ * Every color in the app. Nothing else may hold a hex or an `rgba()` string.
  *
  * The rule exists because near-duplicates are invisible in review and obvious
  * on screen: the audit that produced this file found the gift chip painted
@@ -7,10 +7,10 @@
  * living at three different alphas that were meant to be one.
  *
  * Transparency comes from `alpha()`, never from a second hand-written string.
- * That way a tweak to a base colour carries to every translucent use of it.
+ * That way a tweak to a base color carries to every translucent use of it.
  */
 
-/** The raw palette. One entry per colour that actually exists in the design. */
+/** The raw palette. One entry per color that actually exists in the design. */
 const raw = {
   // Ground and chrome, spec §3.
   night: '#2A1758',
@@ -50,10 +50,10 @@ const raw = {
   black: '#000000',
   /** Toast and scrim, near-black with the ground's purple in it. */
   soot: '#0A051A',
-  /** Shadow cast by the primary button's own colour. */
+  /** Shadow cast by the primary button's own color. */
   greenShadow: '#003C14',
 
-  // Liquid colours, spec §3. Also used for chips, tabs and shop swatches —
+  // Liquid colors, spec §3. Also used for chips, tabs and shop swatches —
   // there is one palette, not a UI palette and a game palette.
   coral: '#FF4242',
   mango: '#FF8A1E',
@@ -69,13 +69,13 @@ const raw = {
    * Slots eleven and twelve. Spec §3 names only ten, and the ten already fill
    * the bright end of the hue wheel — so these sit lower in lightness rather
    * than squeezing between hues that are already adjacent. The near-white
-   * `chalk` they replace was dE 3 from the text colour and dE 8 from the glass
+   * `chalk` they replace was dE 3 from the text color and dE 8 from the glass
    * highlights, which made it unreadable as a liquid on a dark board.
    */
   fern: '#00902D',
   olive: '#5A6C12',
 
-  /** Lighter siblings, for gradients that start above their base colour. */
+  /** Lighter siblings, for gradients that start above their base color. */
   mangoLight: '#FFB05A',
   blueberryLight: '#5AA9FF',
 
@@ -86,15 +86,15 @@ const raw = {
   goldEmboss: '#5A3200',
 } as const;
 
-export type ColourName = keyof typeof raw;
+export type ColorName = keyof typeof raw;
 
 /**
- * A palette colour at partial opacity.
+ * A palette color at partial opacity.
  *
  * Takes a name rather than a hex so a caller cannot smuggle in a literal, and
- * so renaming a colour breaks the build instead of leaving orphans behind.
+ * so renaming a color breaks the build instead of leaving orphans behind.
  */
-export function alpha(name: ColourName, opacity: number): string {
+export function alpha(name: ColorName, opacity: number): string {
   const value = parseInt(raw[name].slice(1), 16);
   const r = (value >> 16) & 0xff;
   const g = (value >> 8) & 0xff;
@@ -104,24 +104,24 @@ export function alpha(name: ColourName, opacity: number): string {
 }
 
 /** Fully transparent, for the far stop of a fading gradient. */
-export function fade(name: ColourName): string {
+export function fade(name: ColorName): string {
   return alpha(name, 0);
 }
 
 /**
- * One palette colour composited over another, flattened to an opaque hex.
+ * One palette color composited over another, flattened to an opaque hex.
  *
  * The chrome's stroke is `alpha('white', 0.1)`, which is a *border* everywhere
  * it appears — and a border paints over the view's own background, so it
  * resolves against the panel. Drawn instead as the background of a padded
  * wrapper (see `HAIRLINE`, which is how the strokes have to be built on
- * Android) the same colour resolves against the ground behind the card, and
+ * Android) the same color resolves against the ground behind the card, and
  * comes out visibly darker. Flattening against the face it is meant to edge
  * keeps the two forms identical.
  *
  * Computed rather than written out, so moving `panel` moves the stroke with it.
  */
-function blend(over: ColourName, base: ColourName, opacity: number): string {
+function blend(over: ColorName, base: ColorName, opacity: number): string {
   const parse = (hex: string): [number, number, number] => {
     const v = parseInt(hex.slice(1), 16);
     return [(v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff];
@@ -135,16 +135,16 @@ function blend(over: ColourName, base: ColourName, opacity: number): string {
 }
 
 /**
- * A palette colour lightened towards white by `amount` (0 keeps it, 1 is
+ * A palette color lightened towards white by `amount` (0 keeps it, 1 is
  * white). Opaque, unlike `alpha` — a tint has to hold its own against whatever
  * sits behind it, and a translucent one picks up the backdrop's purple.
  *
  * Mixing in sRGB rather than a perceptual space on purpose. It is the cheaper
- * arithmetic and these are decorative steps, not colours anything is measured
+ * arithmetic and these are decorative steps, not colors anything is measured
  * against; `glyphOn` still does the real luminance work where legibility is at
  * stake.
  */
-export function tint(name: ColourName, amount: number): string {
+export function tint(name: ColorName, amount: number): string {
   const value = parseInt(raw[name].slice(1), 16);
   const clamped = amount < 0 ? 0 : amount > 1 ? 1 : amount;
   const towards = (channel: number): number =>
@@ -156,13 +156,13 @@ export function tint(name: ColourName, amount: number): string {
   return `rgb(${r},${g},${b})`;
 }
 
-export const colours = raw;
+export const colors = raw;
 
 /**
- * A glyph colour that stays legible on a given fill, doc §9.
+ * A glyph color that stays legible on a given fill, doc §9.
  *
  * A fixed white mark disappears on `lime` and `tangerine` — both above L* 84 —
- * which quietly breaks the one feature colourblind players depend on. Uses
+ * which quietly breaks the one feature colorblind players depend on. Uses
  * relative luminance, the same measure WCAG contrast is built on.
  */
 export function glyphOn(fill: string): string {
@@ -180,7 +180,7 @@ export function glyphOn(fill: string): string {
 }
 
 /**
- * Semantic names. Components use these; `colours` is for the rare case where
+ * Semantic names. Components use these; `colors` is for the rare case where
  * a raw palette entry is genuinely what is meant (a liquid, a swatch).
  */
 export const ui = {
@@ -189,7 +189,7 @@ export const ui = {
   groundDeep: raw.nightDeep,
   lamp: alpha('lamp', 0.16),
   lampFade: fade('lamp'),
-  // The magenta wash is plum, not a colour of its own — they were separate
+  // The magenta wash is plum, not a color of its own — they were separate
   // entries with identical values, which is exactly how two things that must
   // match drift apart.
   wash: alpha('plum', 0.28),
@@ -235,10 +235,10 @@ export const ui = {
   /**
    * The primary face is gold, not green.
    *
-   * Green was the spec's action colour and it never belonged to this app: the
+   * Green was the spec's action color and it never belonged to this app: the
    * chrome, the wordmark, the coins, the active nav pill and the star ratings
    * are all gold, so the one control the player is meant to press was the only
-   * element on screen that was not. Two accent colours on a dark purple ground
+   * element on screen that was not. Two accent colors on a dark purple ground
    * read as two different apps.
    *
    * Green survives where it means a *state* rather than an action — switches
@@ -261,7 +261,7 @@ export const ui = {
    * how each renderer blends a translucent gradient. Daily's countdown came out
    * gold on Android and brown on iOS from one style.
    *
-   * Opaque colours have none of those degrees of freedom. This is the gold ramp
+   * Opaque colors have none of those degrees of freedom. This is the gold ramp
    * mixed most of the way to the ground, which is what the 42% version was
    * trying to be.
    */
@@ -272,7 +272,7 @@ export const ui = {
    * Fading depends on what is behind the button, on whether the platform fades
    * the shadow with it (Android does not), and on how each renderer blends a
    * translucent gradient, so Daily's countdown came out gold on Android and
-   * brown on iOS. Darkening the ramp to opaque colours fixed the disagreement
+   * brown on iOS. Darkening the ramp to opaque colors fixed the disagreement
    * and produced mud on both.
    *
    * A card surface has neither problem. It is opaque, it is already the app's
@@ -283,7 +283,7 @@ export const ui = {
   /** Its label — the same muted ink every inactive thing in the app uses. */
   buttonLabelOff: raw.inkMuted,
   /**
-   * The coloured glow a lit button casts, rather than the neutral drop shadow
+   * The colored glow a lit button casts, rather than the neutral drop shadow
    * every card gets.
    *
    * This is what "glossy" actually is on a dark ground: a black shadow under a
@@ -296,7 +296,7 @@ export const ui = {
    * The same glow pre-multiplied, for `boxShadow`.
    *
    * `shadowOpacity` is an iOS-only property, so the alpha has to live in the
-   * colour for a shadow that both platforms draw. See `primaryShadow`.
+   * color for a shadow that both platforms draw. See `primaryShadow`.
    */
   buttonGlowSoft: alpha('gold', 0.5),
   /** The neutral drop shadow, likewise pre-multiplied. */
@@ -322,7 +322,7 @@ export const ui = {
    *
    * `noticeRing` is the ground the dot is punched out of. Without it the mark
    * sits directly on the icon it is flagging and the two read as one shape at
-   * 8dp; the ring is the bar's own face colour, so the dot appears to float
+   * 8dp; the ring is the bar's own face color, so the dot appears to float
    * above the tab rather than to be drawn on it.
    */
   notice: raw.coral,

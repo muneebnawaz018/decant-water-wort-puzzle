@@ -11,7 +11,7 @@ const noon = (iso: string) => new Date(`${iso}T12:00:00`).getTime();
  *
  * The board's shape follows progress now, so the tests that describe the
  * hardest board have to say whose brew they mean. Past roughly level 400 the
- * Hard curve has saturated and the brew is the fixed twelve-colour, one-spare
+ * Hard curve has saturated and the brew is the fixed twelve-color, one-spare
  * shape it used to be for everybody.
  */
 const VETERAN = 600;
@@ -76,9 +76,9 @@ describe('the bonus board', () => {
 
   it('reaches the hardest shape the generator makes, for a veteran', () => {
     const board = generateBonus(dayIndex(noon('2026-08-08')), VETERAN).state;
-    const colours = new Set(board.tubes.flat());
+    const colors = new Set(board.tubes.flat());
 
-    expect(colours.size).toBe(12);
+    expect(colors.size).toBe(12);
     expect(board.capacity).toBe(5);
     // Twelve full tubes plus one spare. Any fewer spares is unplayable, not
     // harder.
@@ -100,8 +100,8 @@ describe('the bonus board', () => {
     const midgame = generateBonus(day, 200).state;
     const veteran = generateBonus(day, VETERAN).state;
 
-    expect(beginner.colourCount).toBeLessThan(midgame.colourCount);
-    expect(midgame.colourCount).toBeLessThan(veteran.colourCount);
+    expect(beginner.colorCount).toBeLessThan(midgame.colorCount);
+    expect(midgame.colorCount).toBeLessThan(veteran.colorCount);
     // A beginner's brew is still finishable: capacity 4 with two spare tubes.
     expect(beginner.capacity).toBe(4);
     expect(beginner.extraTubes).toBe(2);
@@ -117,7 +117,7 @@ describe('the bonus board', () => {
     for (const furthest of [30, 60, 100, 200, 300]) {
       const before = brewParamsFor(furthest - 1);
       const on = brewParamsFor(furthest);
-      expect(on.colourCount).toBeGreaterThanOrEqual(before.colourCount);
+      expect(on.colorCount).toBeGreaterThanOrEqual(before.colorCount);
       expect(on.extraTubes).toBeLessThanOrEqual(before.extraTubes);
     }
   });
@@ -131,7 +131,7 @@ describe('the bonus board', () => {
           furthest,
           mode,
           ahead:
-            brew.colourCount > own.colourCount ||
+            brew.colorCount > own.colorCount ||
             brew.extraTubes < own.extraTubes ||
             brew.capacity > own.capacity,
         }).toEqual({ furthest, mode, ahead: true });

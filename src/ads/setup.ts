@@ -194,7 +194,7 @@ async function requestTracking(): Promise<void> {
  * where this gets looked at.
  *
  * The answer is remembered — a second launch returns `OBTAINED` and the form
- * stays away, which is correct behaviour and looks like the flag has stopped
+ * stays away, which is correct behavior and looks like the flag has stopped
  * working. Delete the app and reinstall to see it again.
  */
 const debugEea = __DEV__ && process.env.EXPO_PUBLIC_ADS_DEBUG_EEA === '1';

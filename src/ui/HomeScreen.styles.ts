@@ -36,7 +36,7 @@ export const styles = StyleSheet.create({
     Clears the bar that Root floats over every screen — and the raised Home
     button on it, which `NAV_BAR_HEIGHT` does not include.
 
-    The bump is the tallest part of the chrome and it is centred, so it lands
+    The bump is the tallest part of the chrome and it is centered, so it lands
     over the middle of a full-width Play button. `useScreenPadding` has always
     added `BUMP_RISE` for the scrolling screens; Home reserves its own space and
     was the one place still measuring the bar alone.
@@ -59,11 +59,11 @@ export const styles = StyleSheet.create({
 
     It was `stack`'s auto margins, and both settings were wrong in the same way
     — they put the leftover somewhere a player reads as a gap. Both margins
-    centred the cards and opened a hole between the rack and the Continue card.
+    centered the cards and opened a hole between the rack and the Continue card.
     `marginBottom` alone pooled it all under Play, which is the version that
     made Android look loose and iOS look right: same styles, 94dp more slack.
 
-    It is the hero now. `heroSlot` flexes and centres its content, so every
+    It is the hero now. `heroSlot` flexes and centers its content, so every
     functional gap below it — card to chips, chips to Play, Play to nav bar — is
     a fixed number on every device, and the difference between phones shows up
     as more or less air around the vials. Which is decoration, and the only

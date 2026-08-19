@@ -24,25 +24,25 @@ function replay(state: WaterState, moves: { from: number; to: number }[]): Water
 
 describe('levelParams', () => {
   it('follows the difficulty curve', () => {
-    expect(paramsForLevel(1).colourCount).toBe(3);
-    expect(paramsForLevel(6).colourCount).toBe(4);
-    expect(paramsForLevel(51).colourCount).toBe(6);
+    expect(paramsForLevel(1).colorCount).toBe(3);
+    expect(paramsForLevel(6).colorCount).toBe(4);
+    expect(paramsForLevel(51).colorCount).toBe(6);
     expect(paramsForLevel(201).extraTubes).toBe(1);
     expect(paramsForLevel(351).capacity).toBe(5);
   });
 
   it('drops back a row every 10th level as a breather', () => {
-    expect(paramsForLevel(30).colourCount).toBeLessThan(paramsForLevel(31).colourCount);
-    expect(paramsForLevel(10).colourCount).toBe(paramsForLevel(1).colourCount);
+    expect(paramsForLevel(30).colorCount).toBeLessThan(paramsForLevel(31).colorCount);
+    expect(paramsForLevel(10).colorCount).toBe(paramsForLevel(1).colorCount);
   });
 
-  it('never asks for more colours than the theme has', () => {
+  it('never asks for more colors than the theme has', () => {
     for (const level of [500, 501, 1000, 5000]) {
-      expect(paramsForLevel(level).colourCount).toBeLessThanOrEqual(12);
+      expect(paramsForLevel(level).colorCount).toBeLessThanOrEqual(12);
     }
   });
 
-  it('counts tubes as colours plus spares', () => {
+  it('counts tubes as colors plus spares', () => {
     expect(tubeCount(paramsForLevel(1))).toBe(5);
   });
 });
@@ -72,7 +72,7 @@ describe('inverseMoves', () => {
     }
   });
 
-  it('never stacks a colour onto its own kind', () => {
+  it('never stacks a color onto its own kind', () => {
     const state = buildSolved(paramsForLevel(6), createRng(3));
     for (const move of inverseMoves(state)) {
       const src = state.tubes[move.from]!;
@@ -95,16 +95,16 @@ describe('scramble', () => {
     }
   });
 
-  it('preserves the segment count of every colour', () => {
+  it('preserves the segment count of every color', () => {
     const params = paramsForLevel(51);
     const rng = createRng(42);
     const state = scramble(buildSolved(params, rng), params.scrambleSteps, rng);
 
     const counts = new Map<number, number>();
     for (const tube of state.tubes) {
-      for (const colour of tube) counts.set(colour, (counts.get(colour) ?? 0) + 1);
+      for (const color of tube) counts.set(color, (counts.get(color) ?? 0) + 1);
     }
-    expect(counts.size).toBe(params.colourCount);
+    expect(counts.size).toBe(params.colorCount);
     for (const count of counts.values()) expect(count).toBe(params.capacity);
   });
 });
