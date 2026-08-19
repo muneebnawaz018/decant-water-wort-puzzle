@@ -1,9 +1,13 @@
 # 07 — Privacy policy
 
-**Draft. Not law yet.** Three things have to happen before this is usable:
-fill the placeholders, have someone qualified read it, and publish it at a
-public URL that never moves. Both stores require the URL, and AdMob makes it
-unavoidable rather than optional.
+**Published 19 Aug 2026** at
+<https://decant-website-rho.vercel.app/privacy/> — the source of truth is now
+that page, not this file. This one stays as the reasoning behind the wording
+and as the notes for whoever files the store forms.
+
+**Still not read by a lawyer.** That was one of three preconditions and it is
+the one still outstanding; the other two — filling the placeholders and hosting
+at a public URL — are done.
 
 The text below is written from what the code actually does, checked rather than
 assumed: there is no `fetch`, no `XMLHttpRequest` and no socket anywhere in
@@ -12,17 +16,40 @@ belongs to the Google Mobile Ads SDK. If that ever stops being true — an
 analytics vendor, a crash reporter, a leaderboard — this file is wrong the same
 day, and the store forms filed against it are wrong too.
 
-## Placeholders to fill
+## The filled values
 
-| Placeholder    | What goes there                                        |
-| -------------- | ------------------------------------------------------ |
-| `[PUBLISHER]`  | The legal entity on the store listings                 |
-| `[CONTACT]`    | A support email that will still work in two years      |
-| `[POLICY_URL]` | Where this is hosted; also goes in the settings drawer |
-| `[DATE]`       | The date the published version takes effect            |
+| Placeholder    | Value                                            |
+| -------------- | ------------------------------------------------ |
+| `[PUBLISHER]`  | Walqalum Games                                   |
+| `[CONTACT]`    | `games.walqalum@gmail.com`                       |
+| `[POLICY_URL]` | `https://decant-website-rho.vercel.app/privacy/` |
+| `[DATE]`       | 19 August 2026                                   |
 
-Once hosted, wire `[POLICY_URL]` into the `Privacy policy` row in
-`src/ui/chrome/SettingsDrawer.tsx`, which currently opens nothing.
+**Four places hold that URL and they have to move together**: the site itself
+(`decant-web`, in both the page copy and `metadataBase`), `PRIVACY_URL` in
+`src/ui/chrome/SettingsDrawer.tsx`, the Play Console App content form, and
+AdMob. A policy citing a URL it is not served from is the kind of mismatch a
+reviewer checks for.
+
+**The trailing slash is canonical.** `decant-web` sets `trailingSlash` in its
+Next config, so `/privacy` 308s to `/privacy/`. File the slashed form
+everywhere — a redirect works in a browser and is one more thing between a
+crawler and the document.
+
+The site is on an auto-generated Vercel hostname, which is the weak part. It
+changes if the Vercel project is renamed, and a dead privacy URL on a live
+listing is a policy strike rather than a broken link. `vercel.app` is also a
+shared public-suffix domain, which is a weaker ownership signal for
+`app-ads.txt` than a domain we control — unverified whether AdMob minds. A
+subdomain of `walqalum.com` pointed at the same deployment fixes both and was
+offered; the Vercel host was kept for launch.
+
+The `Privacy policy` row in `src/ui/chrome/SettingsDrawer.tsx` opens it. The
+row already showed a one-paragraph summary — it was never dead, contrary to
+what this file used to say — and now carries a `Read policy` button beside
+`Close`. The summary gained a line about Google's collection, because a
+summary that says only "we collect nothing" is misleading about the half that
+matters.
 
 ---
 
