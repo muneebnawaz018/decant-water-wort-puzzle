@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import {
   Linking,
   Pressable,
@@ -16,6 +16,7 @@ import Animated, {
   SlideOutRight,
 } from 'react-native-reanimated';
 
+import { privacyOptionsRequired, showPrivacyOptions } from '@/ads/setup';
 import { DIFFICULTIES, DIFFICULTY_INFO, isDifficulty } from '@/game/difficulty';
 import {
   clearReminders,
@@ -90,6 +91,26 @@ const DIFFICULTY_OPTIONS = DIFFICULTIES.map((id) => ({
 export const SettingsDrawer = memo(function SettingsDrawer() {
   const open = useOverlayStore((state) => state.drawer);
   const close = useOverlayStore((state) => state.closeDrawer);
+  /**
+   * Whether to offer the ad-privacy row, asked once per open.
+   *
+   * UMP reads its answer from local state, so this settles in a tick and the
+   * row simply is not there on the first frame rather than appearing late. A
+   * `false` from a failed check is the same as a player who is owed nothing,
+   * which is the right way for this to fail.
+   */
+  const [showAdChoices, setShowAdChoices] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    void privacyOptionsRequired().then((required) => {
+      if (live) setShowAdChoices(required);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
   const { width } = useWindowDimensions();
   const padding = useScreenPadding();
   const difficulty = useSettingsStore((state) => state.difficulty);
@@ -246,9 +267,23 @@ export const SettingsDrawer = memo(function SettingsDrawer() {
             <SettingRow
               icon="shield"
               label="Privacy policy"
-              divider={false}
+              divider={showAdChoices}
               onPress={privacy}
             />
+            {/*
+              Only where a form is genuinely owed — see `privacyOptionsRequired`.
+              Google's consent message promises this button exists, and the US
+              states message has no console-side entry point at all, so the app
+              is the only place it can live.
+            */}
+            {showAdChoices && (
+              <SettingRow
+                icon="shield"
+                label="Ad privacy choices"
+                divider={false}
+                onPress={() => void showPrivacyOptions()}
+              />
+            )}
           </SettingGroup>
 
           <Text style={styles.version}>{VERSION}</Text>

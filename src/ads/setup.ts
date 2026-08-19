@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import mobileAds, {
   AdsConsent,
   AdsConsentDebugGeography,
+  AdsConsentPrivacyOptionsRequirementStatus,
   AdsConsentStatus,
   MaxAdContentRating,
 } from 'react-native-google-mobile-ads';
@@ -234,5 +235,63 @@ async function gatherConsent(): Promise<void> {
   // reads that state itself from the same store UMP wrote it to.
   if (consent.status === AdsConsentStatus.REQUIRED) {
     await AdsConsent.showForm();
+  }
+}
+
+/**
+ * Whether this player is owed a standing way back to their consent choice.
+ *
+ * **Google's own consent message tells them one exists.** Its body reads "Look
+ * for a link or button in the app menu to manage or withdraw consent in privacy
+ * and cookie settings" — text this project does not write and cannot edit. A
+ * build with no such button publishes a dialog that sends European players
+ * looking for something that is not there.
+ *
+ * The US states message is the other half and is stricter about it: CCPA/CPRA
+ * expect a "Do Not Sell or Share My Personal Information" path that stays
+ * reachable, not a choice offered once on first launch and never again. The
+ * AdMob console will not even let that message's entry point be configured —
+ * it answers "You need to implement a privacy options entry point in your app",
+ * because there is nothing to configure on their side.
+ *
+ * **The status decides whether the row appears at all**, rather than the app
+ * guessing from a region it has no business knowing. UMP answers `REQUIRED`
+ * only where a form is genuinely owed, so a player in Karachi or Chicago sees
+ * one fewer row in a settings drawer that is already long, and nobody who is
+ * owed the choice is denied it.
+ *
+ * Answers `false` on any failure. A missing row is a smaller wrong than a row
+ * that opens nothing, and this is called while a screen is being built.
+ */
+export async function privacyOptionsRequired(): Promise<boolean> {
+  try {
+    const info = await AdsConsent.getConsentInfo();
+    return (
+      info.privacyOptionsRequirementStatus ===
+      AdsConsentPrivacyOptionsRequirementStatus.REQUIRED
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Reopen Google's own privacy options form.
+ *
+ * Deliberately not `AdsConsent.reset()` followed by a fresh gather, which is
+ * the tempting shape and the wrong one: reset discards the decision before
+ * asking again, so a player who opens this out of curiosity and backs out has
+ * silently had their consent revoked. `showPrivacyOptionsForm` opens the form
+ * seeded with what they chose last time and leaves it alone unless they change
+ * it.
+ *
+ * Throws nothing. The form failing to open is not something a player can act
+ * on, and there is no second mechanism to fall back to.
+ */
+export async function showPrivacyOptions(): Promise<void> {
+  try {
+    await AdsConsent.showPrivacyOptionsForm();
+  } catch (error) {
+    if (__DEV__) console.warn('[ads] privacy options form failed', error);
   }
 }

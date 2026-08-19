@@ -218,23 +218,52 @@ done.
 The build ships on Google's public test IDs today, which earn nothing and are
 the correct default. `docs/04-ads.md` §11 is the detailed version of this list.
 
-- [ ] **The company's AdMob account owns the app**, not a personal one. This is
-      a handover and it should be a `.env` edit, never a commit
-- [ ] All four IDs in `.env`: two App IDs, two rewarded units
-- [ ] **A GDPR consent message created and _published_** under _Privacy &
-      messaging_, **separately for the iOS and Android entries**. Add the US
-      states message beside it
-- [ ] `EXPO_PUBLIC_ADMOB_LIVE=true`, then `npm run prebuild`
-- [ ] Register test devices in AdMob, so nobody generates invalid traffic
+- [x] **The company's AdMob account owns the app** — `games.walqalum@gmail.com`,
+      publisher `pub-1606345493304211`. A handover is a `.env` edit, never a
+      commit
+- [x] Android IDs in `.env`: App ID, rewarded unit, interstitial unit. **iOS is
+      still on Google's test IDs** and needs its own AdMob app entry — a unit
+      minted for the Android entry means nothing to the iOS one and is answered
+      with permanent no-fill
+- [x] **GDPR consent message published** — `Decant EEA consent`, with
+      _Do not consent_ enabled in every EEA country. US states message beside it
+- [x] Test device registered, so nobody generates invalid traffic
+- [x] **Privacy options entry point built** — `Ad privacy choices` in the
+      settings drawer. Not optional: the published consent message tells players
+      to look for it, and the US states message has **no console-side entry
+      point at all**. See the note at the end of this stage
+- [ ] `EXPO_PUBLIC_ADMOB_LIVE=true`, then `npm run prebuild` — **production
+      build only**, see stage 6
 - [ ] **Link the store listing inside AdMob.** Until it is linked, fill rate is
-      poor and the early numbers mislead whoever reads them
-- [ ] Publish `app-ads.txt` on the developer website named in the listing
-- [ ] Complete the AdMob payment profile and identity verification
+      poor and the early numbers mislead whoever reads them. Also what usually
+      clears the "Requires review" badge a new app carries
+- [ ] Publish `app-ads.txt` on the game's website —
+      `google.com, pub-1606345493304211, DIRECT, f08c47fec0942fa0`, at
+      `decant-web/public/app-ads.txt`
+- [ ] Complete the AdMob payment profile and identity verification. Slow —
+      mailed-PIN verification in some regions — and nothing downstream waits on
+      it, so start it early and forget it
 
 **The consent message is not optional polish.** With none published, UMP throws,
 `canRequestAds` goes false, and European players get **no ads at all** — test
 units included. The game still works, because `paysWithoutAd` grants the spare
 vial, but every optional offer dies. `docs/06-launch.md` §6 has the measurement.
+
+**Neither is the privacy options entry point, and the console cannot supply
+it.** The US states message's _Entry point_ tab has no fields — it answers
+"You need to implement a privacy options entry point in your app", because
+there is nothing to configure on Google's side. The EEA message is the same
+problem in softer words: its body reads "Look for a link or button in the app
+menu to manage or withdraw consent", text this project cannot edit, so a build
+without the row publishes a dialog that sends European players hunting for
+something that is not there.
+
+`privacyOptionsRequired()` in `src/ads/setup.ts` gates the row on UMP's own
+answer rather than on a region the app has no business knowing, so it appears
+only where a form is genuinely owed. It calls `showPrivacyOptionsForm()` and
+deliberately **not** `reset()` followed by a fresh gather: reset discards the
+decision before asking again, so a player who opens the row out of curiosity
+and backs out would have silently revoked their own consent.
 
 ---
 
@@ -259,7 +288,52 @@ place rather than guessed.
 
 ---
 
-## Stage 6 — the run before submitting
+## Stage 6 — the production build, which cannot be the closed-test one
+
+**The closed-test AAB must not be promoted to production**, and the reason is
+one line in `.env` that does not travel.
+
+The build in front of testers carries Google's **test** App ID and
+`EXPO_PUBLIC_ADMOB_LIVE=false`, which is correct for that audience: twelve
+people repeatedly triggering rewarded ads on a handful of devices is exactly
+the pattern that reads as invalid traffic, and invalid traffic is what
+suspends a brand-new publisher before it has earned anything.
+
+So a fresh build is required after the fourteen days, and it has to be a
+**native** one:
+
+| What changes               | Where it lives            | Reaches a device by    |
+| -------------------------- | ------------------------- | ---------------------- |
+| Ad **unit** IDs            | JS bundle, inlined        | rebuild or OTA         |
+| `EXPO_PUBLIC_ADMOB_LIVE`   | JS bundle, inlined        | rebuild or OTA         |
+| **`ADMOB_ANDROID_APP_ID`** | **`AndroidManifest.xml`** | **prebuild + new AAB** |
+
+In order, and none of it is optional:
+
+1. [ ] `EXPO_PUBLIC_ADMOB_LIVE=true` in `.env`
+2. [ ] Confirm every ID in `.env` is the real one. There is **no fallback** in
+       `app.config.ts` on purpose — a missing value fails the build loudly
+       rather than shipping test IDs that earn nothing and look fine
+3. [ ] **`npm run prebuild`.** Not `run:android`, not a plain rebuild. The App
+       ID reaches the manifest only through prebuild, and it is read before any
+       JavaScript runs — a build against stale native dirs ships the test App
+       ID silently
+4. [ ] **Bump `android.versionCode`** (and `ios.buildNumber`) in
+       `app.config.ts`. Play rejects a duplicate outright
+5. [ ] Build with `--production` so `DECANT_UPDATE_CHANNEL=production` is
+       baked in. It is deliberately **not** implied by `--aab`, since a closed
+       test is uploaded as a bundle too and those testers belong on `preview`
+6. [ ] Verify live units on a **registered test device** before uploading —
+       real IDs, test creatives, no billable traffic. A typo in a unit ID is
+       answered with silent no-fill, and the first build to use the live IDs
+       should not be the one going to real users
+
+**The advertising ID is the only thing a rollback cannot undo here.** An OTA can
+revert `EXPO_PUBLIC_ADMOB_LIVE`; nothing can revert a manifest.
+
+---
+
+## Stage 7 — the run before submitting
 
 Nothing on this list is proven by a green build.
 

@@ -17,16 +17,32 @@ below is written short enough to have room.
 Fixed by `AGENTS.md` and by the bundle id, which cannot change after
 publication.
 
-| Field                       | Value                       | Limit |
-| --------------------------- | --------------------------- | ----- |
-| Play title                  | `Decant: Water Sort Puzzle` | 30    |
-| App Store name              | `Decant: Water Sort Puzzle` | 30    |
-| App Store subtitle          | `Pour, sort, unwind`        | 30    |
-| Launcher name (`expo.name`) | `Decant`                    | —     |
+| Field                       | Value                        | Limit |
+| --------------------------- | ---------------------------- | ----- |
+| Play title                  | `Decant: Water Sort Puzzle`  | 30    |
+| App Store name              | `Decant: Water Sort Puzzle`  | 30    |
+| App Store subtitle          | `Relaxing color sort puzzle` | 30    |
+| Launcher name (`expo.name`) | `Decant`                     | —     |
 
-**The name has never been checked for availability or trademark conflict.**
-Do that before reserving either listing — the bundle id `com.walqalum.decant`
-is derived from it and is permanent.
+**The title stays at 25 of 30 characters, deliberately.** Appending `Game` to
+reach the cap was considered and rejected: Play shows roughly 20-25 characters
+of a title in phone search results, so the extra word indexes but is never
+read, and `game` is the weakest available modifier in a store where `puzzle`
+and `puzzle game` return near-identical results. Free characters in the
+strongest field are only worth taking if the word pulls its weight.
+
+The name has been checked for store availability (see `docs/11-deployment-steps.md`
+stage 0) but **not for trademark conflict** — USPTO classes 9 and 41, WIPO,
+EUIPO and IPO Pakistan are all still unrun. The bundle id `com.walqalum.decant`
+is derived from the name and is permanent once published.
+
+**A same-genre competitor holds the bare name.** `Decant: Color Sort Puzzle`
+(com.stackforgestudios.decant, JMB Assets LLC) shipped the day before the check
+was run. Nothing blocks this listing — different bundle id, different title —
+but it has an ASO consequence worth stating plainly: nobody searches "Decant"
+for this game, and the few who do now find two. **Discovery is therefore
+entirely generic-keyword driven**, which is why every field below is written
+for search rather than for brand.
 
 ---
 
@@ -149,29 +165,51 @@ rename would silently reset the toggle for anyone who had it on.
 
 ## 4. Keywords
 
-App Store only, 100 characters, comma-separated, no spaces after commas. Do not
-repeat words already in the name or subtitle — Apple indexes those separately
-and a repeat wastes the budget.
+App Store only, 100 characters, comma-separated, no spaces after commas.
 
 ```text
-water,sort,liquid,color,colour,vial,tube,relax,calm,offline,brain,logic,zen,sortpuzzle
+liquid,vial,tube,pour,match,relax,calm,zen,offline,brain,logic,mind,hue,tricky,unwind,easy
 ```
 
-85 characters. Both spellings of colour are there on purpose; they are separate
-search terms.
+90 characters. Three rules decided it, and the previous version broke all
+three:
 
-Play has no keyword field. It indexes the descriptions, which is why the full
-description above says "water sort puzzle" in plain words early.
+- **Nothing already in the name or subtitle.** Apple indexes those separately,
+  so `water`, `sort` and `puzzle` are covered by `Decant: Water Sort Puzzle`
+  and `color` by the subtitle. Repeating them is dead weight — the old set
+  spent 15 characters on `water,sort` alone.
+- **One spelling.** `colour` was in the old set beside `color`; its US volume
+  is negligible and the field is too small to hedge.
+- **Single words only.** Apple permutes keywords into phrases itself, so a
+  hand-concatenated `sortpuzzle` — also in the old set — buys nothing that
+  `sort` and `puzzle` did not already.
 
----
+Play has no keyword field. It indexes the title and both descriptions, which is
+why the full description says "water sort puzzle" in plain words in its first
+line.
+
+### Play tags — a separate surface from search
+
+`Grow -> Store presence -> Store settings -> Tags`. Up to five, from a fixed
+vocabulary Google supplies; they drive category browse and "similar games"
+placement, which search does not touch.
+
+Set: **Brain teaser, Casual, Logic puzzle, Puzzle**. Four of five, and the
+fifth is left empty unless something genuinely fits — a wrong tag places the
+game in browse surfaces where it converts badly, which is worse than an empty
+slot.
 
 ## 5. Promotional text
 
 App Store only, 170 characters, and the one field that can be changed **without
 a review**. Use it for whatever is current.
 
-> New: a daily brew that scales to your progress, and colourblind marks on
+> New: a daily brew that scales to your progress, and colorblind marks on
 > every vial. Still no timers. Still no way to lose.
+
+It does **not** index, so do not spend it on keywords — it is the one field
+that changes without a review, which makes it the place for whatever is
+current.
 
 ---
 
@@ -248,7 +286,74 @@ category instead, so a listing filed under "App" undoes both.
 
 ---
 
-## 9. Settled, and still missing
+## 9. ASO, and what is actually filed
+
+The two stores are optimized differently and the difference is structural, not
+stylistic: **Apple has a keyword field and Play does not**, so Play's keywords
+have to live inside prose a human will read, while Apple's sit in a field
+nobody sees. Writing one set of copy for both is how a listing ends up mediocre
+at each.
+
+### Filed on Play
+
+| Field             | Value                                       |
+| ----------------- | ------------------------------------------- |
+| Title             | `Decant: Water Sort Puzzle` (25/30, see §1) |
+| Short description | §2, 79/80                                   |
+| Full description  | §3, ~2180/4000                              |
+| Tags              | Brain teaser, Casual, Logic puzzle, Puzzle  |
+| Category          | Game -> Puzzle                              |
+
+### To file on the App Store, when that account exists
+
+| Field            | Value                                |
+| ---------------- | ------------------------------------ |
+| Name             | `Decant: Water Sort Puzzle` (25/30)  |
+| Subtitle         | `Relaxing color sort puzzle` (26/30) |
+| Keywords         | §4, 90/100                           |
+| Promotional text | §5                                   |
+| Description      | §3, the same copy                    |
+
+The subtitle changed from `Pour, sort, unwind`, which was brand voice in a
+field Apple indexes nearly as heavily as the name. Three low-volume words and
+twelve characters unused.
+
+### American English is an ASO decision, not a style one
+
+See §3. It also governs the **app itself** and the **marketing site**, both of
+which were converted in the same piece of work — the app's toggle now reads
+`Colorblind marks` and its how-to-play text says `color`. Two rules came out of
+that and both matter:
+
+- **The `colourblind` settings key was not renamed.** It is persisted in
+  `settings.v3`; renaming it reads as a missing field on every existing install
+  and silently switches the accessibility feature off for anyone who had it on.
+  Labels are user-visible, keys are save format.
+- **Code, tests and comments stay British.** `colours.ts`, `ColourMark.tsx`,
+  the `colour vision` test. None of it ships to a player. The split is: **what
+  a player reads is American, what a developer reads is British.**
+
+### What text cannot do
+
+Copy is roughly a third of Play's ranking. The rest is install velocity, D1/D7
+retention, rating, listing conversion rate and crash/ANR rate — all zero or
+unknown before launch. A perfect listing can rank nowhere for a month and
+nothing is wrong.
+
+**The highest-leverage asset left is the first two screenshots**, because they
+drive conversion rate and conversion rate feeds ranking directly. They are
+worth more attention than any remaining word in this file.
+
+### The numbers behind the keyword picks are not measured
+
+The term choices here come from genre knowledge, not from a volume tool.
+"`water sort` outranks `color sort` in volume" is a belief, not a figure anyone
+checked. AppTweak, Sensor Tower and App Radar all have free tiers that would
+settle it in an hour, and that hour is worth spending before the App Store
+keyword field is filled — it is the one field where a wrong guess is invisible
+and costs the whole slot.
+
+## 10. Settled, and still missing
 
 Settled 19 Aug 2026:
 
