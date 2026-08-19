@@ -21,6 +21,25 @@ const config: ExpoConfig = {
   description: 'Decant: Water Sort Puzzle',
   slug: 'decant',
   /**
+   * The Expo account that owns this project, and it is an **organization**
+   * rather than a personal account on purpose.
+   *
+   * Every installed copy of the app asks this account's project for updates, so
+   * it is a business asset in the same way the AdMob account is — and
+   * `docs/06-launch.md` §6 makes the same argument there. An organization can
+   * have more than one owner and survives a person leaving; a personal account
+   * is one login away from being unreachable.
+   *
+   * The slug is `walqalum-games` because plain `walqalum` is held by an
+   * unrelated Expo user. The organization's *display* name is `Walqalum`, which
+   * matches `O=Walqalum` on the upload keystore — only the URL had to differ.
+   *
+   * This has to be here, not just in the dashboard: with no `owner`, EAS
+   * resolves the project against whichever account the CLI happens to be logged
+   * in as, and this machine is signed in to both.
+   */
+  owner: 'walqalum-games',
+  /**
    * The version players see, on both stores. Shown in the settings drawer too.
    *
    * Separate from the build numbers below, and they move independently: this
@@ -433,6 +452,64 @@ const config: ExpoConfig = {
       },
     ],
   ],
+  /**
+   * Over-the-air updates. `docs/06-launch.md` §4 has the full reasoning; the
+   * three keys below are the whole configuration.
+   *
+   * What this buys: a level-generation fix reaches players without a store
+   * review. That is also exactly what makes it dangerous — see the runtime
+   * version note and the GENERATOR_VERSION rule in the launch doc.
+   */
+  updates: {
+    /**
+     * EAS Update, hosted by Expo. The id is this project's, created under the
+     * `walqalum-games` organization; the URL is not a secret and is baked into
+     * every binary anyway.
+     *
+     * Self-hosting is supported by the protocol and was rejected: this project
+     * has no backend and is better for it.
+     */
+    url: 'https://u.expo.dev/502b1524-1757-47f5-9134-dd9b78aba32e',
+    /**
+     * The channel this binary asks for, baked in at prebuild.
+     *
+     * EAS Build would inject this from a build profile. These builds are made
+     * locally with our own keystore, so it is set here instead — the documented
+     * route for a prebuild (CNG) project, applied on the next `expo prebuild`.
+     *
+     * **Defaults to `preview`, and the default is the safe direction.** A build
+     * that forgets to say which channel it wants gets the tester channel, never
+     * the one real players are on. `script/build-apk.sh --production` sets
+     * DECANT_UPDATE_CHANNEL for a store build; nothing else should.
+     */
+    requestHeaders: {
+      'expo-channel-name': process.env.DECANT_UPDATE_CHANNEL ?? 'preview',
+    },
+  },
+  /**
+   * Which binaries an update is allowed to load into.
+   *
+   * **`fingerprint`, and `nativeVersion` would be actively wrong here.**
+   * `nativeVersion` is built from `version` plus the build number, and
+   * `script/release-version.mjs` bumps the build number on *every* upload — so
+   * each upload would mint a new runtime version and an update could only ever
+   * reach one single build. `fingerprint` hashes what actually decides
+   * compatibility: the native code. Two builds with identical native layers
+   * share a runtime version no matter how many times the build number moved.
+   */
+  runtimeVersion: {
+    policy: 'fingerprint',
+  },
+  extra: {
+    eas: {
+      /**
+       * Written by hand because `eas init` cannot edit a dynamic config — it
+       * prints the id and stops. Keep it in step with `updates.url` above; they
+       * name the same project and nothing checks that they agree.
+       */
+      projectId: '502b1524-1757-47f5-9134-dd9b78aba32e',
+    },
+  },
 };
 
 export default config;

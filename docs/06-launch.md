@@ -317,39 +317,68 @@ Kept here so nobody re-opens them.
 Each of these is a deliberate gap. They need an answer before launch, and the
 answer is allowed to be "not in 1.0".
 
-- **`expo-updates` is not installed, and it is blocked on an account rather
-  than on effort.** It is what allows a level-generation fix to ship without a
-  store review, and generation is the part of this app where a bad build is
-  least recoverable.
+- **`expo-updates` is installed and configured.** Done 19 August 2026 — see
+  `docs/10-updates.md` for the runbook, the account details and the commands.
 
-  Two configuration keys are mandatory: `updates.url` and `runtimeVersion`.
-  The URL has to point at a service implementing the Expo Updates protocol.
-  Self-hosting **is** supported — Expo publishes a reference server — but
-  standing one up contradicts the whole shape of this project, which has no
-  backend and is the better for it. So the real path is EAS Update, and that
-  needs an Expo account and a project id.
+  In short: EAS Update hosts the bundles, builds stay local with our own
+  keystore, the project is `@walqalum-games/decant`, and there are two channels
+  — `preview` for tester APKs (the default) and `production` for store builds,
+  set with `script/build-apk.sh --production`. `runtimeVersion` uses the
+  `fingerprint` policy, because `nativeVersion` is built from the build number
+  and this project bumps that on every upload.
 
-  Deliberately not installed until then: a configured-but-pointed-nowhere
-  dependency is dead weight, and `expo-updates` is already in knip's
-  `ignoreDependencies` because it arrives as a native transitive of
-  `expo-dev-client`, so nothing would flag it.
+  **The rule that survives from the original entry, unchanged and now more
+  reachable than it was:** an OTA update must never change level generation
+  without bumping `GENERATOR_VERSION`. No board is stored anywhere, so the
+  curves, the salts, the generator and the RNG are the save format, and a
+  JavaScript-only update that touches any of them silently repoints every
+  player's progress at different puzzles — with no store review in between to
+  slow it down. The fingerprint test in `difficulty.test.ts` is the tripwire,
+  the version stamp is what makes tripping it survivable, and the `preview`
+  channel is the new third layer: the only one that catches the mistake before a
+  player sees it. Rolling back does not undo it.
 
-  Two decisions to make when it does land:
+  Both platforms are verified: Android carries the channel in the merged
+  `AndroidManifest.xml`, iOS in `Expo.plist`, and `--production` was confirmed
+  to flip it on each. Not yet proven: no update has been published, and none has
+  been received by a device.
 
-  **Use the `fingerprint` runtime version policy**, not `nativeVersion`.
-  `nativeVersion` is built from `version` plus the build number, and this
-  project now bumps the build number on **every upload** — so each upload would
-  mint a new runtime version and an update could only ever reach one build.
-  `fingerprint` tracks what actually decides compatibility: the native code.
+- **Play Games Services and Game Center are skipped, and the reason is the
+  game rather than the effort.** Recorded because "did we ever consider
+  leaderboards?" is a question that comes back, and because the OS-level game
+  panels are a _different_ thing that is already done — see below.
 
-  **An OTA update must never change level generation without bumping
-  `GENERATOR_VERSION`.** No board is stored anywhere, so the curves, the salts,
-  the generator and the RNG are the save format — a JS-only update that touches
-  any of them silently repoints every player's progress at different puzzles,
-  with no store review in between to slow it down. The fingerprint test in
-  `difficulty.test.ts` is the tripwire and the version stamp is what makes
-  tripping it survivable. Shipping generation fixes over the air is the reason
-  to want this library and the reason it is dangerous.
+  Neither store requires them. Nothing about a submission changes by leaving
+  them out.
+
+  What they would buy here is thin. There is no fail state and no timer, so
+  there is no competitive axis to rank on; a leaderboard on a game whose whole
+  promise is relaxation works against the promise. Achievements are the part
+  with real appeal, and `StatsScreen` already shows that progress locally.
+  `src/game/dailyPuzzle.ts` records the same conclusion at the source — the
+  daily brew was deliberately built with no leaderboard, no sharing and no
+  compare.
+
+  What they would cost is the same direction `AGENTS.md` already refused for
+  purchasing: sign-in prompts, a wider privacy policy, and re-filed Data Safety
+  and App Privacy forms on both stores. Lighter than a custom account system,
+  but pointing the same way, and a login banner is a poor first impression on a
+  casual puzzle game.
+
+  **Cloud save is the one genuinely attractive piece, and Android already has
+  it free.** `allowBackup: true` restores progress from Google Drive — §9
+  records it working well enough that reinstalling is useless as a reset.
+
+  If it is ever wanted, the moment is alongside the RevenueCat work, which is
+  when account plumbing gets confronted anyway.
+
+  **None of this is what makes a phone treat the app as a game.** Xiaomi's Game
+  Turbo, Samsung's Game Booster and the rest read `android:appCategory="game"`,
+  which `plugins/withGameCategory.js` sets and which is verified in the merged
+  manifest; iOS's half is `LSApplicationCategoryType`, verified in the generated
+  `Info.plist`. The only outstanding piece is the Play Console category in §8,
+  because several skins classify from the store entry rather than the manifest —
+  and a sideloaded APK has no store entry to read.
 
 - **Purchasing (RevenueCat) is phase 2.** See `AGENTS.md`. Blocked on accounts
   in a fixed order: store listing → store products → RevenueCat keys. The

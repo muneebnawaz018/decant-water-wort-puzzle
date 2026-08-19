@@ -34,6 +34,12 @@
 #   npm run build:apk -- --deps          reinstall node_modules first
 #   npm run build:apk -- --skip-checks   no lint/types/tests
 #   npm run publish:apk                  build it, then upload it for testers
+#   npm run build:apk -- --production    a store build: the `production` channel
+#
+# `--production` only changes which EAS Update channel the binary asks for. It
+# is not a different build otherwise, and it is deliberately not implied by
+# `--aab`: a bundle is also how a closed test is uploaded, and those testers
+# should stay on `preview`.
 #
 # `publish:apk` is the same script with `--publish`, not a second pipeline. It
 # builds exactly what `build:apk` builds — an unpublished build and a published
@@ -56,6 +62,16 @@ CLEAN_DEPS=0
 FAST=0
 BUNDLE=0
 PUBLISH=0
+# The EAS Update channel this binary will ask for, read by `app.config.ts` and
+# baked into the native project by prebuild.
+#
+# `preview` is the default and the default is the safe direction: a build that
+# says nothing gets the tester channel, never the one real players are on.
+# Publishing an update to `preview` reaches testers; promoting it to
+# `production` afterwards is a server-side mapping change and needs no rebuild.
+#
+# Only a store build should carry `production`, and it has to be typed out.
+CHANNEL=preview
 
 for arg in "$@"; do
   case "$arg" in
@@ -65,6 +81,7 @@ for arg in "$@"; do
     --fast) FAST=1 ;;
     --skip-checks) RUN_CHECKS=0 ;;
     --publish) PUBLISH=1 ;;
+    --production) CHANNEL=production ;;
     *) echo "unknown option: $arg" >&2; exit 2 ;;
   esac
 done
@@ -112,6 +129,9 @@ fi
 # is the only way a change to `app.config.ts` — the icon, the splash, the R8
 # flags, a plugin — is guaranteed to be in the build.
 # ---------------------------------------------------------------------------
+export DECANT_UPDATE_CHANNEL="$CHANNEL"
+printf '\n  update channel: %s\n' "$CHANNEL"
+
 if [ "$FAST" -eq 0 ]; then
   step 'Regenerating android/'
   rm -rf android

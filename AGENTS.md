@@ -1248,6 +1248,36 @@ toasting their names with sound on — is **not implemented and will not be**.
 The game has no background music; see the Sound section for why the whole
 feature was removed rather than left badged.
 
+## Over-the-air updates
+
+`expo-updates` + EAS Update, configured 19 Aug 2026. Full runbook in
+`docs/10-updates.md`; the parts that constrain code live here.
+
+Builds stay **local** — EAS hosts the update bundles and nothing else, so
+`script/build-apk.sh` and the upload keystore are unchanged.
+
+**Two channels, and `preview` is the default.** The channel is baked into the
+binary at prebuild from `DECANT_UPDATE_CHANNEL`, which `build-apk.sh` exports;
+`--production` is the only thing that sets `production`, and it is deliberately
+not implied by `--aab`, since a closed test is uploaded as a bundle too and
+those testers belong on `preview`. A build that says nothing gets the tester
+channel, never the one real players are on.
+
+`runtimeVersion` is the **`fingerprint`** policy. `nativeVersion` would be
+actively wrong: it is built from `version` plus the build number, and
+`release-version.mjs` bumps that on every upload, so each upload would mint a
+new runtime version and an update could reach exactly one build.
+
+**An OTA update must never change level generation without bumping
+`GENERATOR_VERSION`.** This is the storage section's determinism rule with the
+store review taken out from under it. No board is stored, so the curves, salts,
+generator and RNG are the save format; a JS-only update touching any of them
+silently repoints every player's progress at different puzzles, and a rollback
+does not undo it — by then the session record has already been validated against
+the new generator or discarded by it. Bump the stamp and re-record the level-30
+fingerprints in `difficulty.test.ts` in the same commit, ship to `preview`
+first, and promote only after a preview build has been played.
+
 ## Changing mode
 
 Both places that offer the choice — the Stages tabs and Settings' segmented
