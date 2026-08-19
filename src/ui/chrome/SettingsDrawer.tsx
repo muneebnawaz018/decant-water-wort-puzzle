@@ -175,8 +175,8 @@ export const SettingsDrawer = memo(function SettingsDrawer() {
             <SettingRow icon="palette" label="Theme">
               <SoonBadge />
             </SettingRow>
-            <SettingRow icon="eye" label="Colourblind marks" divider={false}>
-              <Toggle setting="colourblind" label="Colourblind marks" />
+            <SettingRow icon="eye" label="Colorblind marks" divider={false}>
+              <Toggle setting="colourblind" label="Colorblind marks" />
             </SettingRow>
           </SettingGroup>
 
@@ -324,7 +324,7 @@ const Toggle = memo(function Toggle({
 function howToPlay(): void {
   overlay.modal({
     title: 'How to play',
-    body: 'Tap a vial to lift it, tap another to pour. Only pour onto a matching colour or an empty vial. Sort every vial to a single colour to win.',
+    body: 'Tap a vial to lift it, tap another to pour. Only pour onto a matching color or an empty vial. Sort every vial to a single color to win.',
     confirmLabel: 'Got it',
     cancelLabel: null,
   });

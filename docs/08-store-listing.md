@@ -35,68 +35,100 @@ is derived from it and is permanent.
 Play only, 80 characters. It is the line under the icon in search results and
 does more work than anything else here.
 
-> Sort coloured liquid into matching vials. No timers, no fails. Just calm.
+> A calm water sort puzzle. Pour color liquid between vials. No timers, no fails.
 
-74 characters. The three sentences are deliberate: what you do, what the game
-will not do to you, and the promise. The genre sells relaxation, so "no timers,
-no fails" is the differentiator rather than a caveat.
+79 characters. It leads with the genre because that is the query people type,
+and closes on the differentiator — the genre sells relaxation, so "no timers,
+no fails" is the promise rather than a caveat.
+
+An earlier version read "Sort coloured liquid into matching vials. No timers, no
+fails. Just calm." It was better prose and worse ASO: it never said "water sort
+puzzle" at all, in the highest-weighted field after the title.
 
 Alternatives, if the first tests badly:
 
-- `Pour, sort and match coloured liquids. A calm puzzle with no timer.`
-- `Relaxing water sort puzzles. Take your time — there is no way to lose.`
-
----
+- `Color water sort puzzle. Pour liquid into matching vials. No timers, no fails.`
+- `Water sort puzzle — pour color liquid into vials. No timer, no fail, no stress.`
 
 ## 3. Full description
 
-Both stores, 4000 characters. This one is ~1400, which is deliberate: nobody
-reads a wall, and the first two lines are all most people see before "more".
+Both stores, 4000 characters. This one is ~2100 — long enough to index, short
+enough that nobody hits a wall, and the first two lines are all most people see
+before "more".
 
 ```text
-Pour coloured liquid between glass vials until each one holds a single colour.
-That is the whole game. No timer, no lives, no way to fail.
+Decant is a relaxing water sort puzzle. Pour colored liquid between glass vials
+until each vial holds a single color. That is the whole game. No timer, no
+lives, no way to fail.
 
-Decant is a water sort puzzle built for the ten minutes before sleep, or the
-queue at the post office, or whenever you want something to do with your hands
-that is not the news.
+A color sort puzzle built for the ten minutes before sleep, or the queue at the
+post office, or whenever you want something to do with your hands that is not
+the news.
 
-WHAT YOU DO
+HOW TO PLAY THE WATER SORT PUZZLE
 Tap a vial to lift it, tap another to pour. Liquid only moves onto its own
-colour, or into empty space. Keep going until every vial is sorted.
+color, or into empty space. Keep sorting until every vial holds one color and
+the board is solved. Simple to learn, and the later boards will make you think.
 
 TAKE YOUR TIME
-There is no clock and no fail state. Undo any move. Restart whenever. A hint
-will show you the next pour if a board stops making sense, and it is always the
-shortest way home — never a detour that costs you stars.
+There is no clock and no fail state in this puzzle. Undo any move. Restart
+whenever. A hint will show you the next pour if a board stops making sense, and
+it is always the shortest way home — never a detour that costs you stars.
 
-THOUSANDS OF PUZZLES
-Every level is generated and checked to be solvable before you ever see it.
-Three difficulties, each with its own ladder:
+THOUSANDS OF LIQUID SORT PUZZLES
+Every level is generated and checked to be solvable before you ever see it, so
+you will never be stuck on an impossible board. Three difficulty modes, each
+with its own ladder of levels:
 
 - Gentle — room to breathe, always
-- Classic — the curve most people want
-- Fiendish — twelve colours and one spare vial
+- Classic — the water sort curve most people want
+- Fiendish — twelve colors and one spare vial
 
 STARS WORTH EARNING
-Levels are rated on how efficiently you solved them, not on a stopwatch. Three
-stars means you played it well.
+Levels are rated on how efficiently you solved the puzzle, not on a stopwatch.
+Three stars means you played it well.
 
 A NEW BREW EVERY DAY
-One fresh puzzle daily, tuned to how far you have come. Come back for the
-streak.
+One fresh daily puzzle, tuned to how far you have come. Come back for the
+streak and earn coins.
 
-MADE WITH CARE
-- Colourblind marks — every colour carries its own symbol
-- Works completely offline
+A RELAXING PUZZLE GAME, MADE WITH CARE
+- Colorblind marks — every color carries its own symbol
+- Play offline anywhere, no internet needed
 - No account, no sign-up, no login
 - Your progress is saved on your device, not on a server
+- Calm sound and gentle haptics you can switch off
+
+WHY PLAYERS LIKE WATER SORT PUZZLES
+Sorting colored water is a quiet kind of problem solving. There is nothing
+chasing you, nothing to lose, and every board has an answer. It is a brain
+puzzle you can play one-handed while your mind unwinds.
 
 Free to play, supported by ads. Rewarded ads are always your choice — watch one
 for a spare vial when you are stuck, or skip it and keep playing.
+
+Download Decant and start sorting.
 ```
 
-Two things that copy is careful about:
+### It is written in American English, deliberately
+
+`color`, not `colour`. `colorblind`, not `colourblind`. This is the one
+editorial decision in the listing that is made against house style rather than
+with it, and it is worth the note so nobody "fixes" it back.
+
+Play does stemming, not cross-spelling normalization: `color` and `colour` are
+separate index terms. The US spelling carries several times the search volume,
+and `color sort puzzle` is one of the highest-volume queries in this genre. The
+original draft spelled it the British way three times and the American way
+never, so it competed for neither term well and for that query not at all.
+
+**The app's own UI still says "Colourblind marks",** which is a visible
+inconsistency between listing and product. Changing the label is a one-line
+edit in `src/ui/chrome/SettingsDrawer.tsx`; the `colourblind` settings **key**
+must not be renamed with it, since it is persisted in `settings.v3` and a
+rename would silently reset the toggle for anyone who had it on.
+
+### Two things this copy is careful about
 
 - **It does not promise a level count.** Levels are generated, so the number is
   effectively unbounded, and a specific figure in a listing is a promise that
@@ -105,7 +137,15 @@ Two things that copy is careful about:
   finds out from an interstitial rather than the listing leaves a one-star
   review about it.
 
----
+### And two lines it deliberately does not cross
+
+- **No keyword stuffing.** Play's metadata policy rejects repetitive or
+  irrelevant keywords and the enforcement is real. Every repetition above sits
+  inside a sentence that says something; pushing `water sort` to fifteen
+  mentions would put the listing at risk for a marginal ranking gain.
+- **No invented genres.** "Ball sort" and "hoop sort" are adjacent high-volume
+  queries and this game answers neither. Ranking for them buys installs that
+  leave one-star reviews, which costs more than the installs are worth.
 
 ## 4. Keywords
 

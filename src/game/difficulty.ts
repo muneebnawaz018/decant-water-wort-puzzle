@@ -41,7 +41,7 @@ export const DIFFICULTY_INFO: Record<Difficulty, DifficultyInfo> = {
   fiendish: {
     id: 'fiendish',
     title: 'Hard',
-    detail: 'One more colour, one less place to put it',
+    detail: 'One more color, one less place to put it',
     accent: colours.rose,
   },
 };
