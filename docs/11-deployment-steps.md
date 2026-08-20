@@ -151,7 +151,46 @@ This is the item that decides the launch date, so it goes before the polish.
       closed test is _also_ uploaded as a bundle, and those testers are better
       off on `preview`, so decide which this upload is before passing it
 - [ ] Recruit **12 testers** and open the closed test. The 14 continuous days
-      start now, and every remaining stage fits inside them
+      start when the twelfth opts in, and every remaining stage fits inside them
+
+### What the 12-testers rule actually measures, and the three reviews
+
+Worth writing down because the rule is widely misdescribed, including by people
+who have shipped under it.
+
+**It counts enrolment, not play.** Twelve Google accounts opt in — one click on
+the opt-in link, one tap on _Become a tester_ — and stay opted in for fourteen
+consecutive days. Nobody has to open the app daily. Drop to eleven on day nine
+and the count is interrupted.
+
+**The opt-in link does not exist until the closed-test release clears review.**
+Its URL is derived from the package name and is stable —
+`https://play.google.com/apps/testing/com.walqalum.decant` — but until the
+release is published it answers _App not available_ for everyone, the developer
+included. Play Console says as much on the Testers tab: "The link will be shown
+here when you publish your app." Sending it early costs you twelve people you
+have to chase twice.
+
+**There are three reviews, not one**, and only the last two are slow:
+
+| Step                              | Reviewed?           | Blocks               |
+| --------------------------------- | ------------------- | -------------------- |
+| Closed-test release               | yes, 1–7 days       | testers installing   |
+| Testers opting in                 | no                  | —                    |
+| The 14-day window                 | no, automatic       | the application      |
+| **Production access application** | **yes, by a human** | the production track |
+| Production release                | yes                 | the public listing   |
+
+**The application is the one that fails.** It is a form asking how testers were
+recruited, what feedback came back, what changed because of it, and why the app
+is ready. Nothing programmatically checks whether anyone played, but a reviewer
+reads the answers, and twelve accounts that sat idle for a fortnight do not
+survive that reading. So during the window, get something in writing from each
+tester — a bug, a complaint, "level 40 was too hard" — and keep the messages.
+They are the raw material for the form.
+
+Shortest realistic path from a submitted closed test to a public listing is
+about three weeks, four or five if the application is bounced once.
 
 ---
 
@@ -232,17 +271,76 @@ the correct default. `docs/04-ads.md` §11 is the detailed version of this list.
       settings drawer. Not optional: the published consent message tells players
       to look for it, and the US states message has **no console-side entry
       point at all**. See the note at the end of this stage
-- [ ] `EXPO_PUBLIC_ADMOB_LIVE=true`, then `npm run prebuild` — **production
-      build only**, see stage 6
-- [ ] **Link the store listing inside AdMob.** Until it is linked, fill rate is
-      poor and the early numbers mislead whoever reads them. Also what usually
-      clears the "Requires review" badge a new app carries
-- [ ] Publish `app-ads.txt` on the game's website —
+- [x] `EXPO_PUBLIC_ADMOB_LIVE=true`, then `npm run prebuild`. **Set for the
+      closed test as well, deliberately** — an earlier note here said production
+      only. The point of a closed test is that QA sees what a player sees, and
+      test ads would hide a wrong unit id, a broken rewarded grant and a
+      mis-timed interstitial until the day it earns money. The registered test
+      device is what keeps those impressions out of the account; testers are not
+      registered and their traffic is real, which is accepted at twelve people
+- [x] Publish `app-ads.txt` on the game's website —
       `google.com, pub-1606345493304211, DIRECT, f08c47fec0942fa0`, at
-      `decant-web/public/app-ads.txt`
+      `decant-web/public/app-ads.txt`. Live and serving; **verification is a
+      separate thing and is still pending** — see below
 - [ ] Complete the AdMob payment profile and identity verification. Slow —
       mailed-PIN verification in some regions — and nothing downstream waits on
-      it, so start it early and forget it
+      it, so start it early and forget it. Note that AdMob's own Verification
+      tab will not accept documents until earnings pass a threshold, so this is
+      "start when offered", not "do now"
+
+### Two AdMob steps that cannot be done before the app is public on Play
+
+Both were tried early and neither is possible; recorded so nobody spends an
+afternoon looking for a button that is not there.
+
+- [ ] **Link the store listing inside AdMob.** AdMob's linker searches the
+      **public** Play catalogue, and an app on a closed track has no public
+      page — the search returns nothing and there is no manual override. So this
+      waits for production, not for the closed test.
+- [ ] **`app-ads.txt` crawl verification.** Google finds the file by reading the
+      developer website field **off the public listing** and fetching
+      `/app-ads.txt` from that domain. No public listing, no crawl. The file is
+      already correct at the right URL; the status flips a day or two after the
+      production listing goes live.
+
+Until both land, fill rate is low and eCPM is low, because some demand will not
+bid on unverified inventory at all. **Do not read the closed test's revenue
+numbers as a forecast** — with twelve testers on throttled, unverified
+inventory they measure nothing. What the window is good for is functional: ads
+appear at all, the rewarded grant hands over the spare vial, the interstitial
+fires where §8 says it does, and the consent form behaves in the EEA.
+
+### iOS AdMob — not started, and blocked on Apple rather than on us
+
+The build ships iOS on Google's test App ID and both iOS unit variables are
+blank, which `src/ads/units.ts` reads as "use the SDK's test units". That is the
+designed default and is correct until there is an iOS build going somewhere.
+
+The order is forced, because AdMob's iOS entry wants the same public listing the
+Android one does:
+
+- [ ] Apple Developer Program — $99/yr, and the long pole
+- [ ] App Store Connect app record, then a public App Store URL
+- [ ] AdMob → Add app → iOS → **listed on a store**, and search for it
+- [ ] Mint the rewarded and interstitial units, fill `ADMOB_IOS_APP_ID`,
+      `EXPO_PUBLIC_ADMOB_REWARDED_IOS` and
+      `EXPO_PUBLIC_ADMOB_INTERSTITIAL_IOS` in `.env`
+- [ ] `npm run prebuild` — the App ID is written into `Info.plist`, so this is
+      a native change, not a JS one — then a fresh build
+
+**Creating the iOS entry as "not listed on a store" is possible and is still
+the wrong move.** The Android entry sits unlisted today for a reason with a date
+on it: production is weeks away and the link is already on this list. An iOS
+entry has no such date, so it would sit unlinked indefinitely under limited ad
+serving, uncovered by `app-ads.txt`, earning nothing — and an app entry with no
+store presence and no timeline is the shape Google's fraud tooling looks at.
+Make it in the same sitting as the Apple account, not before.
+
+**The iOS-specific thing to verify first when that day comes** is the sequence
+in `src/ads/setup.ts`: UMP consent, then Apple's ATT prompt, then
+`mobileAds().initialize()`. It is written and reasoned about and has never run
+on a real iOS device against live ads. Getting the order wrong costs
+personalised ads with no error to tell you so.
 
 **The consent message is not optional polish.** With none published, UMP throws,
 `canRequestAds` goes false, and European players get **no ads at all** — test
@@ -288,19 +386,26 @@ place rather than guessed.
 
 ---
 
-## Stage 6 — the production build, which cannot be the closed-test one
+## Stage 6 — the production build
 
-**The closed-test AAB must not be promoted to production**, and the reason is
-one line in `.env` that does not travel.
+This stage used to say the closed-test AAB could never be promoted, because the
+test build ran on Google's test App ID and `EXPO_PUBLIC_ADMOB_LIVE=false`. That
+is no longer true and the decision was deliberate: **the closed test runs on the
+real App ID and live units**, so QA sees the ads a player sees. Test creatives
+would hide a wrong unit id, a rewarded grant that never fires, and an
+interstitial at the wrong level until the day it costs money.
 
-The build in front of testers carries Google's **test** App ID and
-`EXPO_PUBLIC_ADMOB_LIVE=false`, which is correct for that audience: twelve
-people repeatedly triggering rewarded ads on a handful of devices is exactly
-the pattern that reads as invalid traffic, and invalid traffic is what
-suspends a brand-new publisher before it has earned anything.
+The trade taken with it is invalid-traffic risk. Twelve people triggering
+rewarded ads on a handful of devices is the pattern that reads as fraud, and a
+suspension lands on a brand-new publisher hardest. It is accepted at twelve
+testers and only at twelve: the developer's own device is registered as a test
+device, testers' are not, and asking a dozen people for their advertising IDs
+was refused as unworkable. **If the tester pool ever grows, revisit this** —
+either register them or turn the flag off for that track.
 
-So a fresh build is required after the fourteen days, and it has to be a
-**native** one:
+So the promotion question is now only about the channel and the version code,
+not about ad configuration. A fresh build is still required, and it is still a
+**native** one whenever an App ID moves:
 
 | What changes               | Where it lives            | Reaches a device by    |
 | -------------------------- | ------------------------- | ---------------------- |
@@ -310,7 +415,7 @@ So a fresh build is required after the fourteen days, and it has to be a
 
 In order, and none of it is optional:
 
-1. [ ] `EXPO_PUBLIC_ADMOB_LIVE=true` in `.env`
+1. [x] `EXPO_PUBLIC_ADMOB_LIVE=true` in `.env` — already set, see above
 2. [ ] Confirm every ID in `.env` is the real one. There is **no fallback** in
        `app.config.ts` on purpose — a missing value fails the build loudly
        rather than shipping test IDs that earn nothing and look fine
