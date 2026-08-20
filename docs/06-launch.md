@@ -432,8 +432,10 @@ this, and the checklist in `docs/04-ads.md` §11 is the detailed version.
       entries. Add the US states message beside it. See below.
 - [ ] `EXPO_PUBLIC_ADMOB_LIVE=true`, then `npm run prebuild`
 - [ ] Test devices registered in AdMob, so nobody generates invalid traffic
-- [ ] **The store listing linked inside AdMob.** Until it is, fill rate is poor
-      and the early numbers will mislead whoever reads them.
+- [ ] **The store listing linked inside AdMob** — and note it cannot be done
+      before the app is public, because AdMob's linker only searches the public
+      store catalogue. Until it lands, fill rate is poor and the early numbers
+      will mislead whoever reads them.
 - [ ] `app-ads.txt` published on the developer website named in the listing
 - [ ] AdMob payment profile and identity verification complete
 

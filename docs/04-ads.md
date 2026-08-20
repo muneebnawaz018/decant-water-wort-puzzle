@@ -139,7 +139,7 @@ belongs to a single AdMob app entry, and Android and iOS are always two.
 ```bash
 EXPO_PUBLIC_ADMOB_REWARDED_ANDROID=ca-app-pub-XXXXXXXXXXXXXXXX/WWWWWWWWWW
 EXPO_PUBLIC_ADMOB_REWARDED_IOS=ca-app-pub-XXXXXXXXXXXXXXXX/VVVVVVVVVV
-EXPO_PUBLIC_ADMOB_LIVE=true          # only once the app is on a store
+EXPO_PUBLIC_ADMOB_LIVE=true          # closed test included, see 11-deployment §6
 ```
 
 Then:
@@ -284,8 +284,10 @@ to a five-minute ceiling, and every completion is a free retry on top of that.
 - [ ] All four IDs in `.env` — two App IDs, two rewarded units
 - [ ] `EXPO_PUBLIC_ADMOB_LIVE=true`, then `npm run prebuild`
 - [ ] Test devices registered in AdMob
-- [ ] Play / App Store listing live and **linked in AdMob** — until then, fill
-      rate is poor and the numbers will mislead you
+- [ ] Play / App Store listing live and **linked in AdMob** — impossible before
+      the app is public, since AdMob's linker searches the public catalogue
+      only, and until it lands fill rate is poor and the numbers will mislead
+      you
 - [ ] Play Console Data Safety declaration mentions advertising
 - [ ] `app-ads.txt` published on the developer website named in the store
       listing
