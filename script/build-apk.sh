@@ -289,7 +289,19 @@ fi
 # release is created on first run if it is not there yet. Nothing here tags a
 # commit: the tag is a bucket name, not a version, and moving it would rewrite
 # history every build.
+#
+# **The repo is named, not inferred.** This working copy has two remotes — the
+# personal one, where every commit lands and where testers get their APK, and
+# the organisation's, which receives a finished feature and nothing else. `gh`
+# resolves a repo from the remotes and refuses to guess between two, so without
+# `--repo` the publish step died on "No default remote repository has been set"
+# the day the second remote was added. `gh repo set-default` fixes that too, but
+# it writes to `.git/config`: a fresh clone would go back to failing, and a
+# machine that had set the other default would quietly ship a tester build to
+# the organisation. Naming it here travels with the script. `GH_REPO` overrides
+# it for a one-off without editing the file.
 # ---------------------------------------------------------------------------
+GH_REPO=${GH_REPO:-muneebnawaz018/decant-water-wort-puzzle}
 if [ "$PUBLISH" -eq 1 ]; then
   if [ "$BUNDLE" -eq 1 ]; then
     echo "refusing to publish an .aab — testers cannot install one" >&2
@@ -308,18 +320,17 @@ if [ "$PUBLISH" -eq 1 ]; then
   cp "$APK" "$PWD/decant.apk"
 
   step 'Publishing'
-  if ! gh release view latest >/dev/null 2>&1; then
-    gh release create latest \
+  if ! gh release view latest --repo "$GH_REPO" >/dev/null 2>&1; then
+    gh release create latest --repo "$GH_REPO" \
       --title 'Latest test build' \
       --notes 'Rolling build for testers. Always the newest APK; the download link never changes.' \
       --prerelease
   fi
 
-  gh release upload latest "$PWD/decant.apk" --clobber
+  gh release upload latest "$PWD/decant.apk" --repo "$GH_REPO" --clobber
   rm -f "$PWD/decant.apk"
 
-  SLUG=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
-  printf '\n  https://github.com/%s/releases\n' "$SLUG"
+  printf '\n  https://github.com/%s/releases\n' "$GH_REPO"
   printf '  Open that on an Android phone and tap decant.apk. Always this build.\n\n'
 else
   printf '\n'

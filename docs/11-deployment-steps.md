@@ -90,8 +90,8 @@ day.
       name `Walqalum Games`, account ID `8345660181900594121`, owned by
       `games.walqalum@gmail.com`. Website `https://walqalum.com` recorded on the
       account.
-- [ ] **Apple Developer Program** — $99/yr. Deliberately deferred: Android is
-      being taken to store first, and iOS follows once it is done.
+- [ ] **Apple Developer Program** — $99/yr, enrolling as **Individual**. See
+      the seller-name note below, which is the part with a consequence.
 - [ ] **AdMob account**, under `games.walqalum@gmail.com` — see stage 4. The
       one-way door there is that an app entry cannot be moved between AdMob
       accounts, and a listing linked to the wrong one is a support case rather
@@ -121,6 +121,64 @@ submitted**, which had the shape backwards — the app standing where the
 publisher belongs, and nowhere sensible for a second game to go. Caught in time
 because the Create app form asks for the package up front and it is permanent
 from that moment.
+
+### Apple enrols as Individual, and the seller name does not follow
+
+Decided 21 August 2026. The two Apple entity types are not a preference:
+
+|                 | Individual                    | Organization                   |
+| --------------- | ----------------------------- | ------------------------------ |
+| Seller shown as | the enroller's **legal name** | the company name               |
+| Needs           | Apple ID, card                | D-U-N-S number, a legal entity |
+| Approval        | 1–2 days                      | 2–4 weeks                      |
+
+**Organization was considered and declined**, so it does not need proposing
+again: it is the only route to the company name on day one, and the price is a
+D-U-N-S number and two to four weeks before anything on iOS can start. Individual
+was chosen for the speed, with the seller name treated as a later correction.
+
+So `Walqalum Games` — which every other anchor in the table above says — is the
+one thing an Individual account cannot show on day one. **Apple verifies the
+name at enrolment against government ID and the payment card**, so typing the
+company name into that form does not produce a differently-named account, it
+produces a stalled application.
+
+The route to the company name is a **d/b/a request** after approval: Apple
+Developer → Contact Us → Membership, with a business registration document
+attached. It works on an existing account and can be done at any time, including
+after the app is live, so it is deliberately **not** a blocker on anything.
+
+What is at stake is smaller than it sounds. The App Store shows the app name —
+`Decant: Water Sort Puzzle` — at the top, and the seller name as a small grey
+line beneath it. Play already carries `Walqalum Games` where most launch traffic
+will be.
+
+The genuinely irreversible parts here are the bundle id, which is already
+correct at `com.walqalum.decant` and matches Android, and Individual →
+Organization, which is a support case rather than a setting. The seller name is
+neither.
+
+### Enrolment, in order
+
+1. [ ] **Two-factor authentication on the Apple ID.** Enrolment refuses without
+       it, and this is the step that silently costs an evening
+2. [ ] Enrol via the **Apple Developer app** on iPhone/iPad rather than the web
+       form — it verifies identity through the device and is faster for an
+       Individual
+3. [ ] Legal name, address and phone exactly as they appear on the ID and the
+       card. Entity type **Individual**
+4. [ ] Pay $99. The card needs international transactions enabled
+5. [ ] Wait 24–48h. Apple may telephone to verify
+6. [ ] Accept the agreements in App Store Connect → Business → Agreements. **The
+       Paid Apps agreement is required even for a free app that runs ads**
+7. [ ] Tax forms and bank details, same page. Slow, and nothing downstream waits
+       on them, so start and forget
+8. [ ] Register the identifier **`com.walqalum.decant`** — the same string
+       Android uses, already in `app.config.ts`, permanent once submitted
+9. [ ] Create the app record: `Decant: Water Sort Puzzle`, category
+       **Games → Puzzle** (see stage 3), SKU anything internal
+10. [ ] Only then the AdMob iOS entry — it wants a store listing to link to, and
+        stage 4 explains why creating it before that is the wrong move
 
 ---
 
