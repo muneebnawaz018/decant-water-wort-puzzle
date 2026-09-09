@@ -17,6 +17,86 @@ Two rules govern the order:
 
 ---
 
+## Start here — where this stands, 8 September 2026
+
+**Decant is live on Google Play.** The closed test ran its fourteen days,
+production access was granted, and `versionCode 3` — the same artefact the
+testers played — was promoted to production and cleared review the same day.
+`Active`, 177 countries, `com.walqalum.decant`.
+
+Stages 0–6 are history. This section is the resume point; **stage 8** has the
+detail behind everything below.
+
+### Done on launch day, 8 September 2026
+
+All of it inside a few hours, none of it on the timelines Google quotes:
+
+| What                     | Outcome                                                 |
+| ------------------------ | ------------------------------------------------------- |
+| Play production release  | **Live** — cleared review the same day, 177 countries   |
+| AdMob store-listing link | **Linked** — search failed once, succeeded on retry     |
+| W-8BEN tax form          | **Approved** — Services WHT **0%**, expires 31 Dec 2029 |
+| AdMob app review         | **Ready · Ad serving enabled** — throttle lifted        |
+
+**Google's stated timelines are worst cases, not estimates.** "1–7 days" for
+the Play review, "2–3 days" for the AdMob app review, "up to 7 days" for the
+crawler — the first two landed same-day. Plan around them, but check the
+console before assuming you are still waiting.
+
+### Waiting on someone else — no action, do not poke
+
+| What                 | State on 8 Sep         | Expect                              |
+| -------------------- | ---------------------- | ----------------------------------- |
+| Play search indexing | listing live, indexing | hours to ~24h                       |
+| `app-ads.txt` verify | _No data to display_   | needs ad requests — see chain below |
+
+**The `app-ads.txt` file is correct and served** (`text/plain`, 200, right
+publisher id, on the domain the _listing_ names). Do not re-deploy it or move
+the domain to "fix" the status — a change restarts Google's 7-day crawler
+window for nothing.
+
+**A payment method (bank account) cannot be added yet.** The Settings page has
+no such section at $0.01 of a $100 threshold — AdSense only offers the form as
+payout approaches. Not a gap, and not something to hunt for.
+
+### Ours to do, in priority order
+
+1. **Play 7" and 10" tablet screenshots** (stage 3). Not required to publish,
+   which is why they did not block; they gate the tablet-optimised badge on
+   devices `supportsTablet: true` promises to support. `npm run ios:pad` for
+   the layout — capture work, not development.
+2. **The first OTA update has never been published or received** (stage 7,
+   `docs/10-updates.md` §7). Both channels are configured and verified, but the
+   pipeline has never run end to end. Better discovered on a day nothing
+   depends on it.
+3. **Trademark search**, Class 9 and 41 (stage 0). Still the only open item
+   with legal rather than commercial consequence, and the app is now published
+   under the name.
+4. **Apple Developer Program**, $99, Individual (stage 1). The long pole —
+   every iOS item is behind it, and nothing on iOS has started.
+
+### The one chain worth understanding
+
+Kept because it explains the only thing still outstanding, and because it read
+like three separate broken things for most of launch day:
+
+```text
+tax form ✓ → AdMob app review ✓ → ad serving enabled ✓
+                                          ↓
+        players arrive → ad requests → app-ads.txt verifies   ← still open
+```
+
+Nothing was ever misconfigured. Each link was waiting on the one above it, and
+filing the W-8BEN cleared all three in an afternoon. **The last link cannot be
+pushed**: `app-ads.txt` verification needs real ad-request volume, so it waits
+on organic installs rather than on anything anyone can do.
+
+The general shape is worth keeping for the App Store run: **a stalled
+launch-day pipeline is usually one blocked item wearing several costumes.**
+Find the top of the chain before touching anything downstream.
+
+---
+
 ## Stage 0 — before spending money
 
 - [x] **Store-name availability check — run 19 August 2026.** Results below.
@@ -203,13 +283,16 @@ This is the item that decides the launch date, so it goes before the polish.
       guards is 30 September 2026, after which unregistered apps are removed
       from Play and become uninstallable on certified devices.
 - [ ] Register the bundle id on the App Store side, when iOS starts
-- [ ] Build the store artefact and upload it to a closed track, with
-      `npm run build:aab -- --production`. That flag sets the EAS Update
-      channel, and note the deliberate exception in `docs/10-updates.md` §4: a
-      closed test is _also_ uploaded as a bundle, and those testers are better
-      off on `preview`, so decide which this upload is before passing it
-- [ ] Recruit **12 testers** and open the closed test. The 14 continuous days
-      start when the twelfth opts in, and every remaining stage fits inside them
+- [x] **Closed-test AAB built and uploaded, 20 August 2026** — `versionCode 3`,
+      version `1.0.2`. Built with `npm run build:aab -- --production`, so the
+      binary carries the `production` update channel rather than `preview`.
+      That is the opposite of what the exception in `docs/10-updates.md` §4
+      anticipates, and it turned out to be the right call: **it is what made the
+      same artefact promotable to production without a rebuild.** Check what a
+      binary actually asks for rather than trusting memory —
+      `grep -o 'expo-channel-name[^/]*' android/app/src/main/AndroidManifest.xml`
+- [x] **12 testers recruited, closed test ran its 14 days.** Completed
+      3 September 2026.
 
 ### What the 12-testers rule actually measures, and the three reviews
 
@@ -256,20 +339,36 @@ about three weeks, four or five if the application is bounced once.
 
 Strings, screenshots and answers are drafted in `docs/08-store-listing.md`.
 
-- [ ] **Play Console category: Game → Puzzle, not App.** This is also the last
+**The Play half is done and was proved done by the closed test.** Play refuses
+to publish to _any_ track — closed testing included — with the listing
+incomplete, so the release that went out on 20 August 2026 is the evidence that
+these were all filed. That is worth knowing generally: a track that published
+is a receipt for every form that gates publishing.
+
+- [x] **Play Console category: Game → Puzzle, not App.** This is also the last
       piece of game recognition on Android — several skins classify from the
       store entry rather than the manifest, and a sideloaded APK has no store
       entry to read
+- [x] Play: phone screenshots and the 1024×500 feature graphic
+- [x] Play short and full descriptions
+- [x] Support URL and contact email
+- [ ] **Play 7" and 10" tablet screenshots.** The one Play item genuinely still
+      open, and the reason it did not block anything: tablet screenshots are
+      **not** required to publish. They gate the tablet-optimised badge and how
+      the listing renders to a tablet user, so shipping without them costs
+      presentation on the devices `supportsTablet: true` promises to support.
+      Worth doing early rather than never — the layout is already verified on an
+      iPad Pro 11-inch, so this is a capture pass, not development work
+
+Still open, all of it iOS and all of it blocked on the Apple account:
+
 - [ ] **App Store Connect category: Games → Puzzle.** On iOS this is what makes
       the system treat the app as a game, including Game Mode. The
       `LSApplicationCategoryType` key in the binary does not substitute for it
 - [ ] iPhone screenshots at the sizes App Store Connect currently demands
 - [ ] **iPad screenshots** — mandatory, because `supportsTablet: true` is set.
       `npm run ios:pad` is the tablet layout
-- [ ] Play: phone screenshots, 7" and 10" tablet screenshots, and a 1024×500
-      feature graphic
-- [ ] Short and full descriptions, both stores
-- [ ] Support URL and contact email
+- [ ] App Store short and full descriptions
 
 ### The two category dropdowns cannot be set from this repository
 
@@ -428,15 +527,19 @@ and backs out would have silently revoked their own consent.
 Every answer is a fact about the code, so they are quick if read off the right
 place rather than guessed.
 
-- [ ] **Privacy policy hosted at a public URL.** Text is drafted in
+Everything on the Play side of this list is **done**, and for the same reason
+as stage 3: none of these are optional for a closed-test release, so the track
+that published on 20 August 2026 could not have published without them.
+
+- [x] **Privacy policy hosted at a public URL.** Text is drafted in
       `docs/07-privacy-policy.md`. Required by both stores and unavoidable with
       AdMob. The drawer renders a `Privacy policy` row that needs the real URL
       behind it
-- [ ] **Play Data Safety** — must declare the advertising ID. Confirmed present
+- [x] **Play Data Safety** — must declare the advertising ID. Confirmed present
       in the merged release manifest, so this is not a judgement call
-- [ ] **Play ads declaration** — the app contains ads
-- [ ] **IARC content rating questionnaire**
-- [ ] **Play target audience** — rated for everyone, and **not** child-directed.
+- [x] **Play ads declaration** — the app contains ads
+- [x] **IARC content rating questionnaire**
+- [x] **Play target audience** — rated for everyone, and **not** child-directed.
       `src/ads/setup.ts` sets `MaxAdContentRating.G`, which is a different thing
 - [ ] **Apple App Privacy labels** — Identifiers and Usage Data for AdMob, and
       they must agree with `PrivacyInfo.xcprivacy`, which declares
@@ -462,8 +565,9 @@ was refused as unworkable. **If the tester pool ever grows, revisit this** —
 either register them or turn the flag off for that track.
 
 So the promotion question is now only about the channel and the version code,
-not about ad configuration. A fresh build is still required, and it is still a
-**native** one whenever an App ID moves:
+not about ad configuration. **And in the event no fresh build was needed at
+all** — see the promotion note at the end of this stage. The table below still
+governs any build that _does_ move an App ID, which is a native one every time:
 
 | What changes               | Where it lives            | Reaches a device by    |
 | -------------------------- | ------------------------- | ---------------------- |
@@ -494,18 +598,60 @@ In order, and none of it is optional:
 **The advertising ID is the only thing a rollback cannot undo here.** An OTA can
 revert `EXPO_PUBLIC_ADMOB_LIVE`; nothing can revert a manifest.
 
+### What actually happened: the AAB was promoted, not rebuilt
+
+Steps 2–6 above were never run for the production release, and the reason is
+worth keeping because it is the payoff for two decisions taken earlier.
+
+`versionCode 3` — the artefact twelve testers ran for fourteen days — was
+promoted straight to production from Play's library. No rebuild, no version
+bump, no second R8 build to re-validate. It was eligible because **both**
+things that would normally force a rebuild had already been decided the right
+way at closed-test time:
+
+| Would force a rebuild       | Why it did not                                                     |
+| --------------------------- | ------------------------------------------------------------------ |
+| Wrong EAS Update channel    | built with `--production`, so it already asks for `production`     |
+| Test ad IDs in the manifest | the closed test deliberately ran on the real App ID and live units |
+
+The second is the trade recorded at the top of this stage, and this is the
+return on it: had the closed test run on Google's test App ID, the tested
+binary and the shippable binary would have been different artefacts, and the
+first build real players ever received would have been one nobody had played.
+
+**Verify the channel from the binary, never from memory of which flag was
+typed:**
+
+```sh
+grep -o 'expo-channel-name[^/]*' android/app/src/main/AndroidManifest.xml
+```
+
+A promoted build also sidesteps the R8 risk in stage 7 entirely — the artefact
+going to players is the one that was already played through.
+
+**This is not the default for future releases.** Any release that changes code
+is a fresh build and runs steps 2–6 in full, including the `versionCode` bump,
+because 3 is now permanently consumed on Play.
+
 ---
 
 ## Stage 7 — the run before submitting
 
 Nothing on this list is proven by a green build.
 
+**For the 1.0 release this list was satisfied by the closed test rather than by
+a separate pass**, which is the second dividend of promoting the tested
+artefact: twelve people played `versionCode 3` on real devices, on live ad
+units, for fourteen days. A rebuild would have thrown that evidence away and
+required the whole list again against a binary nobody had run. The list stands
+unchecked because it governs **the next** release, not the one that shipped.
+
 1. [ ] `npm run check:all` — six gates
 2. [ ] **Build a signed release and play a full level on a real device.** R8
        strips what only reflection reaches and that fails at runtime, not at
        build time. Build the **APK**, not the bundle; a phone cannot install an
-       `.aab`. _(Done 2026-08-12 against test ad units — repeat against live
-       ones.)_
+       `.aab`. _(Done 2026-08-12 against test ad units, then covered for 1.0 by
+       the closed test on live units — repeat for any new build.)_
 3. [ ] **Listen to the sounds through a phone speaker**, not a simulator. The
        previous audio set died on exactly this judgement after measuring fine
 4. [ ] **Verify the ads path against live IDs** with a registered test device,
@@ -526,6 +672,175 @@ Drive:
 ```sh
 adb shell pm clear com.walqalum.decant
 ```
+
+---
+
+## Stage 8 — production access, and the first release
+
+Both happened on 8 September 2026 and they are **two separate gates**, which is
+the thing the stage-2 table above gets right and everyone else gets wrong:
+approval unlocks the production _track_, it does not put anything on it. The
+dashboard read `Production: Inactive` for hours afterwards, and the app was
+correctly not findable in Play search that whole time.
+
+- [x] **Production access application filed**, 4 September 2026, granted
+      8 September 2026 — inside Google's stated "7 days or less". The answers
+      given are in `docs/08-store-listing.md`
+- [x] **Countries and regions: all 176 plus rest of world.** Two change rows,
+      not a duplicate — the explicit list and a catch-all for territories Play
+      adds later. Deleting either narrows the release
+- [x] **Production release created** — `versionCode 3` promoted from the
+      library, full rollout, no staged percentage
+- [x] **Submitted for review**, 8 September 2026, all three changes in one
+      batch
+- [x] **Live on Google Play, 8 September 2026.** Review cleared the same day —
+      far inside the 1–7 days stage 2 budgets for it, and worth knowing why:
+      the promoted artefact had already passed review once on the closed track,
+      so only the track change was new. Track summary reads `Active`,
+      `3 (1.0.2)`, 177 countries, and the public listing answers `HTTP 200`
+      with the right title and publisher to a plain `curl` of
+      `https://play.google.com/store/apps/details?id=com.walqalum.decant`.
+      **Verify from outside the console, not from it.** Play Console reporting
+      that a release is live and the public catalogue actually serving it are
+      two different claims, and only the second one is what a player
+      experiences.
+
+Two things about the form that are easy to get wrong in the moment:
+
+- **Batch the submission.** Countries and the release are separate change rows
+  and can be submitted separately; doing so spends a review round-trip on
+  availability for a track with nothing on it. Submit them together.
+- **Managed publishing was left off**, so approval publishes immediately at
+  100%. Turning it on makes review completion and go-live two separate moments,
+  which is what you want if a launch has to be timed. It was not needed here.
+
+After approval the listing is live and Play search indexes it within about a
+day. `https://play.google.com/store/apps/details?id=com.walqalum.decant` 404s
+until then, for the developer too — the same trap as the tester opt-in link in
+stage 2.
+
+**Do not edit the release while it is in review.** Editing withdraws it.
+
+### `app-ads.txt` lives on the domain the _listing_ names, not the account
+
+The account and the listing carry **different** websites, and only one of them
+matters here. This was nearly recorded as a bug on launch day: the Play account
+is registered with `https://walqalum.com`, which 404s on `/app-ads.txt`, and the
+obvious conclusion — file never deployed — was wrong.
+
+Google derives the crawl target from **Store settings → Store listing contact
+details → Website**, which reads `https://decant-website-rho.vercel.app/`. The
+file is there and correct:
+
+```sh
+curl -sI https://decant-website-rho.vercel.app/app-ads.txt
+# HTTP/2 200 · content-type: text/plain · 59 bytes
+```
+
+So the whole chain holds: listing → that domain → `/app-ads.txt` →
+`pub-1606345493304211`. **Check the listing field before concluding anything
+about the file**, because a 404 on the wrong domain looks identical to a
+missing deployment.
+
+Two consequences worth keeping:
+
+- **The field and the file move together or not at all.** Pointing the listing
+  at `walqalum.com` without deploying the file there first breaks verification
+  silently — no error, just fill rate quietly dropping again.
+- **`vercel.app` is a shared domain**, so this works but is not the end state.
+  The privacy policy and support URL sit on it too; whenever the real domain
+  lands, all three move in one change.
+
+### What unblocks the moment the listing is public
+
+Recorded here because all four were asked about while the review was still
+running, when the answer for two of them was "not yet". **The listing went live
+the same day, so both are now open** — the table is kept because the
+distinction recurs at every store launch:
+
+| Task                             | Needed a live listing?                                | Now                |
+| -------------------------------- | ----------------------------------------------------- | ------------------ |
+| AdMob → link the store listing   | yes — the linker searches the live store index        | **open, do it**    |
+| `app-ads.txt` crawl verification | yes — Google reads the developer site off the listing | runs on its own    |
+| AdMob payment profile            | no                                                    | **US tax info**    |
+| AdMob identity verification      | no, but gated on an earnings threshold — see stage 4  | wait to be offered |
+
+Linking the listing is the bigger of the two fill-rate levers and is the only
+one that needs a person. **Done 8 September 2026** — and two things about it
+are worth keeping:
+
+- **The linker's search failed on the first try**, minutes after the listing
+  went live, and succeeded on the second. It searches Google's _indexed_ copy
+  of the catalogue, not the live store, so it lags publication by hours. A
+  no-result here is not evidence of a wrong package name.
+- **Decline the "Other Android stores" checkboxes** on that form — Amazon,
+  Samsung, OPPO, VIVO, Xiaomi. They declare a listing that already exists
+  elsewhere. Ticking one claims a listing we do not have.
+
+Linking flipped the app from `Requires review` to `Getting ready · Review in
+progress` and filled the package-name column that was empty. **Approved the
+same day** once the tax form landed — the row now reads `✓ Ready` /
+`Ad serving enabled`, and the generic Android robot in the app column was
+replaced by the real launcher icon, which is a second confirmation that the
+store link resolved on Google's side.
+
+**Ad serving was throttled the whole time, and the tooltip is where that is
+stated rather than the status column:** _"Any apps in review will remain
+unreviewed until you add your payment details."_ That single sentence is what
+promoted the tax form from a slow background chore to the thing gating revenue
+on a live app.
+
+**`app-ads.txt` verification is not a crawl on a timer, and this was got wrong
+once.** The tab's own words: _"We haven't detected any **ad requests** with
+app-ads.txt implemented"_, and _"if your approved app has had limited ad
+requests over the last 7 days, the status may not appear"_. So it needs traffic
+to attach the file to, on top of the crawler's stated 7 days. With the closed
+test over and the listing hours old, requests are at zero and the tab reads
+**"No data to display"** — recorded here as the 8 September baseline, because
+in a month the question is whether it ever changed.
+
+**Decline the rewarded-interstitial upsell** that AdMob puts on the dashboard.
+It shows an ad automatically without the player opting in, and `AGENTS.md` is
+explicit: `rewarded_extra_tube` is the highest-value slot, and **never show an
+ad mid-level**. The dashboard optimises for impressions; the game is sold on
+being calm.
+
+### The W-8BEN, filed 8 September 2026 — what it took
+
+**Approved instantly**, `Services WHT rate: 0% (Claimed)`, submitted by
+Muhammad Talha Khan, **expires 31 December 2029**. Note that: an expired
+form reverts withholding to 30% with no warning.
+
+The profile already had name and address verified (13 August 2026); the tax
+form was the missing piece. It is a form rather than an application — free, no
+uploads, approved on submission — but six things about it are easy to get wrong
+and each costs money or a restart:
+
+| Step             | Answer                                                   | If you get it wrong                                                                        |
+| ---------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| W-8 form type    | **W-8BEN**                                               | the form **preselects W-8ECI**, which is for people with a US business who file US returns |
+| Foreign TIN      | the NTN (CNIC for most)                                  | labelled _Optional_, but the treaty claim is refused without it                            |
+| Tax treaty       | **Yes, claim it**                                        | completes happily at **30%** instead of 0%                                                 |
+| Income type      | **Services or other business income** — the AdSense line | Royalties is YouTube Partner and Play Pass, not AdMob                                      |
+| PE checkbox      | tick it                                                  | it is the stated basis for the 0%; unticked, the rate has no support                       |
+| Activities in US | **No**                                                   | Yes contradicts the PE statement and drops the rate                                        |
+
+Two smaller traps: the signature field looks disabled and is simply pre-filled
+read-only from the verified profile — **press Submit rather than hunting for a
+way to type in it**. And the **unchanged status affidavit is optional** and
+worth skipping: it applies the rate retroactively to prior payments, which here
+is one cent, in exchange for another perjury certification.
+
+The preview generates **two** PDFs — `Services.pdf` carrying the claim, and
+`No treaty applied.pdf` for the income types not claimed. The second one saying
+"NO TREATY APPLIED" is not an error. **Open `Services.pdf` and check Part II
+line 10 before signing**: it should read article 3 paragraph 2, 0%, Services.
+
+Signed under penalty of perjury by the person named on the profile, so it is
+his to file, not an engineer's.
+
+The trademark search in stage 0 and the Apple enrolment in stage 1 are also
+unblocked, and both are long-lead.
 
 ---
 

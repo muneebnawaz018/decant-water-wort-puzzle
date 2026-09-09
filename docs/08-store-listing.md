@@ -296,6 +296,72 @@ already declares `android:appCategory="game"` and
 `LSApplicationCategoryType`, but several Android skins classify from the store
 category instead, so a listing filed under "App" undoes both.
 
+### The production access application, as filed
+
+Filed 4 September 2026, granted the 8th. A human reads these, so they are kept
+verbatim rather than summarised — a resubmission has to tell the same story, and
+"what we said last time" is otherwise unrecoverable. Every box caps at **300
+characters**, which is tighter than it looks and is why each answer is trimmed
+rather than thorough.
+
+**How did you recruit users for your closed test?**
+
+> Testers were recruited from friends, family and personal contacts, and from
+> puzzle-game players in online testing communities. No paid testing provider
+> was used. Each tester joined the closed track through a Google Group and
+> installed the game from the Play opt-in link.
+
+**How easy was it to recruit testers?** — `Difficult`
+
+**Describe the engagement you received from testers**:
+
+> Testers played across all three difficulty modes and used the core features:
+> undo, hints, the spare vial, daily rewards and rewarded ads. Sessions were
+> short and repeated over the 14 days, which matches how a casual puzzle player
+> uses the game. No major feature went untouched.
+
+**Provide a summary of the feedback that you received from testers**:
+
+> Feedback was collected through a group chat and direct messages with testers,
+> alongside crash and ANR reports in Play Console. No crashes were reported.
+> Comments centered on difficulty pacing and the clarity of the colorblind
+> marks, and both were addressed before this application.
+
+**Who is the intended audience of your game?**
+
+> Adults and teens who want a calm puzzle to play in short sessions. There is no
+> timer and no fail state, so it suits commuting, waiting and winding down. It
+> is rated for everyone and is not directed at children. The main appeal is to
+> casual players who already enjoy water sort puzzles.
+
+**Describe what makes your game stand out**:
+
+> Levels are seed-generated, not hand-built, so the supply is endless and
+> reproducible. Three difficulty curves, tuned separately. Star ratings come
+> from a real optimal-solution search, so hints give the shortest possible move.
+> Colorblind glyphs on every color.
+
+**How many installs do you expect in your first year?** — `0 - 10K`
+
+**What changes did you make based on what you learned during your closed test?**
+
+> Difficulty pacing was retuned so early levels ease in more gradually. The
+> colorblind glyphs were made clearer and easier to tell apart. Ad frequency and
+> placement were adjusted so no ad interrupts a level. Several smaller layout
+> and readability fixes came from tester reports.
+
+**How did you decide that your game is ready for production?**
+
+> The game ran for 14 days on the closed track with no crashes or ANRs in Play
+> Console. Testers finished levels across all three difficulty modes without
+> blockers. The store listing, privacy policy, data safety form and content
+> rating are complete, and the release build was played end to end.
+
+**Answer in American English**, like the rest of the listing — see §9. The first
+drafts of these came back with `colourblind` and `centred` in them, which is the
+same drift the spelling rule in this document exists to catch, in a surface
+nothing lints.
+
 ---
 
 ## 9. ASO, and what is actually filed
