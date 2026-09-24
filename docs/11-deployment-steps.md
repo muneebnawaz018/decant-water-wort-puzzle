@@ -49,6 +49,7 @@ console before assuming you are still waiting.
 | -------------------- | ---------------------- | ----------------------------------- |
 | Play search indexing | listing live, indexing | hours to ~24h                       |
 | `app-ads.txt` verify | _No data to display_   | needs ad requests — see chain below |
+| Apple enrolment      | case `102974085615`    | Apple replies by email, 1–2 days    |
 
 **The `app-ads.txt` file is correct and served** (`text/plain`, 200, right
 publisher id, on the domain the _listing_ names). Do not re-deploy it or move
@@ -170,8 +171,12 @@ day.
       name `Walqalum Games`, account ID `8345660181900594121`, owned by
       `games.walqalum@gmail.com`. Website `https://walqalum.com` recorded on the
       account.
-- [ ] **Apple Developer Program** — $99/yr, enrolling as **Individual**. See
-      the seller-name note below, which is the part with a consequence.
+- [ ] **Apple Developer Program** — $99/yr, enrolling as **Individual**.
+      **Blocked at Apple's end since 24 September 2026**, support case
+      `102974085615` — see the enrolment note below. The Apple Account is
+      `games.walqalum@gmail.com`, Muhammad Talha Khan, which matches the Play
+      owner. See the seller-name note below, which is the part with a
+      consequence.
 - [ ] **AdMob account**, under `games.walqalum@gmail.com` — see stage 4. The
       one-way door there is that an app entry cannot be moved between AdMob
       accounts, and a listing linked to the wrong one is a support case rather
@@ -259,6 +264,39 @@ neither.
        **Games → Puzzle** (see stage 3), SKU anything internal
 10. [ ] Only then the AdMob iOS entry — it wants a store listing to link to, and
         stage 4 explains why creating it before that is the wrong move
+
+### Web enrolment fails with "An unknown error occurred", and what it was not
+
+Hit on 24 September 2026 and unresolved, so the diagnosis is recorded rather
+than the fix. Every attempt dies at the same place: entity type selected,
+License Agreement accepted, Continue — then `developer.apple.com/enroll/error`
+and a message with no code and no reason. No charge is taken and no enrolment
+record is created, so retrying costs nothing and changes nothing.
+
+Ruled out, in the order they were cheapest to check:
+
+| Suspect                     | Result                                                    |
+| --------------------------- | --------------------------------------------------------- |
+| VPN or proxy                | none in use                                               |
+| Browser extensions, session | clean session, same error                                 |
+| Two-factor authentication   | on, with a verified phone                                 |
+| Apple Account region        | Pakistan, matching where the enroller is                  |
+| **No payment method**       | **was genuinely missing — added, and it changed nothing** |
+
+The payment method is worth keeping in the list precisely because it looked
+like the answer. `Payment & Shipping` read _No payment methods_, which is a
+real gap and a documented cause of enrolment failures; a Pakistani card and a
+shipping address went on, and the error came back byte-identical. **A plausible
+cause that is also genuinely broken is still not proof of the cause.**
+
+What is left is account-level and only Apple can see it. Case `102974085615`,
+filed from the enrolling Apple Account — which matters, since a case opened
+from anyone else's account is about that account. Apple replies by email to
+`games.walqalum@gmail.com` and to nowhere else; there is no console thread,
+because the membership that would own one does not exist yet.
+
+**Do not file a second case.** Reply on the existing one if it goes quiet past
+two business days.
 
 ---
 
@@ -867,3 +905,24 @@ Code-side, all of it verified rather than assumed:
 
 Deliberately not in 1.0, recorded in `docs/06-launch.md` §4: RevenueCat
 purchasing, Play Games Services and Game Center, an analytics service.
+
+### Play's four "recommended actions", and why none was taken
+
+The production dashboard raised four of these against release 3 (1.0.2) on
+9 September. All four were checked against the code, and none is a finding —
+that panel matches on app-wide patterns, not on anything it measured in this
+build. Recorded so the same four are not re-litigated next time they appear:
+
+| Recommendation                 | Verdict                                                                                                                               |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Deprecated edge-to-edge APIs   | **Not our code.** Comes from React Native / Expo reacting to Android 15's forced edge-to-edge. Clears on an SDK bump                  |
+| Remove orientation restriction | **Declined, on purpose.** `orientation: 'portrait'` is a product decision — see AGENTS.md, "Landscape is not supported"               |
+| Bitmap image optimization      | **Nothing to optimize.** Six PNGs, 372 KB total, all launcher/splash/notification. Every in-game icon is a Skia path                  |
+| R8 optimization                | **Already on.** `enableMinifyInReleaseBuilds` and `enableShrinkResourcesInReleaseBuilds`, wired at `android/app/build.gradle:147-148` |
+
+One of them does carry a real cost worth stating rather than dismissing:
+portrait-lock is a ranking input for tablets and ChromeOS, so declining it
+suppresses discovery there. That is a layout project in `src/render/layout.ts`
+— a wide, short box the board has never been asked to handle — not a config
+flag, and the tablet screenshots in "Ours to do" buy more of the same audience
+for an afternoon's work.
